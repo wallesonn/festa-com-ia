@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:pl-[var(--sidebar-width)] min-h-screen">
         <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-        <main className="container-responsive py-6">
+        <main className="px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>
       </div>

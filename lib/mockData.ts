@@ -1,4 +1,4 @@
-import { Conversation, ConversationStatus, Order, OrderStatus, ProductType } from './types'
+import { Conversation, ConversationStatus, Order, OrderStatus, PainelStatus, ProductType } from './types'
 
 const names = [
   'Maria Souza','João Santos','Ana Paula','Pedro Henrique','Carla Mendes','Lucas Lima','Fernanda Alves','Rafael Gomes','Juliana Rocha','Bruno Costa','Mariana Ribeiro','Felipe Araujo','Aline Nunes','Daniela Freitas','Thiago Martins'
@@ -56,9 +56,19 @@ function randomFutureDate(daysAheadMin = 0, daysAheadMax = 10) {
   const delta = Math.floor(Math.random() * (daysAheadMax - daysAheadMin + 1)) + daysAheadMin
   const d = new Date(now)
   d.setDate(now.getDate() + delta)
-  d.setHours(12, 0, 0, 0)
+  d.setHours(14, 0, 0, 0)
   return d.toISOString()
 }
+
+// Gera data/hora de entrega espalhada para cobrir os 3 níveis de urgência no mock
+const deliveryOffsets = [
+  // vermelho: < 2h
+  30, 60, 90,
+  // laranja: 2h-24h
+  3 * 60, 6 * 60, 12 * 60, 18 * 60,
+  // verde: > 24h
+  36 * 60, 48 * 60, 72 * 60, 5 * 24 * 60, 7 * 24 * 60,
+]
 
 export const conversations: Conversation[] = Array.from({ length: 12 }).map((_, i) => {
   const name = names[i % names.length]
@@ -75,17 +85,29 @@ export const conversations: Conversation[] = Array.from({ length: 12 }).map((_, 
   }
 })
 
+const painelStatuses: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
+
 export const orders: Order[] = Array.from({ length: 12 }).map((_, i) => {
   const name = names[(i * 2) % names.length]
   const product = sample(productTypes)
   const status: OrderStatus = sample(['em_andamento', 'finalizado', 'cancelado', 'nao_confirmado'])
+  const painelStatus: PainelStatus = painelStatuses[i % painelStatuses.length]
+  const offsetMinutes = deliveryOffsets[i % deliveryOffsets.length]
+  const deliveryDt = new Date(Date.now() + offsetMinutes * 60 * 1000)
+  const msg = sample(baseMessages)
+  const msgAt = new Date()
+  msgAt.setMinutes(msgAt.getMinutes() - Math.floor(Math.random() * 120))
   return {
     id: `o${i + 1}`,
     clientName: name,
     productType: product,
-    eventDate: randomFutureDate(0, 7),
+    eventDate: deliveryDt.toISOString(),
+    deliveryDatetime: deliveryDt.toISOString(),
     peopleCount: [10, 15, 20, 25, 30, 40, 50][Math.floor(Math.random() * 7)],
     status,
+    painelStatus,
+    lastMessage: msg,
+    lastMessageAt: msgAt.toISOString(),
   }
 })
 

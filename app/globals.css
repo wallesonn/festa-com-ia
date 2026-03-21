@@ -11,7 +11,7 @@ html, body, #__next {
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-muted text-gray-100;
 }
 
 .container-responsive {
@@ -19,5 +19,5 @@ body {
 }
 
 .card {
-  @apply bg-white rounded-lg shadow-card border border-border;
+  @apply bg-card text-gray-100 rounded-lg shadow-card border border-border;
 }

@@ -9,10 +9,10 @@ export function SimpleBarChart({ labels, values, max }: { labels: string[]; valu
           const pct = Math.round((v / computedMax) * 100)
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full bg-blue-500/20 rounded-t-md" style={{ height: `${pct}%` }}>
-                <div className="w-full h-full bg-blue-500 rounded-t-md" style={{ height: '100%' }} />
+              <div className="w-full bg-primary/30 rounded-t-md" style={{ height: `${pct}%` }}>
+                <div className="w-full h-full bg-primary rounded-t-md" style={{ height: '100%' }} />
               </div>
-              <div className="text-xs text-gray-600 truncate w-full text-center">{labels[i]}</div>
+              <div className="text-xs text-gray-300 truncate w-full text-center">{labels[i]}</div>
             </div>
           )
         })}

@@ -4,11 +4,11 @@ import { Order } from '@/lib/types'
 export function OrderCard({ order }: { order: Order }) {
   return (
     <div className={`card p-3 ${bucketColorFromOrder(order)}`}>
-      <div className="text-xs text-gray-500 mb-1">{badgeFromOrder(order)}</div>
+      <div className="text-xs text-gray-400 mb-1">{badgeFromOrder(order)}</div>
       <div className="text-sm font-medium">Cliente: {order.clientName}</div>
-      <div className="text-sm text-gray-700">Produto: {order.productType}</div>
-      <div className="text-sm text-gray-700">Entrega: {fmtDateShort(order.eventDate)}</div>
-      <div className="text-sm text-gray-700">Pessoas: {order.peopleCount}</div>
+      <div className="text-sm text-gray-200">Produto: {order.productType}</div>
+      <div className="text-sm text-gray-200">Entrega: {fmtDateShort(order.eventDate)}</div>
+      <div className="text-sm text-gray-200">Pessoas: {order.peopleCount}</div>
     </div>
   )
 }

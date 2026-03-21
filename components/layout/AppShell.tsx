@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile overlay */}
       <div className={`fixed inset-0 z-40 bg-black/40 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`} onClick={() => setSidebarOpen(false)} />
 
-      <aside className={`fixed z-50 top-0 left-0 h-full w-[var(--sidebar-width)] bg-white border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed z-50 top-0 left-0 h-full w-[var(--sidebar-width)] bg-card text-gray-100 border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onNavigate={() => setSidebarOpen(false)} />
       </aside>
 

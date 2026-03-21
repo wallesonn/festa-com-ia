@@ -13,7 +13,7 @@ export default function PedidosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-gray-600">Kanban por prioridade e status, com classificação automática pela data do evento.</div>
+      <div className="text-sm text-gray-400">Kanban por prioridade e status, com classificação automática pela data do evento.</div>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {order.map(b => (
           <KanbanColumn key={b} title={bucketLabel(b)} count={buckets.get(b)?.length || 0}>

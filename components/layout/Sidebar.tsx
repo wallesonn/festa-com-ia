@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessagesSquare, LayoutDashboard, ShoppingBag, Users, Settings } from 'lucide-react'
+import { LayoutGrid, LayoutDashboard, ShoppingBag, Users, Settings } from 'lucide-react'
 
 const items = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/conversas', label: 'Conversas', icon: MessagesSquare },
+  { href: '/painel', label: 'Painel', icon: LayoutGrid },
   { href: '/pedidos', label: 'Pedidos', icon: ShoppingBag },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
@@ -23,7 +23,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           const active = pathname === item.href
           const Icon = item.icon
           return (
-            <Link key={item.href} href={item.href} onClick={onNavigate} className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-100 ${active ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}>
+            <Link key={item.href} href={item.href} onClick={onNavigate} className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-800 ${active ? 'bg-gray-800 text-white font-medium' : 'text-gray-300'}`}>
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>
             </Link>

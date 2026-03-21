@@ -11,12 +11,12 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#2563eb',
+          DEFAULT: '#d946ef', // fuchsia-500 (vibrante)
           foreground: '#ffffff',
         },
-        muted: '#f3f4f6',
-        card: '#ffffff',
-        border: '#e5e7eb',
+        muted: '#111827', // slate-900 (plano de fundo secundário)
+        card: '#0f172a',  // slate-900/950 para cartões
+        border: '#1f2937', // slate-800
       },
       boxShadow: {
         card: '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.1)'

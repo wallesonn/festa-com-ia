@@ -1,4 +1,4 @@
-import { Conversation, ConversationStatus, Order, OrderStatus, PainelStatus, ProductType } from './types'
+import { ChatMessage, Conversation, ConversationStatus, Order, OrderStatus, PainelStatus, ProductType } from './types'
 
 const names = [
   'Maria Souza','João Santos','Ana Paula','Pedro Henrique','Carla Mendes','Lucas Lima','Fernanda Alves','Rafael Gomes','Juliana Rocha','Bruno Costa','Mariana Ribeiro','Felipe Araujo','Aline Nunes','Daniela Freitas','Thiago Martins'
@@ -11,6 +11,55 @@ const productTypes: ProductType[] = ['Bolo','Doces','Salgados','Kit Festa']
 const baseMessages = [
   'Quanto custa um bolo para 20 pessoas?','Vocês fazem brigadeiro gourmet?','Qual o prazo para encomenda de salgados?','Tem disponibilidade para sábado?','Quais sabores de bolo vocês têm?','Aceitam Pix?','Entrega no bairro Centro?','Preciso de um kit festa para 30 pessoas.'
 ]
+
+const threadTemplates: [string, string][][] = [
+  [
+    ['client','Oi, queria encomendar um bolo de chocolate para 30 pessoas.'],
+    ['attendant','Olá! Claro, temos várias opções. Qual a data do evento?'],
+    ['client','É no próximo sábado, dia 22.'],
+    ['attendant','Ótimo! Vou verificar nossa agenda e já te confirmo.'],
+    ['client','Perfeito, aguardo. Aceitam Pix?'],
+  ],
+  [
+    ['client','Bom dia! Vocês fazem brigadeiro gourmet?'],
+    ['attendant','Bom dia! Fazemos sim, com vários recheios.'],
+    ['client','Queria umas 80 unidades para uma festa.'],
+    ['attendant','Sem problema. Qual a data e horário da entrega?'],
+    ['client','Sábado às 16h, pode ser?'],
+  ],
+  [
+    ['client','Olá, qual o prazo mínimo para encomendar salgados?'],
+    ['attendant','Trabalhamos com 3 dias úteis de antecedência.'],
+    ['client','Ok, então quero pedir para quinta-feira.'],
+    ['attendant','Perfeito! Quantas unidades você precisa?'],
+    ['client','Umas 150 unidades, meio a meio assados e fritos.'],
+  ],
+  [
+    ['client','Tem disponibilidade para sábado que vem?'],
+    ['attendant','Deixa eu verificar... temos sim! O que você precisa?'],
+    ['client','Um kit festa completo para 25 pessoas.'],
+    ['attendant','Inclui bolo, salgados e docinhos. Posso montar um orçamento?'],
+    ['client','Sim por favor, me manda o valor.'],
+  ],
+  [
+    ['client','Quais sabores de bolo vocês têm?'],
+    ['attendant','Temos chocolate, red velvet, limão, morango e baunilha.'],
+    ['client','Adorei! Quero o de morango com cobertura de chantilly.'],
+    ['attendant','Ótima escolha! Para quantas pessoas seria?'],
+    ['client','Para 20 pessoas, aniversário da minha filha.'],
+  ],
+]
+
+function generateMessages(orderId: string): ChatMessage[] {
+  const thread = threadTemplates[parseInt(orderId.replace(/\D/g, '')) % threadTemplates.length]
+  const now = Date.now()
+  return thread.map(([ sender, text ], i) => ({
+    id: `${orderId}-m${i}`,
+    sender: sender as 'client' | 'attendant',
+    text,
+    at: new Date(now - (thread.length - i) * 8 * 60 * 1000).toISOString(),
+  }))
+}
 
 export function generateSuggestions(message: string): string[] {
   const m = message.toLowerCase()
@@ -108,6 +157,7 @@ export const orders: Order[] = Array.from({ length: 12 }).map((_, i) => {
     painelStatus,
     lastMessage: msg,
     lastMessageAt: msgAt.toISOString(),
+    messages: generateMessages(`o${i + 1}`),
   }
 })
 

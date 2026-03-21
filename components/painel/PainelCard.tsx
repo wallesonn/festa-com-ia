@@ -6,9 +6,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { Order, PainelStatus } from '@/lib/types'
 import { urgencyBgClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
 import { generateSuggestions } from '@/lib/mockData'
-import { Button } from '@/components/ui/button'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
-import { Send, ChevronRight, X, GripVertical } from 'lucide-react'
+import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 
 const STATUS_ORDER: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
 
@@ -21,6 +20,8 @@ interface PainelCardProps {
 export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const suggestions = generateSuggestions(order.lastMessage)
   const bg = urgencyBgClass(order.deliveryDatetime)
 
@@ -73,26 +74,45 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
         📅 <span className="text-gray-100">{fmtDatetime(order.deliveryDatetime)}</span>
       </div>
 
-      {/* Última mensagem */}
-      <div className="border-t border-white/10 pt-2 space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-white/50">Última mensagem</span>
-          <span className="text-xs text-white/50">{fmtTimeShort(order.lastMessageAt)}</span>
-        </div>
-        <div className="text-sm text-gray-100 line-clamp-2 leading-snug">{order.lastMessage}</div>
+      {/* Histórico de mensagens */}
+      <div className="border-t border-white/10 pt-2 space-y-1.5">
+        {(expanded ? order.messages.slice(-5) : order.messages.slice(-1)).map(msg => (
+          <div key={msg.id} className={`flex flex-col gap-0.5 ${msg.sender === 'attendant' ? 'items-end' : 'items-start'}`}>
+            <div className={`max-w-[85%] px-2.5 py-1.5 rounded-xl text-xs leading-snug ${msg.sender === 'attendant' ? 'bg-black/40 text-white rounded-br-none' : 'bg-white/15 text-white/90 rounded-bl-none'}`}>
+              {msg.text}
+            </div>
+            <span className="text-[10px] text-white/35">{fmtTimeShort(msg.at)}</span>
+          </div>
+        ))}
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="w-full flex items-center justify-center gap-1 text-[11px] text-white/50 hover:text-white/80 py-1 transition-colors"
+        >
+          {expanded ? <><ChevronUp className="h-3 w-3" /> Recolher</> : <><ChevronDown className="h-3 w-3" /> Ver conversa ({order.messages.length} msgs)</>}
+        </button>
       </div>
 
       {/* Sugestões */}
       <div className="flex flex-col gap-1">
-        {suggestions.map((sug, i) => (
+        {(expandedSuggestions ? suggestions : suggestions.slice(0, 1)).map((sug, i) => (
           <button
             key={i}
             onClick={() => setReply(sug)}
-            className="text-left text-xs px-3 py-2 rounded-lg bg-black/20 active:bg-black/40 text-white/80 truncate transition-colors min-h-[36px]"
+            className="text-left text-xs px-3 py-2 rounded-lg bg-black/50 active:bg-black/70 text-white/90 truncate transition-colors min-h-[36px]"
           >
             {sug}
           </button>
         ))}
+        {suggestions.length > 1 && (
+          <button
+            onClick={() => setExpandedSuggestions(v => !v)}
+            className="w-full flex items-center justify-center gap-1 text-[11px] text-white/50 hover:text-white/80 py-1 transition-colors"
+          >
+            {expandedSuggestions
+              ? <><ChevronUp className="h-3 w-3" /> Recolher</>
+              : <><ChevronDown className="h-3 w-3" /> +{suggestions.length - 1} sugestões</>}
+          </button>
+        )}
       </div>
 
       {/* Campo de resposta */}
@@ -104,7 +124,7 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
           onChange={e => setReply(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder={sent ? 'Enviado!' : 'Responder...'}
-          className="flex-1 h-10 rounded-lg border border-white/20 bg-black/20 px-3 text-sm text-gray-100 placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 h-10 rounded-lg border border-white/20 bg-black/60 px-3 text-sm text-gray-100 placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button
           onClick={handleSend}
@@ -118,15 +138,6 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
       {/* Ações de etapa */}
       {!isCancelled && (
         <div className="flex gap-2 pt-1 border-t border-white/10">
-          {!isLast && (
-            <button
-              onClick={() => onAdvance(order.id)}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold min-h-[40px] rounded-lg bg-white/15 active:bg-white/30 text-white transition-colors"
-            >
-              <ChevronRight className="h-4 w-4" />
-              Avançar
-            </button>
-          )}
           <button
             onClick={() => onCancel(order.id)}
             className="flex items-center justify-center gap-1 text-xs font-semibold px-3 min-h-[40px] rounded-lg bg-rose-900/60 active:bg-rose-700 text-rose-200 transition-colors"
@@ -134,6 +145,15 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
             <X className="h-4 w-4" />
             Cancelar
           </button>
+          {!isLast && (
+            <button
+              onClick={() => onAdvance(order.id)}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold min-h-[40px] rounded-lg bg-white text-gray-900 active:bg-white/80 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+              Avançar
+            </button>
+          )}
         </div>
       )}
     </div>

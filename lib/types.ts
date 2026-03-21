@@ -18,6 +18,15 @@ export type PainelStatus = 'atendimento' | 'agendado' | 'preparando' | 'pronto' 
 
 export type UrgencyLevel = 'verde' | 'laranja' | 'vermelho'
 
+export type MessageSender = 'client' | 'attendant'
+
+export interface ChatMessage {
+  id: string
+  sender: MessageSender
+  text: string
+  at: string // ISO
+}
+
 export interface Order {
   id: string
   clientName: string
@@ -29,4 +38,5 @@ export interface Order {
   painelStatus: PainelStatus
   lastMessage: string
   lastMessageAt: string // ISO
+  messages: ChatMessage[]
 }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { getOrders } from '@/lib/mockData'
 import { Order, PRODUCT_SUBTYPES, ProductType } from '@/lib/types'
 import { fmtDatetime } from '@/lib/utils'
-import { Plus, X, ChevronDown, ChevronUp, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 
 const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: string[]; obs: string }> = {
   Bolo: {
@@ -289,17 +289,9 @@ export default function PedidosPage() {
       {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Pedidos</h1>
-          <p className="text-sm text-gray-400">{orders.length} pedidos no total</p>
-        </div>
-        <button
-          onClick={() => setShowRegister(true)}
-          className="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary hover:bg-primary/80 text-white text-sm font-semibold transition-colors"
-        >
-          <Plus className="h-4 w-4" /> Novo Pedido
-        </button>
+      <div>
+        <h1 className="text-xl font-bold text-white">Pedidos</h1>
+        <p className="text-sm text-gray-400">{orders.length} pedidos no total</p>
       </div>
 
       {/* Filtros rápidos por tipo */}
@@ -373,10 +365,23 @@ export default function PedidosPage() {
         />
       </div>
 
-      {/* Lista de pedidos */}
-      <div className="space-y-2">
+      {/* Grade de pedidos */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+
+        {/* Card: Novo Pedido */}
+        <button
+          onClick={() => setShowRegister(true)}
+          className="card flex flex-col items-center justify-center gap-3 p-5 min-h-[140px] border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors group cursor-pointer"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-dashed border-primary/50 group-hover:border-primary transition-colors">
+            <Plus className="h-6 w-6 text-primary/60 group-hover:text-primary transition-colors" />
+          </div>
+          <span className="text-sm font-medium text-primary/60 group-hover:text-primary transition-colors">Novo Pedido</span>
+        </button>
+
+        {/* Cards dos pedidos */}
         {filtered.length === 0 && (
-          <div className="text-center py-16 text-gray-500">Nenhum pedido encontrado.</div>
+          <div className="col-span-full text-center py-16 text-gray-500">Nenhum pedido encontrado.</div>
         )}
         {filtered.map(o => {
           const recipe = RECIPE_MAP[o.productType] ?? RECIPE_MAP['Bolo']
@@ -385,26 +390,30 @@ export default function PedidosPage() {
             <div
               key={o.id}
               onClick={() => setSelected(o)}
-              className="card p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors group"
+              className="p-4 flex flex-col gap-3 cursor-pointer transition-colors group min-h-[140px] rounded-xl border border-violet-500/20 bg-violet-900/30 hover:bg-violet-800/40"
             >
-              <div className="shrink-0 flex items-center justify-center w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 text-2xl">
-                {recipe.emoji}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-white text-sm truncate">{o.clientName}</span>
-                  <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${status?.color}`}>
-                    {status && <StatusIcon name={status.iconName} />}{status?.label}
-                  </span>
+              {/* Topo: emoji + status */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-xl shrink-0">
+                  {recipe.emoji}
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-3 flex-wrap">
-                  <span>{o.productType} <span className="text-white/50">·</span> <span className="text-gray-300">{o.productSubtype}</span></span>
-                  <span className="flex items-center gap-1"><Users className="h-3 w-3" />{o.peopleCount} pessoas</span>
-                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{fmtDatetime(o.deliveryDatetime)}</span>
+                <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${status?.color}`}>
+                  {status && <StatusIcon name={status.iconName} />}{status?.label}
+                </span>
+              </div>
+
+              {/* Nome + subtipo */}
+              <div className="flex-1">
+                <div className="font-semibold text-white text-sm leading-snug line-clamp-1">{o.clientName}</div>
+                <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">
+                  {o.productType} · <span className="text-gray-300">{o.productSubtype}</span>
                 </div>
               </div>
-              <div className="shrink-0 text-gray-600 group-hover:text-gray-300 transition-colors">
-                <ChevronDown className="h-4 w-4 -rotate-90" />
+
+              {/* Rodapé: pessoas + data */}
+              <div className="flex items-center justify-between text-[11px] text-gray-500 border-t border-white/5 pt-2">
+                <span className="flex items-center gap-1"><Users className="h-3 w-3" />{o.peopleCount}</span>
+                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{fmtDatetime(o.deliveryDatetime)}</span>
               </div>
             </div>
           )

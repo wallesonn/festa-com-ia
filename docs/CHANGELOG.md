@@ -31,8 +31,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Header: avatar substituído por `AvatarDefault`
 - Sidebar: "Conversas" renomeado para "Painel" com novo ícone e rota
 
----
-
 ## [0.1.0] — 2026-03-20
 
 ### Adicionado

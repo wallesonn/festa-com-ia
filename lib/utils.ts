@@ -87,10 +87,11 @@ export function urgencyBorderClass(deliveryIso: string): string {
 
 export function urgencyBgClass(deliveryIso: string): string {
   const level = urgencyLevel(deliveryIso)
-  if (level === 'vermelho') return 'bg-rose-700 border-rose-500'
-  if (level === 'laranja') return 'bg-amber-600 border-amber-400'
-  return 'bg-emerald-700 border-emerald-500'
+  if (level === 'vermelho') return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-rose-500'
+  if (level === 'laranja') return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-amber-400'
+  return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-emerald-400'
 }
+
 
 export function urgencyBadgeClass(deliveryIso: string): string {
   const level = urgencyLevel(deliveryIso)

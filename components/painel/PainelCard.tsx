@@ -22,8 +22,14 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   const [sent, setSent] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
+  const [replyOpen, setReplyOpen] = useState(true)
   const suggestions = generateSuggestions(order.lastMessage)
-  const bg = urgencyBgClass(order.deliveryDatetime)
+  const bg =
+    order.painelStatus === 'atendimento'
+      ? 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-white'
+      : order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+        ? 'bg-gray-900/90 border border-white/10'
+        : urgencyBgClass(order.deliveryDatetime)
 
   const isLast = order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
   const isCancelled = order.painelStatus === 'cancelado'
@@ -47,6 +53,8 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
     if (!reply.trim()) return
     setSent(true)
     setReply('')
+    setReplyOpen(false)
+    setExpandedSuggestions(false)
     setTimeout(() => setSent(false), 2000)
   }
 
@@ -92,48 +100,58 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
         </button>
       </div>
 
-      {/* Sugestões */}
-      <div className="flex flex-col gap-1">
-        {(expandedSuggestions ? suggestions : suggestions.slice(0, 1)).map((sug, i) => (
-          <button
-            key={i}
-            onClick={() => setReply(sug)}
-            className="text-left text-xs px-3 py-2 rounded-lg bg-black/50 active:bg-black/70 text-white/90 truncate transition-colors min-h-[36px]"
-          >
-            {sug}
-          </button>
-        ))}
-        {suggestions.length > 1 && (
-          <button
-            onClick={() => setExpandedSuggestions(v => !v)}
-            className="w-full flex items-center justify-center gap-1 text-[11px] text-white/50 hover:text-white/80 py-1 transition-colors"
-          >
-            {expandedSuggestions
-              ? <><ChevronUp className="h-3 w-3" /> Recolher</>
-              : <><ChevronDown className="h-3 w-3" /> +{suggestions.length - 1} sugestões</>}
-          </button>
-        )}
-      </div>
+      {/* Sugestões + Campo de resposta */}
+      {replyOpen ? (
+        <>
+          <div className="flex flex-col gap-1">
+            {(expandedSuggestions ? suggestions : suggestions.slice(0, 1)).map((sug, i) => (
+              <button
+                key={i}
+                onClick={() => setReply(sug)}
+                className="text-left text-xs px-3 py-2 rounded-lg bg-black/50 active:bg-black/70 text-white/90 truncate transition-colors min-h-[36px]"
+              >
+                {sug}
+              </button>
+            ))}
+            {suggestions.length > 1 && (
+              <button
+                onClick={() => setExpandedSuggestions(v => !v)}
+                className="w-full flex items-center justify-center gap-1 text-[11px] text-white/50 hover:text-white/80 py-1 transition-colors"
+              >
+                {expandedSuggestions
+                  ? <><ChevronUp className="h-3 w-3" /> Recolher</>
+                  : <><ChevronDown className="h-3 w-3" /> +{suggestions.length - 1} sugestões</>}
+              </button>
+            )}
+          </div>
 
-      {/* Campo de resposta */}
-      <div className="flex gap-2 items-center">
-        <input
-          type="text"
-          inputMode="text"
-          value={reply}
-          onChange={e => setReply(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder={sent ? 'Enviado!' : 'Responder...'}
-          className="flex-1 h-10 rounded-lg border border-white/20 bg-black/60 px-3 text-sm text-gray-100 placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary"
-        />
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              inputMode="text"
+              value={reply}
+              onChange={e => setReply(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              placeholder="Responder..."
+              className="flex-1 h-10 rounded-lg border border-white/20 bg-black/60 px-3 text-sm text-gray-100 placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              onClick={handleSend}
+              aria-label="Enviar"
+              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/80 active:bg-primary/60 text-white transition-colors"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+        </>
+      ) : (
         <button
-          onClick={handleSend}
-          aria-label="Enviar"
-          className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/80 active:bg-primary/60 text-white transition-colors"
+          onClick={() => setReplyOpen(true)}
+          className="w-full flex items-center justify-center gap-1.5 text-[11px] text-white/40 hover:text-white/70 py-1 transition-colors"
         >
-          <Send className="h-4 w-4" />
+          {sent ? <><Send className="h-3 w-3 text-emerald-400" /><span className="text-emerald-400">Enviado!</span></> : <><ChevronDown className="h-3 w-3" /> Responder</>}
         </button>
-      </div>
+      )}
 
       {/* Ações de etapa */}
       {!isCancelled && (

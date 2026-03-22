@@ -10,6 +10,13 @@ export interface Conversation {
 
 export type ProductType = 'Bolo' | 'Doces' | 'Salgados' | 'Kit Festa'
 
+export const PRODUCT_SUBTYPES: Record<ProductType, string[]> = {
+  'Bolo':      ['Chocolate', 'Red Velvet', 'Morango', 'Limão', 'Baunilha'],
+  'Doces':     ['Brigadeiro', 'Beijinho', 'Bicho-de-pé', 'Cajuzinho', 'Palha Italiana'],
+  'Salgados':  ['Coxinha', 'Enroladinho', 'Mini-quiche', 'Kibe', 'Bolinha de Queijo'],
+  'Kit Festa': ['Kids', 'Adulto', 'Temático', 'Simples', 'Premium'],
+}
+
 export type OrderStatus = 'em_andamento' | 'finalizado' | 'cancelado' | 'nao_confirmado'
 
 export type OrderBucket = 'atendimento' | 'planejado' | 'proximo' | 'urgente' | 'finalizado' | 'cancelado'
@@ -28,6 +35,7 @@ export interface ChatMessage {
 }
 
 export interface Order {
+  productSubtype: string
   id: string
   clientName: string
   productType: ProductType

@@ -1,4 +1,4 @@
-import { ChatMessage, Conversation, ConversationStatus, Order, OrderStatus, PainelStatus, ProductType } from './types'
+import { ChatMessage, Conversation, ConversationStatus, Order, OrderStatus, PainelStatus, ProductType, PRODUCT_SUBTYPES } from './types'
 
 const names = [
   'Maria Souza','João Santos','Ana Paula','Pedro Henrique','Carla Mendes','Lucas Lima','Fernanda Alves','Rafael Gomes','Juliana Rocha','Bruno Costa','Mariana Ribeiro','Felipe Araujo','Aline Nunes','Daniela Freitas','Thiago Martins'
@@ -150,6 +150,7 @@ export const orders: Order[] = Array.from({ length: 12 }).map((_, i) => {
     id: `o${i + 1}`,
     clientName: name,
     productType: product,
+    productSubtype: sample(PRODUCT_SUBTYPES[product]),
     eventDate: deliveryDt.toISOString(),
     deliveryDatetime: deliveryDt.toISOString(),
     peopleCount: [10, 15, 20, 25, 30, 40, 50][Math.floor(Math.random() * 7)],

@@ -14,7 +14,7 @@ else
 fi
 
 echo "🔨 Building: ${DOCKER_IMAGE}:${VERSION} (linux/amd64)"
-docker buildx build --platform linux/amd64 --no-cache \
+docker buildx build --platform linux/amd64 --no-cache --progress=plain \
   -t "${DOCKER_IMAGE}:${VERSION}" \
   -t "${DOCKER_IMAGE}:latest" \
   --push \

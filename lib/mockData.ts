@@ -119,22 +119,45 @@ const deliveryOffsets = [
   36 * 60, 48 * 60, 72 * 60, 5 * 24 * 60, 7 * 24 * 60,
 ]
 
+const phones = [
+  '+55 11 91234-5678','+55 21 98765-4321','+55 31 97654-3210','+55 41 96543-2109',
+  '+55 51 95432-1098','+55 61 94321-0987','+55 71 93210-9876','+55 81 92109-8765',
+  '+55 11 91098-7654','+55 21 90987-6543','+55 31 99876-5432','+55 41 98765-4321',
+]
+
 export const conversations: Conversation[] = Array.from({ length: 12 }).map((_, i) => {
   const name = names[i % names.length]
   const msg = sample(baseMessages)
   const status: ConversationStatus = sample(['nova', 'em_atendimento', 'aguardando', 'finalizada'])
+  const channel = sample(['whatsapp', 'instagram', 'manual'] as const)
   const ts = new Date()
   ts.setMinutes(ts.getMinutes() - Math.floor(Math.random() * 600))
   return {
     id: `c${i + 1}`,
+    clientId: `cl${i + 1}`,
     clientName: name,
+    clientPhone: phones[i % phones.length],
     lastMessage: msg,
     timestamp: ts.toISOString(),
     status,
+    channel,
+    unreadCount: status === 'nova' ? Math.floor(Math.random() * 5) + 1 : 0,
   }
 })
 
 const painelStatuses: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
+
+const peopleCounts = [10, 15, 20, 25, 30, 40, 50]
+const observationsSamples = [
+  'Alergia a nozes. Prefere entrega no período da manhã.',
+  'Sem restrições. Pagamento 50% sinal, 50% na entrega.',
+  'Vegetariana — sem ingredientes de origem animal nos salgados.',
+  'Intolerante a lactose. Confirmar ingredientes da cobertura.',
+  'Cliente VIP — desconto de 10% já aplicado.',
+  'Aniversário surpresa, não mencionar o nome do bolo na embalagem.',
+  'Retirada no local às 14h. Confirmar 1h antes.',
+  'Produto para evento corporativo — nota fiscal necessária.',
+]
 
 export const orders: Order[] = Array.from({ length: 12 }).map((_, i) => {
   const name = names[(i * 2) % names.length]
@@ -146,19 +169,44 @@ export const orders: Order[] = Array.from({ length: 12 }).map((_, i) => {
   const msg = sample(baseMessages)
   const msgAt = new Date()
   msgAt.setMinutes(msgAt.getMinutes() - Math.floor(Math.random() * 120))
+  const people = peopleCounts[i % peopleCounts.length]
+  const totalPrice = parseFloat((80 + people * 4.5 + Math.random() * 50).toFixed(2))
+  const paidAmount = status === 'finalizado' ? totalPrice : parseFloat((totalPrice * 0.5).toFixed(2))
+  const orderId = `o${i + 1}`
+  const createdAt = new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000).toISOString()
   return {
-    id: `o${i + 1}`,
+    id: orderId,
+    clientId: `cl${(i % 12) + 1}`,
     clientName: name,
+    clientPhone: phones[i % phones.length],
     productType: product,
     productSubtype: sample(PRODUCT_SUBTYPES[product]),
     eventDate: deliveryDt.toISOString(),
     deliveryDatetime: deliveryDt.toISOString(),
-    peopleCount: [10, 15, 20, 25, 30, 40, 50][Math.floor(Math.random() * 7)],
+    deliveryType: i % 3 === 0 ? 'retirada' : 'entrega',
+    peopleCount: people,
+    observations: sample(observationsSamples),
+    internalNotes: i % 4 === 0 ? 'Verificar disponibilidade de ingredientes.' : '',
+    totalPrice,
     status,
     painelStatus,
+    payment: {
+      id: `pay${i + 1}`,
+      orderId,
+      method: sample(['pix', 'cartao_credito', 'dinheiro'] as const),
+      status: status === 'finalizado' ? 'pago' : status === 'cancelado' ? 'estornado' : paidAmount > 0 ? 'parcial' : 'pendente',
+      totalAmount: totalPrice,
+      paidAmount,
+      dueAmount: parseFloat((totalPrice - paidAmount).toFixed(2)),
+      depositPercent: 50,
+      depositPaidAt: paidAmount > 0 ? createdAt : undefined,
+      fullPaidAt: status === 'finalizado' ? deliveryDt.toISOString() : undefined,
+    },
     lastMessage: msg,
     lastMessageAt: msgAt.toISOString(),
-    messages: generateMessages(`o${i + 1}`),
+    messages: generateMessages(orderId),
+    createdAt,
+    updatedAt: msgAt.toISOString(),
   }
 })
 

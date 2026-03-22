@@ -19,3 +19,9 @@ docker buildx build --platform linux/amd64 --no-cache \
   -t "${DOCKER_IMAGE}:latest" \
   --push \
   .
+
+echo ""
+echo "✅ Build e push concluídos com sucesso!"
+echo "   📦 Imagem : ${DOCKER_IMAGE}:${VERSION}"
+echo "   🏷️  Latest : ${DOCKER_IMAGE}:latest"
+echo "   🚀 Para atualizar a produção, rode: docker pull ${DOCKER_IMAGE}:${VERSION}"

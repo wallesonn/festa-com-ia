@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-03-22
+
+### Adicionado
+- **Página Pedidos** completamente reescrita: removido kanban, adicionada lista detalhada de pedidos
+  - Filtros por tipo de produto (Bolo 🎂, Doces 🍬, Salgados 🥐, Kit Festa 🎉)
+  - Segundo nível de filtro por subtipo (ex: Chocolate, Red Velvet, Morango...)
+  - Busca por cliente, produto ou subtipo
+  - Modal de detalhes com abas: Informações e Receita/Produção (ingredientes + modo de preparo)
+  - Modal de cadastro de novo pedido com formulário completo
+- **`lib/types.ts`** expandido com todos os tipos do domínio:
+  - `Client`, `Address`, `Product`, `Ingredient`, `Payment`
+  - `Appointment`, `Notification`, `BusinessConfig`, `BusinessHours`
+  - `DeliveryType`, `PaymentMethod`, `PaymentStatus`, `ClientSource`, `AppointmentType`, `NotificationType`
+- **`docs/DATABASE_SCHEMA.md`** criado com 11 tabelas prontas para PostgreSQL/Supabase
+- **`build.sh`** exibe mensagem de sucesso após build e push
+
+### Corrigido
+- Erro de hidratação SSR/CSR (`filterStatus is not defined`) causado por JSX em nível de módulo
+- Mock de `Conversation` e `Order` atualizado para refletir novos campos obrigatórios dos tipos expandidos
+
+---
+
 ## [0.2.0] — 2026-03-21
 
 ### Adicionado

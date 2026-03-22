@@ -1,0 +1,47 @@
+# Changelog — Festa com IA
+
+Todas as mudanças relevantes do projeto são documentadas aqui.
+Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
+
+---
+
+## [0.2.0] — 2026-03-21
+
+### Adicionado
+- **Painel Kanban interativo** (`/painel`) substituindo a página de Conversas
+  - 6 colunas: Atendimento, Agendado, Preparando, Pronto, Entregue, Cancelado
+  - Drag & drop entre colunas e reordenação interna (`@dnd-kit/core`, `@dnd-kit/sortable`)
+  - Suporte a mouse e toque (mobile: toque e segure 250ms para arrastar)
+  - Scroll horizontal com botões `‹` `›` e deslize de dedo no mobile
+- **PainelCard** com funcionalidades completas:
+  - Cor de fundo por urgência de entrega (vermelho/laranja/verde)
+  - Histórico das 5 últimas mensagens com bolhas de chat (expansíveis)
+  - Sugestões de resposta com IA (expansíveis, 1 visível por padrão)
+  - Campo de resposta inline
+  - Botão **Cancelar** e **Avançar etapa**
+- **AvatarDefault** — componente SVG de silhueta de perfil reutilizável
+- **PainelColumn** — coluna droppable responsiva (`82vw` mobile / `300px` desktop)
+- Redirecionamento automático de `/conversas` para `/painel`
+- Campo `messages: ChatMessage[]` adicionado ao tipo `Order`
+- `generateMessages()` no mock para gerar histórico de 5 mensagens por pedido
+- Pasta `docs/` com documentação detalhada do projeto
+
+### Alterado
+- `AppShell`: removido `max-width` restritivo do `main`, padding responsivo mantido
+- Header: avatar substituído por `AvatarDefault`
+- Sidebar: "Conversas" renomeado para "Painel" com novo ícone e rota
+
+---
+
+## [0.1.0] — 2026-03-20
+
+### Adicionado
+- Scaffold Next.js 14 App Router com TypeScript e TailwindCSS
+- Tema visual partido/festivo: fundo escuro neutro com cores vibrantes
+- Layout base: `AppShell`, `Sidebar`, `Header`
+- Páginas iniciais: Dashboard, Pedidos (Kanban), Clientes, Configurações
+- Kanban de Pedidos com `KanbanColumn` e `OrderCard`
+- Mock de dados (`lib/mockData.ts`) com pedidos e conversas
+- Tipos base (`lib/types.ts`): `Order`, `Conversation`, `PainelStatus`, etc.
+- Funções utilitárias (`lib/utils.ts`): urgência, formatação de datas, labels
+- `README.md` e `ARCHITECTURE.md` iniciais

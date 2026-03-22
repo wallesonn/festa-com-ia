@@ -12,6 +12,7 @@ pnpm-debug.log*
 # Environment
 .env
 .env.*
+!.env.build.example
 .env.local
 .env.*.local
 .envrc

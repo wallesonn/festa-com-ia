@@ -1,31 +1,57 @@
 # Festa com IA
-Plataforma destinada a profissionais que produzem bolos, doces e itens de festa em geral. Foco em orçamentos, produção, comunicação com clientes (WhatsApp) e assistências com IA.
+Plataforma destinada a profissionais que produzem bolos, doces e itens de festa em geral. Foco em orçamentos, produção, comunicação com clientes (WhatsApp) e assistência com IA.
 
 ## Status do Projeto
-- Fase: Definição inicial e documentação
-- Código: Em planejamento (MVP ainda não implementado)
+- Fase: MVP Frontend — em desenvolvimento ativo
+- Stack: Next.js 14 (App Router), TypeScript, TailwindCSS
+- Dados: Mock local (backend ainda não implementado)
 
-## Objetivos e Funcionalidades Previstas
-- Painel do profissional para gestão de clientes, orçamentos e pedidos
-- Acompanhamento da produção (etapas, custos, prazos)
-- Comunicação com clientes via WhatsApp em tempo real
-- IA assistiva para sugestões de respostas e estimativas
+## Funcionalidades Implementadas
+- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue)
+  - Drag & drop entre colunas (mouse e toque mobile)
+  - Scroll horizontal com botões e deslize de dedo
+  - Cor de fundo dos cards por urgência de entrega
+  - Histórico de mensagens com bolhas de chat (expansível)
+  - Sugestões de resposta com IA (expansíveis)
+  - Botões Avançar etapa e Cancelar
+- **Dashboard** com métricas e atividade recente
+- **Pedidos** — Kanban por status/bucket de tempo
+- **Clientes** — listagem de clientes
+- **Configurações** — placeholder para integrações futuras
 
-## Roadmap (MVP)
-1. Modelagem inicial de dados (Usuário, Cliente, Orçamento/Pedido, Mensagem)
-2. Fluxo de orçamentos e conversas básicas (WhatsApp)
-3. Painel simples com status dos pedidos
-4. Sugestões de respostas com IA (mínimo viável)
+## Roadmap
+1. ✅ Frontend MVP (Painel, Dashboard, Pedidos, Clientes)
+2. ⬜ Backend (API REST + WebSockets)
+3. ⬜ Integração WhatsApp (WPPConnect / Meta Cloud API)
+4. ⬜ IA assistiva (sugestões de resposta, estimativas)
+5. ⬜ Autenticação e multi-tenant
+6. ⬜ Deploy em VPS (Portainer + Traefik)
+
+## Como Rodar
+
+```bash
+# Instalar dependências
+npm install
+
+# Rodar em modo desenvolvimento
+npm run dev
+```
+
+Acesse [http://localhost:3000](http://localhost:3000).
 
 ## Estrutura do Repositório
-- `festa-com-ia-dockercompose/`: Artefatos de orquestração para VPS (Portainer/Traefik)
-- `ARQUITETURA.md`: Visão de arquitetura de alto nível
-
-## Como Rodar (prévia)
-- Instruções detalhadas serão adicionadas após definição da stack e primeiros serviços.
+- `app/` — páginas Next.js (App Router)
+- `components/` — componentes React reutilizáveis
+- `lib/` — tipos, mock de dados e utilitários
+- `docs/` — documentação detalhada do projeto
+- `festa-com-ia-dockercompose/` — manifests de orquestração para VPS
 
 ## Documentação
-- Arquitetura: ver `ARQUITETURA.md`
+- [Arquitetura](./docs/ARCHITECTURE.md)
+- [Páginas](./docs/PAGES.md)
+- [Componentes](./docs/COMPONENTS.md)
+- [Modelo de Dados](./docs/DATA_MODEL.md)
+- [Changelog](./docs/CHANGELOG.md)
 
 ## Licença
-- A definir
+A definir

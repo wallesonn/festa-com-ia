@@ -21,3 +21,4 @@ body {
 .card {
   @apply bg-card text-gray-100 rounded-lg shadow-card border border-border;
 }
+

@@ -8,6 +8,7 @@ Componentes previstos (sujeitos a ajuste nas próximas iterações):
 
 - Frontend Web (Painel do Profissional)
 - Backend (API de negócio e WebSockets)
+- n8n (orquestração de mensagens, automações e envio ao WhatsApp)
 - Banco de Dados Relacional (ex.: Postgres)
 - Mensageria/Cache (ex.: Redis) — opcional inicialmente
 - Integração WhatsApp (provedor a definir)
@@ -18,14 +19,20 @@ Componentes previstos (sujeitos a ajuste nas próximas iterações):
 Fluxo básico de dados:
 
 ```
-[Frontend] ⇄ [Backend/API] ⇄ [Banco de Dados]
-                  ⇅
-              [Mensageria]
-                  ⇅
-          [Integração WhatsApp]
-                  ⇅
-               [Módulo IA]
+[Cliente WhatsApp] → [n8n Webhook] → [Postgres]
+                           ↓
+                     [Módulo IA]
+                           ↓
+                [Painel da Aplicação]
+                           ↓
+                        [n8n]
+                           ↓
+                 [WhatsApp / Cliente]
 ```
+
+## Fluxo Operacional
+
+O detalhamento do caminho da mensagem entre WhatsApp, n8n, Postgres e aplicação está documentado em [Fluxo Operacional](./OPERATIONAL_FLOW.md).
 
 ## Domínios e Módulos
 - Painel do Profissional
@@ -36,22 +43,28 @@ Fluxo básico de dados:
 - Produção
   - Etapas, checklists, custos e status
 - Comunicação (WhatsApp)
-  - Conversas em tempo real, histórico e automações
+  - Conversas em tempo real, histórico, automações e handoff humano
 - IA Assistiva
   - Sugestões de respostas, estimativas de custo/tempo e geração de textos
+- Orquestração Operacional
+  - Recepção de mensagens, persistência em banco, reabertura de conversa e disparo de mensagens via n8n
 
 ## Integrações Externas
 - WhatsApp: provedor a definir (ex.: WPPConnect, Meta Cloud API, Twilio)
+- n8n: orquestração de webhooks, IA e envio de respostas
 - Pagamentos: a definir (opcional, roadmap)
 - E-mail/SMS: a definir (opcional)
 
 ## Modelo de Dados (alto nível)
 - Usuário (profissional)
 - Cliente
+- Conversa
+- Mensagem
 - Orçamento/Pedido
 - Item de Catálogo
 - Produção (etapas, insumos, custos)
-- Mensagem/Conversa
+
+Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres, enquanto a aplicação atua como painel de apoio e o n8n como orquestrador de entrada e saída de mensagens.
 
 Observação: O diagrama físico e o esquema detalhado serão definidos conforme o MVP evoluir.
 

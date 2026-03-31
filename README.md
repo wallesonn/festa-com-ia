@@ -48,6 +48,7 @@ Acesse [http://localhost:3000](http://localhost:3000).
 
 ## Documentação
 - [Arquitetura](./docs/ARCHITECTURE.md)
+- [Fluxo Operacional](./docs/OPERATIONAL_FLOW.md)
 - [Páginas](./docs/PAGES.md)
 - [Componentes](./docs/COMPONENTS.md)
 - [Modelo de Dados](./docs/DATA_MODEL.md)

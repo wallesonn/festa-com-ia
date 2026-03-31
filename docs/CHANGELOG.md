@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-03-31
+
+### Adicionado
+- **`docs/OPERATIONAL_FLOW.md`** criado com o fluxo operacional do MVP:
+  - WhatsApp → n8n → Postgres → Painel da aplicação
+  - IA gerando 3 sugestões de resposta antes do envio humano
+  - Regras de reabertura, pedido rascunho, falhas e reenvio manual
+- **`README.md`** e **`docs/ARCHITECTURE.md`** atualizados com link e referência ao fluxo operacional
+
+---
+
 ## [1.1.0] — 2026-03-22
 
 ### Adicionado

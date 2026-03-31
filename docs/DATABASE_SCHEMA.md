@@ -118,7 +118,7 @@
 | `id` | `uuid` PK | |
 | `client_id` | `uuid` FK → clients | |
 | `status` | `text` | enum: nova, em_atendimento, aguardando, finalizada |
-| `channel` | `text` | enum: whatsapp, instagram, manual |
+| `channel` | `text` | enum: whatsapp |
 | `unread_count` | `int` | |
 | `last_message` | `text` | |
 | `last_message_at` | `timestamptz` | |

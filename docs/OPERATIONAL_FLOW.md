@@ -1,6 +1,8 @@
 # Fluxo Operacional — Festa com IA
 
-> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp → n8n → Postgres → Painel da aplicação**, considerando o uso de IA para sugerir respostas, a revisão humana e a persistência do histórico.
+> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp → n8n → Postgres local → Painel da aplicação**, considerando o uso de IA para sugerir respostas, a revisão humana e a persistência do histórico.
+>
+> O Supabase fica restrito a **Auth** e aos dados de **profile/profissional**; não participa da persistência operacional do atendimento.
 
 ---
 
@@ -100,7 +102,8 @@ A IA deve usar estas fontes de contexto:
 - histórico da conversa
 - dados do cliente/pedido no Postgres
 - prompt manual do profissional salvo na aplicação
-- catálogo/preços mockados por enquanto
+- dados de autenticação e perfil do profissional via Supabase
+- catálogo/preços vindo do Postgres local ou de regras de negócio do MVP
 
 ### 6. Resposta da IA
 
@@ -191,16 +194,24 @@ Se o envio falhar:
 Responsável por:
 
 - receber a mensagem
-- consultar e gravar dados no Postgres
+- consultar e gravar dados no Postgres local
 - chamar o agente de IA
 - enviar a resposta final ao WhatsApp
 - registrar falhas de envio
 
-### Postgres
+### Supabase
 
 Responsável por:
 
-- manter o histórico oficial
+- autenticação do usuário
+- manutenção de `profiles`
+- registro/cadastro do profissional da conta
+
+### Postgres local
+
+Responsável por:
+
+- manter o histórico oficial da operação
 - armazenar clientes, conversas, mensagens e pedidos
 - preservar o estado atual do atendimento
 
@@ -238,6 +249,8 @@ Este fluxo conversa diretamente com as tabelas descritas em `DATABASE_SCHEMA.md`
 - `messages`
 - `orders`
 - `payments`
+
+Na prática, estas tabelas vivem no **Postgres local**. No Supabase permanecem apenas `profiles`, `festa-com-ia-professionals` e `regras_criacao_tabelas`.
 
 As sugestões da IA podem permanecer apenas no fluxo operacional, sem tabela própria no MVP.
 

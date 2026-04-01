@@ -1,66 +1,84 @@
 import { SimpleBarChart } from '@/components/charts/SimpleBarChart'
 import { ActivityTicker } from '@/components/dashboard/ActivityTicker'
-import { getConversations, getOrders } from '@/lib/mockData'
+import { getFirstProfessional, getOrdersWithPayments } from '@/lib/db/queries'
+import { dbRowToOrder } from '@/lib/db/mappers'
+import { getOrders } from '@/lib/mockData'
+import type { Order } from '@/lib/types'
 import { MessageCircle, ShoppingBag, CheckCircle, Users, TrendingUp, TrendingDown, Clock, Star, Package } from 'lucide-react'
 
-function countTodayMessages() {
-  const today = new Date()
-  return getConversations().filter(c => {
-    const d = new Date(c.timestamp)
+export const dynamic = 'force-dynamic'
+
+const PAINEL_COLORS: Record<string, string> = {
+  atendimento: 'bg-blue-500',
+  agendado: 'bg-violet-500',
+  preparando: 'bg-amber-500',
+  pronto: 'bg-emerald-500',
+  entregue: 'bg-gray-500',
+  cancelado: 'bg-red-500',
+}
+
+const PRODUCT_COLORS: string[] = ['bg-pink-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-emerald-500']
+
+function buildMetrics(orders: Order[]) {
+  const now = new Date()
+  const inProgress = orders.filter(o => o.status === 'em_andamento' || o.status === 'nao_confirmado').length
+  const finished = orders.filter(o => o.status === 'finalizado').length
+  const newClients = new Set(
+    orders.filter(o => {
+      const diff = (now.getTime() - new Date(o.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      return diff <= 7
+    }).map(o => o.clientId)
+  ).size
+
+  const activeOrders = orders.filter(o => o.status !== 'cancelado' && o.painelStatus !== 'entregue' && o.painelStatus !== 'cancelado')
+  const painelCounts = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue'].map(key => ({
+    label: key.charAt(0).toUpperCase() + key.slice(1),
+    value: orders.filter(o => o.painelStatus === key).length,
+    color: PAINEL_COLORS[key],
+  }))
+  const totalActive = painelCounts.reduce((s, c) => s + c.value, 0)
+  const painelMax = Math.max(...painelCounts.map(c => c.value), 1)
+  const orderStatusData = painelCounts.map(c => ({ ...c, pct: Math.round((c.value / painelMax) * 100) }))
+
+  const productCounts: Record<string, number> = {}
+  orders.forEach(o => { productCounts[o.productType] = (productCounts[o.productType] ?? 0) + 1 })
+  const topRaw = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const topMax = topRaw[0]?.[1] ?? 1
+  const topProducts = topRaw.map(([name, count], i) => ({
+    name, orders: count, pct: Math.round((count / topMax) * 100), color: PRODUCT_COLORS[i],
+  }))
+
+  const upcoming = activeOrders
+    .filter(o => new Date(o.deliveryDatetime) > now)
+    .sort((a, b) => new Date(a.deliveryDatetime).getTime() - new Date(b.deliveryDatetime).getTime())
+    .slice(0, 5)
+    .map(o => {
+      const diff = (new Date(o.deliveryDatetime).getTime() - now.getTime()) / (1000 * 60 * 60)
+      const urgent = diff < 24
+      const dt = new Date(o.deliveryDatetime)
+      const todayStr = dt.toDateString() === now.toDateString() ? `Hoje ${dt.getHours()}h` : `${dt.getDate()}/${dt.getMonth() + 1} ${dt.getHours()}h`
+      return { client: o.clientName, product: `${o.productType} · ${o.peopleCount}p`, time: todayStr, urgent }
+    })
+
+  return { inProgress, finished, newClients, orderStatusData, totalActive, topProducts, upcoming }
+}
+
+export default async function DashboardPage() {
+  let orders: Order[]
+  try {
+    const professional = await getFirstProfessional()
+    const rows = professional ? await getOrdersWithPayments(professional.id) : []
+    orders = rows.map(dbRowToOrder)
+  } catch {
+    orders = getOrders()
+  }
+
+  const { inProgress, finished, newClients, orderStatusData, totalActive, topProducts, upcoming } = buildMetrics(orders)
+  const messagesToday = orders.filter(o => {
+    const d = new Date(o.lastMessageAt)
+    const today = new Date()
     return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()
   }).length
-}
-
-
-function countOrdersInProgress() {
-  return getOrders().filter(o => o.status === 'em_andamento' || o.status === 'nao_confirmado').length
-}
-
-function countOrdersFinished() {
-  return getOrders().filter(o => o.status === 'finalizado').length
-}
-
-function countNewClients() {
-  const seen = new Set<string>()
-  const now = new Date()
-  getConversations().forEach(c => {
-    const d = new Date(c.timestamp)
-    const diff = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
-    if (diff <= 7) seen.add(c.clientName)
-  })
-  return seen.size
-}
-
-
-const topProducts = [
-  { name: 'Bolo de Chocolate', orders: 38, pct: 100, color: 'bg-pink-500' },
-  { name: 'Salgados Mistos', orders: 31, pct: 82, color: 'bg-violet-500' },
-  { name: 'Brigadeiro Gourmet', orders: 27, pct: 71, color: 'bg-amber-500' },
-  { name: 'Bolo Red Velvet', orders: 19, pct: 50, color: 'bg-rose-500' },
-  { name: 'Kit Festa Completo', orders: 14, pct: 37, color: 'bg-emerald-500' },
-]
-
-const upcomingDeliveries = [
-  { client: 'Ana Lima', product: 'Bolo Red Velvet', time: 'Hoje 14h', urgent: true },
-  { client: 'Beatriz Melo', product: '80 brigadeiros', time: 'Hoje 16h', urgent: true },
-  { client: 'Carlos Souza', product: 'Kit Festa 25 pessoas', time: 'Hoje 18h', urgent: false },
-  { client: 'Diana Rocha', product: '150 salgados', time: 'Amanhã 10h', urgent: false },
-  { client: 'Eduardo Pinto', product: 'Bolo de Morango', time: 'Amanhã 14h', urgent: false },
-]
-
-const orderStatusData = [
-  { label: 'Atendimento', value: 4, color: 'bg-blue-500', pct: 20 },
-  { label: 'Agendado', value: 6, color: 'bg-violet-500', pct: 30 },
-  { label: 'Preparando', value: 5, color: 'bg-amber-500', pct: 25 },
-  { label: 'Pronto', value: 3, color: 'bg-emerald-500', pct: 15 },
-  { label: 'Entregue', value: 2, color: 'bg-gray-500', pct: 10 },
-]
-
-export default function DashboardPage() {
-  const messagesToday = countTodayMessages()
-  const inProgress = countOrdersInProgress()
-  const finished = countOrdersFinished()
-  const newClients = countNewClients()
 
   return (
     <div className="space-y-6">
@@ -136,7 +154,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs text-gray-400">
             <span>Total ativo</span>
-            <span className="text-white font-semibold">20 pedidos</span>
+            <span className="text-white font-semibold">{totalActive} pedidos</span>
           </div>
         </div>
 
@@ -169,7 +187,7 @@ export default function DashboardPage() {
             <Package className="h-4 w-4 text-violet-400" /> Próximas Entregas
           </div>
           <div className="space-y-2">
-            {upcomingDeliveries.map((d, i) => (
+            {upcoming.map((d, i) => (
               <div key={i} className={`flex items-start gap-3 p-2.5 rounded-lg ${d.urgent ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-white/5'}`}>
                 <div className={`mt-0.5 shrink-0 h-2 w-2 rounded-full ${d.urgent ? 'bg-rose-400' : 'bg-gray-500'}`} />
                 <div className="min-w-0 flex-1">

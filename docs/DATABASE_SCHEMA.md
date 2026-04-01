@@ -1,15 +1,69 @@
 # Schema do Banco de Dados — Festa com IA
 
-> Baseado nos tipos definidos em `lib/types.ts`. Pronto para mapear para PostgreSQL (Supabase) ou outro banco relacional.
+> Baseado nos tipos definidos em `lib/types.ts`.
+>
+> O modelo é **multi-tenant por profissional** e hoje está dividido em duas camadas:
+>
+> - **Supabase**: auth, `profiles`, cadastro do profissional e tabela de regras
+> - **Postgres local**: toda a operação do negócio (clientes, pedidos, conversas, mensagens etc.)
 
 ---
 
+## Estratégia multi-tenant
+
+- No **Postgres local**, a tabela raiz operacional é `professionals`.
+- Toda entidade operacional recebe `professional_id`.
+- No **Supabase**, o vínculo com login acontece via `auth.users` + `profiles` + `festa-com-ia-professionals`.
+- Os dados mockados podem ser usados como **seed inicial** por profissional.
+
+## Escopo atual por banco
+
+### Supabase
+
+- `profiles` — dados do usuário autenticado (RLS ativo)
+- `festa-com-ia-professionals` — cadastro do profissional/negócio atualmente usado no Supabase
+- `regras_criacao_tabelas` — tabela simples de referência e regras
+
+### Postgres local
+
+- `professionals`
+- `clients`
+- `addresses`
+- `products`
+- `ingredients`
+- `conversations`
+- `orders`
+- `payments`
+- `messages`
+- `appointments`
+- `notifications`
+- `business_config`
+- `business_hours`
+
 ## Tabelas
+
+As tabelas abaixo descrevem o **schema operacional do Postgres local**.
+
+### `professionals`
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | `uuid` PK | |
+| `auth_user_id` | `uuid` | nullable, futuro vínculo com `auth.users.id` |
+| `display_name` | `text` | nome exibido no painel |
+| `business_name` | `text` | nome do negócio |
+| `slug` | `text` | nullable, útil para subdomínio/URL |
+| `style_prompt` | `text` | prompt manual com o jeito do profissional falar |
+| `tone_of_voice` | `text` | ex: acolhedor, objetivo, formal |
+| `service_rules` | `text` | regras de atendimento, prazos e limites |
+| `status` | `text` | enum: active, paused, archived |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
 
 ### `clients`
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | isolamento por profissional |
 | `name` | `text` | |
 | `phone` | `text` | ex: +55 11 99999-9999 |
 | `email` | `text` | nullable |
@@ -27,6 +81,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `client_id` | `uuid` FK → clients | nullable (pode ser endereço de entrega avulso) |
 | `street` | `text` | ex: Rua das Flores, 123 |
 | `neighborhood` | `text` | |
@@ -42,6 +97,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `name` | `text` | ex: Bolo Red Velvet |
 | `type` | `text` | enum: Bolo, Doces, Salgados, Kit Festa |
 | `subtype` | `text` | ex: Red Velvet, Brigadeiro |
@@ -62,6 +118,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `product_id` | `uuid` FK → products | |
 | `name` | `text` | ex: Farinha de trigo |
 | `quantity` | `text` | ex: 500g |
@@ -74,7 +131,9 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `client_id` | `uuid` FK → clients | |
+| `conversation_id` | `uuid` FK → conversations | nullable, conversa de origem do pedido |
 | `product_id` | `uuid` FK → products | nullable |
 | `product_type` | `text` | enum: Bolo, Doces, Salgados, Kit Festa |
 | `product_subtype` | `text` | ex: Chocolate, Coxinha |
@@ -90,6 +149,7 @@
 | `painel_status` | `text` | enum: atendimento, agendado, preparando, pronto, entregue, cancelado |
 | `last_message` | `text` | |
 | `last_message_at` | `timestamptz` | |
+| `archived_at` | `timestamptz` | nullable, arquivamento sem apagar |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
 
@@ -99,6 +159,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `order_id` | `uuid` FK → orders | |
 | `method` | `text` | enum: pix, cartao_credito, cartao_debito, dinheiro, transferencia |
 | `status` | `text` | enum: pendente, parcial, pago, estornado |
@@ -116,12 +177,14 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `client_id` | `uuid` FK → clients | |
 | `status` | `text` | enum: nova, em_atendimento, aguardando, finalizada |
 | `channel` | `text` | enum: whatsapp |
 | `unread_count` | `int` | |
 | `last_message` | `text` | |
 | `last_message_at` | `timestamptz` | |
+| `archived_at` | `timestamptz` | nullable, conversa arquivada sem exclusão |
 | `created_at` | `timestamptz` | |
 
 ---
@@ -130,11 +193,17 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `conversation_id` | `uuid` FK → conversations | |
 | `order_id` | `uuid` FK → orders | nullable |
 | `sender` | `text` | enum: client, attendant |
+| `direction` | `text` | enum: inbound, outbound |
 | `text` | `text` | |
-| `sent_at` | `timestamptz` | |
+| `status` | `text` | enum: received, pending_send, sent, failed, retry_pending |
+| `provider_message_id` | `text` | nullable |
+| `error_message` | `text` | nullable |
+| `sent_at` | `timestamptz` | timestamp do evento da mensagem |
+| `metadata` | `jsonb` | nullable |
 
 ---
 
@@ -142,7 +211,9 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `order_id` | `uuid` FK → orders | nullable |
+| `client_id` | `uuid` FK → clients | nullable |
 | `client_name` | `text` | nullable (para compromissos sem pedido) |
 | `type` | `text` | enum: producao, entrega, retirada, reuniao, compras |
 | `title` | `text` | |
@@ -158,6 +229,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `type` | `text` | enum: novo_pedido, mensagem, entrega_proxima, pagamento, alerta |
 | `title` | `text` | |
 | `body` | `text` | |
@@ -172,6 +244,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | linha única (config global) |
+| `professional_id` | `uuid` FK → professionals | linha única por profissional |
 | `name` | `text` | nome do negócio |
 | `phone` | `text` | |
 | `email` | `text` | |
@@ -191,6 +264,7 @@
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |
+| `professional_id` | `uuid` FK → professionals | |
 | `business_config_id` | `uuid` FK → business_config | |
 | `day` | `text` | enum: seg, ter, qua, qui, sex, sab, dom |
 | `open` | `time` | ex: 09:00 |
@@ -199,16 +273,45 @@
 
 ---
 
+## Seed inicial a partir dos mocks
+
+Os dados mockados em `lib/mockData.ts` continuam servindo como base para o seed automatizado em `scripts/seed.ts`, que popula o Postgres local com uma empresa de demonstração.
+
+### Estratégia aplicada
+
+- criar pelo menos 1 profissional demo no seed
+- usar `getOrders()` como base para `clients`, `orders`, `payments` e `messages`
+- usar `getConversations()` como base para `conversations`
+- usar `generateMessages(orderId)` para popular o histórico da conversa em `messages`
+- deduplicar clientes por `phone` dentro do mesmo `professional_id`
+- derivar `products` a partir de `productType` + `productSubtype` presentes nos mocks
+
+### Observação para múltiplos profissionais
+
+Para testar o comportamento multi-tenant, o seed pode ser repetido para mais de um profissional, alterando apenas:
+
+- `professionals.id`
+- `professionals.business_name`
+- `business_config`
+- os `professional_id` de todas as linhas geradas
+
+Assim, o mesmo conjunto de mocks pode servir como:
+
+- demo inicial da aplicação
+- massa de testes
+- base para validar isolamento por profissional
+
+---
+
 ## Relacionamentos principais
 
 ```
-clients ──< orders ──< payments
-       ──< addresses
-       ──< conversations ──< messages
-orders ──< messages
-       ──< appointments
-       ──< notifications
-products ──< ingredients
-business_config ──< business_hours
-                ──> addresses
+professionals ──< clients ──< addresses
+      ├──< products ──< ingredients
+      ├──< conversations ──< messages
+      ├──< conversations ──< orders ──< payments
+      ├──< orders ──< appointments
+      ├──< notifications
+      └──< business_config ──< business_hours
+                         ──> addresses
 ```

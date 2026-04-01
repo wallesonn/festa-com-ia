@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-01
+
+### Alterado
+- **`app/painel/page.tsx`**, **`app/pedidos/page.tsx`** e **`app/page.tsx`** passaram a consumir dados reais do Postgres local em vez de depender exclusivamente de mocks
+- **`lib/db/client.ts`**, **`lib/db/queries.ts`** e **`lib/db/mappers.ts`** foram introduzidos/ajustados para leitura operacional do banco local
+- **`README.md`** e a documentação de páginas foram atualizados para refletir o fluxo de execução com Postgres local + seed
+
+---
+
 ## [Unreleased] — 2026-03-31
 
 ### Adicionado
@@ -13,6 +22,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   - IA gerando 3 sugestões de resposta antes do envio humano
   - Regras de reabertura, pedido rascunho, falhas e reenvio manual
 - **`README.md`** e **`docs/ARCHITECTURE.md`** atualizados com link e referência ao fluxo operacional
+
+### Alterado
+- A arquitetura de dados foi refinada para separar responsabilidades:
+  - **Supabase** para Auth, `profiles`, cadastro do profissional e regras
+  - **Postgres local** para toda a operação do negócio
+- **`README.md`**, **`docs/ARCHITECTURE.md`**, **`docs/OPERATIONAL_FLOW.md`** e **`docs/DATABASE_SCHEMA.md`** atualizados para refletir o estado atual do projeto
 
 ---
 

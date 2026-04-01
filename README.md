@@ -2,20 +2,22 @@
 Plataforma destinada a profissionais que produzem bolos, doces e itens de festa em geral. Foco em orçamentos, produção, comunicação com clientes (WhatsApp) e assistência com IA.
 
 ## Status do Projeto
-- Fase: MVP Frontend — em desenvolvimento ativo
+- Fase: MVP Frontend com integração ao Postgres local — em desenvolvimento ativo
 - Stack: Next.js 14 (App Router), TypeScript, TailwindCSS
-- Dados: Mock local (backend ainda não implementado)
+- Dados: arquitetura híbrida
+  - Supabase para Auth, profiles e cadastro do profissional
+  - Postgres local para toda a operação do sistema
 
 ## Funcionalidades Implementadas
-- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue)
+- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local
   - Drag & drop entre colunas (mouse e toque mobile)
   - Scroll horizontal com botões e deslize de dedo
   - Cor de fundo dos cards por urgência de entrega
   - Histórico de mensagens com bolhas de chat (expansível)
   - Sugestões de resposta com IA (expansíveis)
   - Botões Avançar etapa e Cancelar
-- **Dashboard** com métricas e atividade recente
-- **Pedidos** — Kanban por status/bucket de tempo
+- **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local
+- **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local
 - **Clientes** — listagem de clientes
 - **Configurações** — placeholder para integrações futuras
 
@@ -32,6 +34,15 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 ```bash
 # Instalar dependências
 npm install
+
+# Subir o Postgres local do projeto
+cd festa-com-ia-dockercompose
+cp .env.example .env
+docker compose up -d postgres
+
+# Voltar para a raiz e popular o banco com os dados demo
+cd ..
+npm run seed
 
 # Rodar em modo desenvolvimento
 npm run dev

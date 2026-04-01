@@ -3,18 +3,18 @@
 ## Dashboard (`/`)
 **Arquivo:** `app/page.tsx`
 
-Visão geral do negócio com cards de métricas e atividade recente.
+Visão geral do negócio com cards de métricas e atividade recente, calculada a partir dos pedidos do Postgres local.
 
 - Total de pedidos, mensagens novas, pedidos urgentes e receita estimada
-- Lista de pedidos recentes com status
-- Lista de mensagens recentes
+- Lista de próximos pedidos/entregas com base em `deliveryDatetime`
+- Status agregado dos pedidos por etapa do painel
 
 ---
 
 ## Painel (`/painel`)
 **Arquivo:** `app/painel/page.tsx`
 
-Kanban interativo unificado para gestão de pedidos em tempo real.
+Kanban interativo unificado para gestão de pedidos em tempo real, carregado do Postgres local via `getOrdersWithPayments()`.
 
 **Colunas (em ordem):**
 1. Atendimento
@@ -40,21 +40,28 @@ Kanban interativo unificado para gestão de pedidos em tempo real.
 - Sugestões de resposta com IA (expansíveis)
 - Campo de resposta inline
 
-**Estado:** gerenciado localmente via `useState` (sem backend ainda).
+**Estado:** o estado inicial vem do banco e as interações continuam locais no client component para preservar a experiência de drag-and-drop.
 
 ---
 
 ## Pedidos (`/pedidos`)
 **Arquivo:** `app/pedidos/page.tsx`
 
-Kanban estático de pedidos por bucket de tempo/status usando `KanbanColumn` e `OrderCard`.
+Lista de pedidos com filtros, subtipos, busca e modais de detalhes/cadastro, inicializada com dados reais do Postgres local.
+
+**Funcionalidades:**
+- filtros por tipo de produto
+- filtros por subtipo
+- busca por cliente, produto ou subtipo
+- modal de detalhes do pedido
+- modal de cadastro de novo pedido
 
 ---
 
 ## Clientes (`/clientes`)
 **Arquivo:** `app/clientes/page.tsx`
 
-Lista de clientes com informações básicas. Placeholder para funcionalidades futuras.
+Lista de clientes com informações básicas. Ainda funciona como placeholder para funcionalidades futuras.
 
 ---
 

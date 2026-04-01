@@ -4,22 +4,34 @@
 Descrever a arquitetura de alto nível da plataforma para profissionais que produzem bolos, doces e itens de festa, cobrindo domínios, componentes, integrações e decisões em aberto.
 
 ## Visão de Alto Nível
-Componentes previstos (sujeitos a ajuste nas próximas iterações):
+Componentes atuais e previstos:
 
 - Frontend Web (Painel do Profissional)
-- Backend (API de negócio e WebSockets)
-- n8n (orquestração de mensagens, automações e envio ao WhatsApp)
-- Banco de Dados Relacional (ex.: Postgres)
-- Mensageria/Cache (ex.: Redis) — opcional inicialmente
+- Supabase Auth + `profiles` + cadastro do profissional
+- Postgres local para toda a operação do negócio
+- Redis para cache/fila auxiliar
+- n8n para orquestração de mensagens, automações e envio ao WhatsApp
 - Integração WhatsApp (provedor a definir)
 - Módulo de IA (sugestões, automações e respostas assistidas)
-- Armazenamento de Arquivos (ex.: S3 compatível) — opcional
 - Observabilidade (logs, métricas, tracing)
+
+Estado atual da aplicação web:
+
+- `app/page.tsx`, `app/painel/page.tsx` e `app/pedidos/page.tsx` já carregam dados do Postgres local no servidor
+- `lib/db/client.ts` centraliza o cliente `postgres.js`
+- `lib/db/queries.ts` concentra as leituras operacionais para dashboard, painel e pedidos
+- `lib/db/mappers.ts` converte rows do banco para os tipos de domínio usados no frontend
 
 Fluxo básico de dados:
 
 ```
-[Cliente WhatsApp] → [n8n Webhook] → [Postgres]
+[Usuário autenticado] → [Supabase Auth / profiles]
+                                ↓
+                        [Painel da Aplicação]
+                                ↓
+                     [Postgres local operacional]
+
+[Cliente WhatsApp] → [n8n Webhook] → [Postgres local]
                            ↓
                      [Módulo IA]
                            ↓
@@ -33,6 +45,10 @@ Fluxo básico de dados:
 ## Fluxo Operacional
 
 O detalhamento do caminho da mensagem entre WhatsApp, n8n, Postgres e aplicação está documentado em [Fluxo Operacional](./OPERATIONAL_FLOW.md).
+
+Além disso, a UI principal do MVP já segue este fluxo de leitura:
+
+`Postgres local` → `queries.ts` → `server components` → `client components`
 
 ## Domínios e Módulos
 - Painel do Profissional
@@ -56,7 +72,8 @@ O detalhamento do caminho da mensagem entre WhatsApp, n8n, Postgres e aplicaçã
 - E-mail/SMS: a definir (opcional)
 
 ## Modelo de Dados (alto nível)
-- Usuário (profissional)
+- Usuário autenticado no Supabase
+- Profissional / perfil de negócio
 - Cliente
 - Conversa
 - Mensagem
@@ -64,7 +81,7 @@ O detalhamento do caminho da mensagem entre WhatsApp, n8n, Postgres e aplicaçã
 - Item de Catálogo
 - Produção (etapas, insumos, custos)
 
-Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres, enquanto a aplicação atua como painel de apoio e o n8n como orquestrador de entrada e saída de mensagens.
+Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres local, enquanto o Supabase fica restrito à autenticação e aos dados do usuário/profissional.
 
 Observação: O diagrama físico e o esquema detalhado serão definidos conforme o MVP evoluir.
 
@@ -73,9 +90,11 @@ Observação: O diagrama físico e o esquema detalhado serão definidos conforme
 - Diretório `festa-com-ia-dockercompose` conterá os manifests para orquestração
 - Ambientes: dev (local), staging (opcional), prod (VPS)
 - Deploy: a definir (CI/CD opcional em fase inicial)
+- O backend operacional local roda em Docker com Postgres e Redis; n8n seguirá fora do compose principal
 
 ## Segurança
-- Autenticação e autorização (RBAC simples)
+- Autenticação e autorização via Supabase Auth
+- Autorização operacional por `professional_id` no Postgres local
 - Armazenamento seguro de segredos (variáveis de ambiente)
 - Princípio de menor privilégio para integrações externas
 
@@ -85,13 +104,11 @@ Observação: O diagrama físico e o esquema detalhado serão definidos conforme
 - Dashboard futuro (a definir)
 
 ## Decisões em Aberto
-- Stack final de Frontend e Backend
 - Provedor de WhatsApp
-- Banco de dados e migrações
 - Provedor de IA (API externa vs. modelo local)
+- Estratégia de RLS/políticas do Supabase para `profiles`
 
 ## Próximos Passos
 - Refinar requisitos do MVP e casos de uso principais
-- Selecionar stack inicial e esqueleto de serviços
-- Definir esquema mínimo de dados e migrações
+- Expandir a leitura do Postgres local para as demais telas e relatórios
 - Implementar fluxo de orçamentos e conversas (MVP)

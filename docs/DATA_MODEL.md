@@ -1,6 +1,13 @@
 # Modelo de Dados — Festa com IA
 
-> Dados atualmente em mock (`lib/mockData.ts`). Backend e banco de dados ainda não implementados.
+> A camada operacional já lê dados do Postgres local.
+>
+> Os mocks em `lib/mockData.ts` continuam existindo como fallback visual e base de seed.
+>
+> A arquitetura atual está separada em duas camadas:
+>
+> - **Supabase**: auth, `profiles` e cadastro do profissional
+> - **Postgres local**: todas as tabelas operacionais do negócio
 
 ---
 
@@ -83,10 +90,12 @@ Calculado a partir de `deliveryDatetime`:
 
 | Função | Descrição |
 |--------|-----------|
-| `getOrders()` | Retorna array de 12 pedidos com dados mock |
-| `getConversations()` | Retorna array de 12 conversas mock |
+| `getOrders()` | Retorna array de 12 pedidos com dados mock para fallback/seed |
+| `getConversations()` | Retorna array de 12 conversas mock para fallback/seed |
 | `generateSuggestions(msg)` | Gera 3 sugestões de resposta baseadas no texto da mensagem |
 | `generateMessages(orderId)` | Gera histórico de 5 mensagens para um pedido |
+
+> Observação: estas funções continuam úteis para o frontend e para a geração de massa demo, mesmo após a migração da leitura principal para o Postgres local.
 
 ---
 

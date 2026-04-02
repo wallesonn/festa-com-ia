@@ -16,13 +16,15 @@ export interface Conversation {
 
 // ─── Product ─────────────────────────────────────────────────────────────────
 
-export type ProductType = 'Bolo' | 'Doces' | 'Salgados' | 'Kit Festa'
+export type ProductType = 'Bolo' | 'Doces' | 'Salgados' | 'Refeição'
+
+export const PRODUCT_GROUPS: ProductType[] = ['Bolo', 'Doces', 'Salgados', 'Refeição']
 
 export const PRODUCT_SUBTYPES: Record<ProductType, string[]> = {
   'Bolo':      ['Chocolate', 'Red Velvet', 'Morango', 'Limão', 'Baunilha'],
   'Doces':     ['Brigadeiro', 'Beijinho', 'Bicho-de-pé', 'Cajuzinho', 'Palha Italiana'],
   'Salgados':  ['Coxinha', 'Enroladinho', 'Mini-quiche', 'Kibe', 'Bolinha de Queijo'],
-  'Kit Festa': ['Kids', 'Adulto', 'Temático', 'Simples', 'Premium'],
+  'Refeição':  ['Feijoada', 'Torta', 'Lasanha', 'Prato executivo', 'Arroz carreteiro'],
 }
 
 export interface Ingredient {

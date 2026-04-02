@@ -6,11 +6,11 @@ const items = [
   { dot: '#f472b6', text: '🎂 Novo pedido — Ana Lima: Bolo Red Velvet 30 pessoas' },
   { dot: '#60a5fa', text: '💬 Carlos Souza: "Pode ser entregue às 16h?"' },
   { dot: '#34d399', text: '✅ Pedido de Maria Oliveira marcado como Pronto' },
-  { dot: '#f472b6', text: '🎉 Novo pedido — João Pedro: 150 salgados mistos' },
+  { dot: '#f472b6', text: '� Novo pedido — João Pedro: Refeição para 40 pessoas' },
   { dot: '#fbbf24', text: '⚠️ Entrega de Beatriz Melo em 2h — verificar status' },
   { dot: '#60a5fa', text: '💬 Fernanda Costa: "Podem fazer sem glúten?"' },
   { dot: '#34d399', text: '✅ Pedido de Lucas Ferreira entregue com sucesso' },
-  { dot: '#f472b6', text: '🎂 Novo pedido — Camila Torres: Kit Festa 40 pessoas' },
+  { dot: '#f472b6', text: '🎂 Novo pedido — Camila Torres: Bolo para aniversário' },
   { dot: '#a78bfa', text: '📅 Agendamento confirmado — Diana Rocha: Sábado 14h' },
   { dot: '#fbbf24', text: '⚠️ Produção atrasada — Bolo Morango de Ricardo Alves' },
 ]

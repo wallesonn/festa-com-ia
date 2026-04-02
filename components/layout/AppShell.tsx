@@ -13,8 +13,30 @@ type ProfileState = {
   products_produced: string | null
 }
 
+function parseProductsProduced(value: string | null | undefined) {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    }
+  } catch {
+    // fallback para legado em texto livre
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 function isProfileComplete(profile: ProfileState | null) {
-  return Boolean(profile?.business_name?.trim() && profile.phone?.trim() && profile.products_produced?.trim())
+  return Boolean(
+    profile?.business_name?.trim() &&
+    profile.phone?.trim() &&
+    parseProductsProduced(profile.products_produced).length > 0,
+  )
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {

@@ -6,10 +6,10 @@ const names = [
 
 const pick = <T,>(arr: readonly T[], seed: number): T => arr[seed % arr.length]
 
-const productTypes: ProductType[] = ['Bolo','Doces','Salgados','Kit Festa']
+const productTypes: ProductType[] = ['Bolo','Doces','Salgados','Refeição']
 
 const baseMessages = [
-  'Quanto custa um bolo para 20 pessoas?','Vocês fazem brigadeiro gourmet?','Qual o prazo para encomenda de salgados?','Tem disponibilidade para sábado?','Quais sabores de bolo vocês têm?','Aceitam Pix?','Entrega no bairro Centro?','Preciso de um kit festa para 30 pessoas.'
+  'Quanto custa um bolo para 20 pessoas?','Vocês fazem brigadeiro gourmet?','Qual o prazo para encomenda de salgados?','Tem disponibilidade para sábado?','Quais sabores de bolo vocês têm?','Aceitam Pix?','Entrega no bairro Centro?','Preciso de uma refeição para 30 pessoas.'
 ]
 
 const threadTemplates: [string, string][][] = [
@@ -37,8 +37,8 @@ const threadTemplates: [string, string][][] = [
   [
     ['client','Tem disponibilidade para sábado que vem?'],
     ['attendant','Deixa eu verificar... temos sim! O que você precisa?'],
-    ['client','Um kit festa completo para 25 pessoas.'],
-    ['attendant','Inclui bolo, salgados e docinhos. Posso montar um orçamento?'],
+    ['client','Uma refeição completa para 25 pessoas.'],
+    ['attendant','Posso te sugerir opções como feijoada, torta ou lasanha. Quer um orçamento?'],
     ['client','Sim por favor, me manda o valor.'],
   ],
   [

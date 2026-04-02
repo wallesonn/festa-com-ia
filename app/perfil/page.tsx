@@ -4,11 +4,30 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
+import { PRODUCT_GROUPS } from '@/lib/types'
 
 type ProfileForm = {
   businessName: string
   phone: string
-  productsProduced: string
+  productsProduced: string[]
+}
+
+function parseProductsProduced(value: string | null | undefined) {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    }
+  } catch {
+    // fallback para legado em texto livre
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 export default function PerfilPage() {
@@ -23,7 +42,7 @@ export default function PerfilPage() {
   const [form, setForm] = useState<ProfileForm>({
     businessName: '',
     phone: '',
-    productsProduced: '',
+    productsProduced: [],
   })
   const router = useRouter()
 
@@ -58,18 +77,19 @@ export default function PerfilPage() {
         setError(profileError.message)
       }
 
+      const selectedProducts = parseProductsProduced(profile?.products_produced)
       const firstAccess =
         !profile ||
         !profile.business_name?.trim() ||
         !profile?.phone?.trim() ||
-        !profile?.products_produced?.trim()
+        selectedProducts.length === 0
 
       setIsFirstAccess(firstAccess)
       setProfessionalId(profile?.id ?? '')
       setForm({
         businessName: profile?.business_name ?? '',
         phone: profile?.phone ?? '',
-        productsProduced: profile?.products_produced ?? '',
+        productsProduced: selectedProducts,
       })
       setLoading(false)
     }
@@ -85,6 +105,11 @@ export default function PerfilPage() {
     event.preventDefault()
     if (!userId) return
 
+    if (form.productsProduced.length === 0) {
+      setError('Selecione ao menos um grupo de produto.')
+      return
+    }
+
     setSaving(true)
     setFeedback(null)
     setError(null)
@@ -95,7 +120,7 @@ export default function PerfilPage() {
       display_name: form.businessName.trim(),
       business_name: form.businessName.trim(),
       phone: form.phone.trim() || null,
-      products_produced: form.productsProduced.trim() || null,
+      products_produced: JSON.stringify(form.productsProduced),
       status: 'active',
       updated_at: now,
     }
@@ -166,12 +191,27 @@ export default function PerfilPage() {
                 {[
                   'Nome da empresa',
                   'WhatsApp',
-                  'Produtos produzidos',
+                  'Grupos de produtos',
                 ].map((item) => (
                   <div key={item} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-gray-200">
                     {item}
                   </div>
                 ))}
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
+                <p className="font-medium text-white">Grupos selecionados</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {form.productsProduced.length > 0 ? (
+                    form.productsProduced.map((group) => (
+                      <span key={group} className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 text-xs text-fuchsia-100">
+                        {group}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">Nenhum grupo selecionado</span>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
@@ -212,18 +252,41 @@ export default function PerfilPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="productsProduced" className="text-sm font-medium text-gray-200">
-                  Quais produtos produz
+                <label className="text-sm font-medium text-gray-200">
+                  Grupos de produtos
                 </label>
-                <textarea
-                  id="productsProduced"
-                  rows={5}
-                  value={form.productsProduced}
-                  onChange={(e) => setForm((prev) => ({ ...prev, productsProduced: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
-                  placeholder="Ex.: bolos, doces finos, lembrancinhas, kits festa..."
-                  required
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {PRODUCT_GROUPS.map((group) => {
+                    const selected = form.productsProduced.includes(group)
+                    return (
+                      <button
+                        key={group}
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({
+                            ...prev,
+                            productsProduced: selected
+                              ? prev.productsProduced.filter((item) => item !== group)
+                              : [...prev.productsProduced, group],
+                          }))
+                        }}
+                        className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-fuchsia-500/30 ${
+                          selected
+                            ? 'border-fuchsia-400/50 bg-fuchsia-500/15 text-white shadow-[0_0_0_1px_rgba(217,70,239,0.25)]'
+                            : 'border-white/10 bg-white/5 text-gray-200 hover:border-white/20 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>{group}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] ${selected ? 'bg-fuchsia-400/20 text-fuchsia-100' : 'bg-white/10 text-gray-400'}`}>
+                          {selected ? 'Selecionado' : 'Selecionar'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-gray-400">
+                  Selecione apenas os grupos que você produz. Os subgrupos e variações serão usados depois como tags nos pedidos.
+                </p>
               </div>
 
               {feedback && (
@@ -242,7 +305,7 @@ export default function PerfilPage() {
                 <Button
                   type="submit"
                   className="h-12 rounded-2xl border border-white/10 bg-gradient-to-r from-fuchsia-500 via-fuchsia-500 to-violet-500 px-5 text-base shadow-[0_18px_50px_rgba(168,85,247,0.35)] transition-transform duration-300 hover:scale-[1.01]"
-                  disabled={saving}
+                  disabled={saving || form.productsProduced.length === 0}
                 >
                   {saving ? 'Salvando...' : isFirstAccess ? 'Concluir perfil' : 'Salvar alterações'}
                 </Button>

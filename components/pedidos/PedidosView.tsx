@@ -60,25 +60,25 @@ const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: 
     ],
     obs: 'Rendimento conforme pedido. Servir morno.',
   },
-  'Kit Festa': {
-    emoji: '🎉',
+  'Refeição': {
+    emoji: '�',
     ingredients: [
-      '1 bolo decorado (conforme sabor pedido)',
-      '50 salgados variados (mini-coxinha, enroladinho, mini-quiche)',
-      '30 doces finos (brigadeiro, beijinho, bicho-de-pé)',
-      '1 bandeja de frutas da estação',
-      '2 litros de suco natural (maracujá + laranja)',
-      'Decoração temática inclusa (balões, topper, saias de mesa)',
+      '1 kg de feijão ou massa principal da receita',
+      '500g de proteína principal (carne, frango ou mix)',
+      'Temperos frescos: alho, cebola, cheiro-verde e louro',
+      'Acompanhamentos: arroz, farofa, salada ou massas',
+      '1 litro de caldo/base da preparação',
+      'Porções individuais ou travessas conforme o pedido',
     ],
     steps: [
-      'Preparar bolo 2 dias antes para decoração',
-      'Produzir salgados no dia anterior, refrigerar',
-      'Preparar doces no dia anterior',
-      'Montar bandeja de frutas no dia do evento',
-      'Montar kit completo 2h antes da entrega',
-      'Embalar em caixas térmicas para transporte',
+      'Separar os ingredientes conforme o tipo de refeição',
+      'Preparar a base e cozinhar a proteína principal',
+      'Ajustar tempero e ponto de cocção',
+      'Montar os acompanhamentos e porções',
+      'Finalizar o empratamento ou a montagem na travessa',
+      'Manter aquecido até a entrega ou retirada',
     ],
-    obs: 'Kit serve 30–50 pessoas. Entrega com 2h de antecedência ao evento.',
+    obs: 'Serve bem almoços e eventos corporativos. Ajuste a quantidade conforme o número de pessoas.',
   },
 }
 
@@ -218,7 +218,7 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
                 <option>Bolo</option>
                 <option>Doces</option>
                 <option>Salgados</option>
-                <option>Kit Festa</option>
+                <option>Refeição</option>
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -277,7 +277,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
     Bolo: orders.filter(o => o.productType === 'Bolo').length,
     Doces: orders.filter(o => o.productType === 'Doces').length,
     Salgados: orders.filter(o => o.productType === 'Salgados').length,
-    'Kit Festa': orders.filter(o => o.productType === 'Kit Festa').length,
+    'Refeição': orders.filter(o => o.productType === 'Refeição').length,
   }
 
   return (
@@ -296,7 +296,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
           ['Bolo',      'Bolos',     '🎂'],
           ['Doces',     'Doces',     '🍬'],
           ['Salgados',  'Salgados',  '🥐'],
-          ['Kit Festa', 'Kit Festa', '🎉'],
+          ['Refeição',  'Refeição',  '�'],
         ] as const).map(([key, label, emoji]) => (
           <button
             key={key}
@@ -326,7 +326,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
                 : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
             }`}
           >
-            Todos os sabores
+            Todos os subtipos
           </button>
           {activeSubtypes.map(sub => {
             const subCount = orders.filter(o => o.productType === filterType && o.productSubtype === sub).length

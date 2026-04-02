@@ -15,6 +15,8 @@ export type SupabaseDatabase = {
           display_name: string | null
           business_name: string | null
           phone: string | null
+          products_produced: string | null
+          onboarding_completed: boolean
           email: string | null
           created_at: string
           updated_at: string
@@ -24,6 +26,8 @@ export type SupabaseDatabase = {
           display_name?: string | null
           business_name?: string | null
           phone?: string | null
+          products_produced?: string | null
+          onboarding_completed?: boolean
           email?: string | null
           created_at?: string
           updated_at?: string
@@ -33,7 +37,57 @@ export type SupabaseDatabase = {
           display_name?: string | null
           business_name?: string | null
           phone?: string | null
+          products_produced?: string | null
+          onboarding_completed?: boolean
           email?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      'festa-com-ia-professionals': {
+        Row: {
+          id: string
+          auth_user_id: string | null
+          display_name: string
+          business_name: string
+          phone: string | null
+          products_produced: string | null
+          slug: string | null
+          style_prompt: string | null
+          tone_of_voice: string | null
+          service_rules: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          auth_user_id?: string | null
+          display_name: string
+          business_name: string
+          phone?: string | null
+          products_produced?: string | null
+          slug?: string | null
+          style_prompt?: string | null
+          tone_of_voice?: string | null
+          service_rules?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          auth_user_id?: string | null
+          display_name?: string
+          business_name?: string
+          phone?: string | null
+          products_produced?: string | null
+          slug?: string | null
+          style_prompt?: string | null
+          tone_of_voice?: string | null
+          service_rules?: string | null
+          status?: string
           created_at?: string
           updated_at?: string
         }

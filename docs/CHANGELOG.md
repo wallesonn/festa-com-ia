@@ -7,10 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased] — 2026-04-01
 
+### Adicionado
+- **`app/login/page.tsx`** com login por email/senha usando Supabase Auth
+- **`app/configuracoes/page.tsx`** como tela da conta do usuário logado, com edição de perfil e logout
+
 ### Alterado
+- **`components/layout/AppShell.tsx`** agora valida sessão ativa do Supabase e protege rotas internas
 - **`app/painel/page.tsx`**, **`app/pedidos/page.tsx`** e **`app/page.tsx`** passaram a consumir dados reais do Postgres local em vez de depender exclusivamente de mocks
 - **`lib/db/client.ts`**, **`lib/db/queries.ts`** e **`lib/db/mappers.ts`** foram introduzidos/ajustados para leitura operacional do banco local
-- **`README.md`** e a documentação de páginas foram atualizados para refletir o fluxo de execução com Postgres local + seed
+- **`README.md`** e **`docs/PAGES.md`** foram atualizados para refletir login/auth + configuração do usuário logado
 
 ---
 

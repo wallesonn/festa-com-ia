@@ -9,6 +9,8 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Postgres local para toda a operação do sistema
 
 ## Funcionalidades Implementadas
+- **Login com Supabase Auth** em `/login` com email/senha
+- **Proteção de sessão** nas rotas internas da aplicação (redireciona para login quando não autenticado)
 - **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local
   - Drag & drop entre colunas (mouse e toque mobile)
   - Scroll horizontal com botões e deslize de dedo
@@ -19,7 +21,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local
 - **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local
 - **Clientes** — listagem de clientes
-- **Configurações** — placeholder para integrações futuras
+- **Configurações da Conta** (`/configuracoes`) com dados do usuário logado, edição de perfil e logout
 
 ## Roadmap
 1. ✅ Frontend MVP (Painel, Dashboard, Pedidos, Clientes)

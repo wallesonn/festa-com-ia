@@ -1,5 +1,12 @@
 # Páginas — Festa com IA
 
+## Login (`/login`)
+**Arquivo:** `app/login/page.tsx`
+
+Tela de autenticação com Supabase Auth (email/senha). Após login bem-sucedido, redireciona para o dashboard.
+
+---
+
 ## Dashboard (`/`)
 **Arquivo:** `app/page.tsx`
 
@@ -68,7 +75,11 @@ Lista de clientes com informações básicas. Ainda funciona como placeholder pa
 ## Configurações (`/configuracoes`)
 **Arquivo:** `app/configuracoes/page.tsx`
 
-Placeholder. Previsto para futuras integrações: n8n, WhatsApp/Uazapi, IA, preferências e usuários.
+Tela de configuração do usuário logado com:
+
+- dados básicos da conta autenticada
+- edição de perfil (`display_name`, `business_name`, `phone`) em `profiles`
+- botão de logout
 
 ---
 
@@ -77,3 +88,12 @@ Placeholder. Previsto para futuras integrações: n8n, WhatsApp/Uazapi, IA, pref
 | Rota | Destino |
 |------|---------|
 | `/conversas` | `/painel` (redirect) |
+
+---
+
+## Proteção de sessão
+
+O shell da aplicação valida sessão do Supabase no cliente:
+
+- sem sessão em rotas internas: redireciona para `/login`
+- com sessão em `/login`: redireciona para `/`

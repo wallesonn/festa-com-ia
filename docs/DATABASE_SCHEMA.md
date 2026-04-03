@@ -4,8 +4,8 @@
 >
 > O modelo é **multi-tenant por profissional** e hoje está dividido em duas camadas:
 >
-> - **Supabase**: auth, `profiles`, cadastro do profissional e tabela de regras
-> - **Postgres local**: toda a operação do negócio (clientes, pedidos, conversas, mensagens etc.)
+> - **Supabase**: auth, `festa-com-ia-professionals` e tabela de regras
+> - **Postgres local**: toda a operação do negócio (clientes, pedidos, conversas, mensagens etc.) e a referência global de taxonomia
 
 ---
 
@@ -13,16 +13,36 @@
 
 - No **Postgres local**, a tabela raiz operacional é `professionals`.
 - Toda entidade operacional recebe `professional_id`.
-- No **Supabase**, o vínculo com login acontece via `auth.users` + `profiles` + `festa-com-ia-professionals`.
+- No **Supabase**, o vínculo com login acontece via `auth.users` + `festa-com-ia-professionals`.
 - Os dados mockados podem ser usados como **seed inicial** por profissional.
 
 ## Escopo atual por banco
 
 ### Supabase
 
-- `profiles` — dados do usuário autenticado (RLS ativo)
-- `festa-com-ia-professionals` — cadastro do profissional/negócio atualmente usado no Supabase
+- `festa-com-ia-professionals` — cadastro do profissional/negócio, onboarding e taxonomia comercial
 - `regras_criacao_tabelas` — tabela simples de referência e regras
+
+### `festa-com-ia-professionals`
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | `uuid` PK | |
+| `auth_user_id` | `uuid` | vínculo com `auth.users.id` |
+| `display_name` | `text` | nome exibido no painel |
+| `business_name` | `text` | nome do negócio |
+| `phone` | `text` | WhatsApp |
+| `email` | `text` | nullable |
+| `products_produced` | `text` | grupos produzidos pelo profissional, serializados pelo app |
+| `product_subgroups` | `jsonb` | mapa de subgrupos por grupo de produto |
+| `product_variations` | `jsonb` | mapa de variações por grupo de produto |
+| `onboarding_completed` | `boolean` | concluiu primeiro acesso |
+| `slug` | `text` | nullable, útil para URL |
+| `style_prompt` | `text` | nullable |
+| `tone_of_voice` | `text` | nullable |
+| `service_rules` | `text` | nullable |
+| `status` | `text` | active / paused / archived |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
 
 ### Postgres local
 
@@ -30,6 +50,7 @@
 - `clients`
 - `addresses`
 - `products`
+- `product_taxonomy_reference`
 - `ingredients`
 - `conversations`
 - `orders`
@@ -99,7 +120,7 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `id` | `uuid` PK | |
 | `professional_id` | `uuid` FK → professionals | |
 | `name` | `text` | ex: Bolo Red Velvet |
-| `type` | `text` | enum: Bolo, Doces, Salgados, Kit Festa |
+| `type` | `text` | enum: Bolo, Doces, Salgados, Refeição |
 | `subtype` | `text` | ex: Red Velvet, Brigadeiro |
 | `description` | `text` | |
 | `base_price` | `numeric(10,2)` | R$ preço base |
@@ -111,6 +132,20 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `allergens` | `text[]` | ex: ['glúten', 'lactose'] |
 | `available` | `boolean` | |
 | `image_emoji` | `text` | |
+
+---
+
+### `product_taxonomy_reference`
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | `uuid` PK | |
+| `product_group` | `text` | único por grupo de produto |
+| `subgroups` | `text[]` | subgrupos padrão do grupo |
+| `variations` | `text[]` | variações padrão do grupo |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
+
+> Observação: a tabela guarda uma linha por grupo de produto e serve como referência global de taxonomia. As variações continuam sendo de nível de grupo, não de subgrupo.
 
 ---
 
@@ -135,7 +170,7 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `client_id` | `uuid` FK → clients | |
 | `conversation_id` | `uuid` FK → conversations | nullable, conversa de origem do pedido |
 | `product_id` | `uuid` FK → products | nullable |
-| `product_type` | `text` | enum: Bolo, Doces, Salgados, Kit Festa |
+| `product_type` | `text` | enum: Bolo, Doces, Salgados, Refeição |
 | `product_subtype` | `text` | ex: Chocolate, Coxinha |
 | `event_date` | `date` | data do evento |
 | `delivery_datetime` | `timestamptz` | data+hora da entrega/retirada |

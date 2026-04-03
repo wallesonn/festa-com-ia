@@ -5,17 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-03
+
+### Adicionado
+- **`app/produtos/page.tsx`** com cadastro de linhas, subgrupos e variações por grupo de produto
+- **`app/perfil/page.tsx`** como tela separada de onboarding e edição básica do profissional
+- **`product_taxonomy_reference`** como referência global de taxonomia por grupo no Postgres local
+
+### Alterado
+- **`app/page.tsx`** recebeu novo layout em cards glassmorphism, com letreiro de atividade restaurado
+- **`app/painel/page.tsx`** e componentes do painel foram redesenhados com visual glassmorphism e bordas de urgência mais consistentes
+- **`app/pedidos/page.tsx`** passou a filtrar subgrupos e variações por grupo do produto usando a taxonomia cadastrada pelo profissional
+- **`app/configuracoes/page.tsx`** virou rota legada e redireciona para `/perfil`
+- **`README.md`** e a documentação em `docs/` foram atualizados para refletir o fluxo atual do app
+
+### Corrigido
+- Divergência de documentação entre `/perfil`, `/configuracoes` e o fluxo real baseado em `festa-com-ia-professionals`
+
+---
+
 ## [Unreleased] — 2026-04-01
 
 ### Adicionado
 - **`app/login/page.tsx`** com login por email/senha usando Supabase Auth
-- **`app/configuracoes/page.tsx`** como tela da conta do usuário logado, com edição de perfil e logout
+- **`app/configuracoes/page.tsx`** como rota legada da conta do usuário logado, agora redirecionando para `/perfil`
 
 ### Alterado
 - **`components/layout/AppShell.tsx`** agora valida sessão ativa do Supabase e protege rotas internas
 - **`app/painel/page.tsx`**, **`app/pedidos/page.tsx`** e **`app/page.tsx`** passaram a consumir dados reais do Postgres local em vez de depender exclusivamente de mocks
 - **`lib/db/client.ts`**, **`lib/db/queries.ts`** e **`lib/db/mappers.ts`** foram introduzidos/ajustados para leitura operacional do banco local
-- **`README.md`** e **`docs/PAGES.md`** foram atualizados para refletir login/auth + configuração do usuário logado
+- **`README.md`** e **`docs/PAGES.md`** foram atualizados para refletir login/auth + perfil do usuário logado
 
 ---
 
@@ -30,7 +49,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 - A arquitetura de dados foi refinada para separar responsabilidades:
-  - **Supabase** para Auth, `profiles`, cadastro do profissional e regras
+  - **Supabase** para Auth, `festa-com-ia-professionals`, cadastro do profissional e regras
   - **Postgres local** para toda a operação do negócio
 - **`README.md`**, **`docs/ARCHITECTURE.md`**, **`docs/OPERATIONAL_FLOW.md`** e **`docs/DATABASE_SCHEMA.md`** atualizados para refletir o estado atual do projeto
 
@@ -40,7 +59,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Adicionado
 - **Página Pedidos** completamente reescrita: removido kanban, adicionada lista detalhada de pedidos
-  - Filtros por tipo de produto (Bolo 🎂, Doces 🍬, Salgados 🥐, Kit Festa 🎉)
+  - Filtros por tipo de produto (Bolo 🎂, Doces 🍬, Salgados 🥐, Refeição 🍽)
   - Segundo nível de filtro por subtipo (ex: Chocolate, Red Velvet, Morango...)
   - Busca por cliente, produto ou subtipo
   - Modal de detalhes com abas: Informações e Receita/Produção (ingredientes + modo de preparo)

@@ -26,6 +26,13 @@ Componente de botão baseado em shadcn/ui com variantes (`default`, `outline`, `
 
 ---
 
+## Dashboard
+
+### `ActivityTicker` (`components/dashboard/ActivityTicker.tsx`)
+Letreiro animado de atividade recente usado no dashboard inicial. Exibe eventos simulados em loop horizontal com uma etiqueta "Ao vivo" na lateral.
+
+---
+
 ## Kanban Genérico
 
 ### `KanbanColumn` (`components/kanban/KanbanColumn.tsx`)
@@ -42,8 +49,8 @@ Card de pedido usado na página de Pedidos.
 ### `PainelColumn` (`components/painel/PainelColumn.tsx`)
 Coluna droppable do Kanban do Painel. Integra `useDroppable` do `@dnd-kit/core` e `SortableContext`.
 - Largura: `w-[82vw]` mobile / `sm:w-[300px]` desktop
-- Altura: `min-h-[40vh] max-h-[calc(100vh-220px)]` com `overflow-y-auto`
-- Destaque visual (`border-primary bg-primary/5`) quando card está sendo arrastado sobre ela
+- Altura: `min-h-[40vh] max-h-[calc(100vh-260px)]` com `overflow-y-auto`
+- Destaque visual (`border-fuchsia-400/50 bg-fuchsia-500/5`) quando card está sendo arrastado sobre ela
 
 Props: `id`, `title`, `count`, `itemIds`, `children`.
 
@@ -52,7 +59,8 @@ Card interativo do Painel. Integra `useSortable` do `@dnd-kit/sortable`.
 
 **Funcionalidades:**
 - Handle de arrastar (ícone `GripVertical`) — `touch-none` para não conflitar com scroll
-- Cor de fundo por urgência de entrega (`urgencyBgClass`)
+- Base em glassmorphism com borda e fundo translúcidos
+- Borda lateral por urgência de entrega (`urgencyLevel` + `urgencyBorderClass`)
 - Histórico de 5 mensagens com bolhas: atendente à direita, cliente à esquerda
 - Botão expandir/recolher conversa
 - Sugestões de resposta (1 visível, demais expansíveis)

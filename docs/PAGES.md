@@ -3,14 +3,14 @@
 ## Login (`/login`)
 **Arquivo:** `app/login/page.tsx`
 
-Tela de autenticação com Supabase Auth (email/senha). Após login bem-sucedido, redireciona para o dashboard.
+Tela de autenticação com Supabase Auth (email/senha). Após login bem-sucedido, redireciona para o dashboard ou para `/perfil` quando o cadastro do profissional ainda está incompleto.
 
 ---
 
 ## Dashboard (`/`)
 **Arquivo:** `app/page.tsx`
 
-Visão geral do negócio com cards de métricas e atividade recente, calculada a partir dos pedidos do Postgres local.
+Visão geral do negócio com cards de métricas, letreiro de atividade e blocos em glassmorphism, calculada a partir dos pedidos do Postgres local.
 
 - Total de pedidos, mensagens novas, pedidos urgentes e receita estimada
 - Lista de próximos pedidos/entregas com base em `deliveryDatetime`
@@ -21,7 +21,7 @@ Visão geral do negócio com cards de métricas e atividade recente, calculada a
 ## Painel (`/painel`)
 **Arquivo:** `app/painel/page.tsx`
 
-Kanban interativo unificado para gestão de pedidos em tempo real, carregado do Postgres local via `getOrdersWithPayments()`.
+Kanban interativo unificado para gestão de pedidos em tempo real, carregado do Postgres local via `getOrdersWithPayments()`, com visual glassmorphism e bordas de urgência por card.
 
 **Colunas (em ordem):**
 1. Atendimento
@@ -37,7 +37,7 @@ Kanban interativo unificado para gestão de pedidos em tempo real, carregado do 
   - Mobile: toque e segure 250ms no handle `⠿` para ativar o drag
 - Scroll horizontal com botões `‹` `›` nas laterais (300px por clique, suave)
 - Scroll por dedo no mobile (`touchAction: pan-x`)
-- Cor de fundo dos cards por urgência de entrega:
+- Indicador lateral por urgência de entrega:
   - 🔴 Vermelho: menos de 2h
   - 🟠 Laranja: 2h–24h
   - 🟢 Verde: mais de 24h
@@ -58,10 +58,36 @@ Lista de pedidos com filtros, subtipos, busca e modais de detalhes/cadastro, ini
 
 **Funcionalidades:**
 - filtros por tipo de produto
-- filtros por subtipo
+- filtros por subtipo e variação, respeitando as tags cadastradas pelo profissional para cada grupo
 - busca por cliente, produto ou subtipo
 - modal de detalhes do pedido
 - modal de cadastro de novo pedido
+
+---
+
+## Produtos (`/produtos`)
+**Arquivo:** `app/produtos/page.tsx`
+
+Página de cadastro da taxonomia comercial do profissional, com linhas, subgrupos e variações por grupo de produto.
+
+**Funcionalidades:**
+- seleciona os grupos produzidos pelo profissional
+- cadastra subgrupos por grupo de produto
+- cadastra variações por grupo de produto
+- salva os dados em `festa-com-ia-professionals.product_subgroups` e `product_variations`
+
+---
+
+## Perfil (`/perfil`)
+**Arquivo:** `app/perfil/page.tsx`
+
+Tela de onboarding e edição básica do profissional.
+
+**Funcionalidades:**
+- coleta nome da empresa e WhatsApp
+- marca o onboarding como concluído
+- registra os grupos de produto produzidos
+- grava os dados em `festa-com-ia-professionals`
 
 ---
 
@@ -75,11 +101,7 @@ Lista de clientes com informações básicas. Ainda funciona como placeholder pa
 ## Configurações (`/configuracoes`)
 **Arquivo:** `app/configuracoes/page.tsx`
 
-Tela de configuração do usuário logado com:
-
-- dados básicos da conta autenticada
-- edição de perfil (`display_name`, `business_name`, `phone`) em `profiles`
-- botão de logout
+Rota legada que redireciona para `/perfil`.
 
 ---
 
@@ -88,6 +110,7 @@ Tela de configuração do usuário logado com:
 | Rota | Destino |
 |------|---------|
 | `/conversas` | `/painel` (redirect) |
+| `/configuracoes` | `/perfil` (redirect) |
 
 ---
 
@@ -96,4 +119,4 @@ Tela de configuração do usuário logado com:
 O shell da aplicação valida sessão do Supabase no cliente:
 
 - sem sessão em rotas internas: redireciona para `/login`
-- com sessão em `/login`: redireciona para `/`
+- com sessão em `/login`: redireciona para `/` ou `/perfil`, dependendo do onboarding

@@ -5,23 +5,25 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - Fase: MVP Frontend com integração ao Postgres local — em desenvolvimento ativo
 - Stack: Next.js 14 (App Router), TypeScript, TailwindCSS
 - Dados: arquitetura híbrida
-  - Supabase para Auth, profiles e cadastro do profissional
+  - Supabase para Auth e cadastro do profissional (`festa-com-ia-professionals`)
   - Postgres local para toda a operação do sistema
 
 ## Funcionalidades Implementadas
 - **Login com Supabase Auth** em `/login` com email/senha
 - **Proteção de sessão** nas rotas internas da aplicação (redireciona para login quando não autenticado)
-- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local
+- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local, com visual glassmorphism
   - Drag & drop entre colunas (mouse e toque mobile)
   - Scroll horizontal com botões e deslize de dedo
   - Cor de fundo dos cards por urgência de entrega
   - Histórico de mensagens com bolhas de chat (expansível)
   - Sugestões de resposta com IA (expansíveis)
   - Botões Avançar etapa e Cancelar
-- **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local
-- **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local
+- **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local e layout em cards glassmorphism
+- **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local e às tags por grupo do profissional
+- **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
+- **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos e cadastro da taxonomia do negócio
 - **Clientes** — listagem de clientes
-- **Configurações da Conta** (`/configuracoes`) com dados do usuário logado, edição de perfil e logout
+- **Configurações da Conta** (`/configuracoes`) redireciona para `/perfil`
 
 ## Roadmap
 1. ✅ Frontend MVP (Painel, Dashboard, Pedidos, Clientes)

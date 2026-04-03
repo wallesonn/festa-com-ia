@@ -7,7 +7,7 @@ Descrever a arquitetura de alto nível da plataforma para profissionais que prod
 Componentes atuais e previstos:
 
 - Frontend Web (Painel do Profissional)
-- Supabase Auth + `profiles` + cadastro do profissional
+- Supabase Auth + `festa-com-ia-professionals`
 - Postgres local para toda a operação do negócio
 - Redis para cache/fila auxiliar
 - n8n para orquestração de mensagens, automações e envio ao WhatsApp
@@ -18,6 +18,8 @@ Componentes atuais e previstos:
 Estado atual da aplicação web:
 
 - `app/page.tsx`, `app/painel/page.tsx` e `app/pedidos/page.tsx` já carregam dados do Postgres local no servidor
+- `app/produtos/page.tsx` e `app/perfil/page.tsx` mantêm o cadastro do profissional e a taxonomia comercial no Supabase
+- `app/configuracoes/page.tsx` apenas redireciona para `/perfil`
 - `lib/db/client.ts` centraliza o cliente `postgres.js`
 - `lib/db/queries.ts` concentra as leituras operacionais para dashboard, painel e pedidos
 - `lib/db/mappers.ts` converte rows do banco para os tipos de domínio usados no frontend
@@ -25,7 +27,7 @@ Estado atual da aplicação web:
 Fluxo básico de dados:
 
 ```
-[Usuário autenticado] → [Supabase Auth / profiles]
+[Usuário autenticado] → [Supabase Auth / festa-com-ia-professionals]
                                 ↓
                         [Painel da Aplicação]
                                 ↓
@@ -56,6 +58,8 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
   - Acompanhamento de produção e entregas
 - Orçamentos e Catálogo
   - Itens, variações, precificação e templates
+- Catálogo e Taxonomia
+  - Grupos de produto, subgrupos, variações e referência global de taxonomia
 - Produção
   - Etapas, checklists, custos e status
 - Comunicação (WhatsApp)
@@ -101,12 +105,12 @@ Observação: O diagrama físico e o esquema detalhado serão definidos conforme
 ## Observabilidade
 - Logs estruturados no Backend
 - Métricas básicas (saúde, tráfego, erros)
-- Dashboard futuro (a definir)
+- Dashboard operacional já implementado em `app/page.tsx`
 
 ## Decisões em Aberto
 - Provedor de WhatsApp
 - Provedor de IA (API externa vs. modelo local)
-- Estratégia de RLS/políticas do Supabase para `profiles`
+- Estratégia de RLS/políticas do Supabase para `festa-com-ia-professionals`
 
 ## Próximos Passos
 - Refinar requisitos do MVP e casos de uso principais

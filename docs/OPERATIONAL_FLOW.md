@@ -2,7 +2,7 @@
 
 > Este documento descreve o caminho da mensagem do cliente entre **WhatsApp → n8n → Postgres local → Painel da aplicação**, considerando o uso de IA para sugerir respostas, a revisão humana e a persistência do histórico.
 >
-> O Supabase fica restrito a **Auth** e aos dados de **profile/profissional**; não participa da persistência operacional do atendimento.
+> O Supabase fica restrito a **Auth** e aos dados de **`festa-com-ia-professionals`**; não participa da persistência operacional do atendimento.
 
 ---
 
@@ -102,7 +102,8 @@ A IA deve usar estas fontes de contexto:
 - histórico da conversa
 - dados do cliente/pedido no Postgres
 - prompt manual do profissional salvo na aplicação
-- dados de autenticação e perfil do profissional via Supabase
+- dados de autenticação e perfil do profissional via Supabase (`festa-com-ia-professionals`)
+- taxonomia padrão do produto via `product_taxonomy_reference`
 - catálogo/preços vindo do Postgres local ou de regras de negócio do MVP
 
 ### 6. Resposta da IA
@@ -118,6 +119,7 @@ O painel deve mostrar:
 - mensagem original do cliente
 - histórico da conversa
 - 3 sugestões geradas pela IA
+- contexto comercial do pedido, incluindo grupo, subgrupo e variação quando existirem
 
 O atendente então:
 
@@ -204,7 +206,7 @@ Responsável por:
 Responsável por:
 
 - autenticação do usuário
-- manutenção de `profiles`
+- manutenção de `festa-com-ia-professionals`
 - registro/cadastro do profissional da conta
 
 ### Postgres local
@@ -250,7 +252,9 @@ Este fluxo conversa diretamente com as tabelas descritas em `DATABASE_SCHEMA.md`
 - `orders`
 - `payments`
 
-Na prática, estas tabelas vivem no **Postgres local**. No Supabase permanecem apenas `profiles`, `festa-com-ia-professionals` e `regras_criacao_tabelas`.
+Na prática, estas tabelas vivem no **Postgres local**. No Supabase permanecem apenas `festa-com-ia-professionals` e `regras_criacao_tabelas`.
+
+Na implementação atual, o cadastro do profissional e a taxonomia personalizada vivem em `festa-com-ia-professionals`, enquanto a referência global de grupos/subgrupos/variações fica em `product_taxonomy_reference` no Postgres local.
 
 As sugestões da IA podem permanecer apenas no fluxo operacional, sem tabela própria no MVP.
 

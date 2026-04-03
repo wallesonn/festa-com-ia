@@ -6,8 +6,8 @@
 >
 > A arquitetura atual está separada em duas camadas:
 >
-> - **Supabase**: auth, `profiles` e cadastro do profissional
-> - **Postgres local**: todas as tabelas operacionais do negócio
+> - **Supabase**: auth e `festa-com-ia-professionals` (onboarding, perfil e taxonomia do profissional)
+> - **Postgres local**: todas as tabelas operacionais do negócio e a referência global de taxonomia
 
 ---
 
@@ -51,6 +51,39 @@ Conversa independente (legado, não usado no Painel atual).
 | `timestamp` | `string` (ISO) | Timestamp da última mensagem |
 | `status` | `ConversationStatus` | Status da conversa |
 
+### `festa-com-ia-professionals`
+Cadastro do profissional no Supabase, usado por login, onboarding e taxonomia comercial.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | `string` | Identificador da linha |
+| `auth_user_id` | `string` | vínculo com `auth.users` |
+| `display_name` | `string` | nome exibido no painel |
+| `business_name` | `string` | nome do negócio |
+| `phone` | `string \| null` | WhatsApp |
+| `email` | `string \| null` | email de contato |
+| `products_produced` | `string[] \| string` | grupos selecionados pelo profissional |
+| `product_subgroups` | `Record<string, string[]>` | subgrupos por grupo de produto |
+| `product_variations` | `Record<string, string[]>` | variações por grupo de produto |
+| `onboarding_completed` | `boolean` | marca o primeiro acesso como concluído |
+| `status` | `string` | active / paused / archived |
+| `created_at` | `string` | timestamp de criação |
+| `updated_at` | `string` | timestamp de atualização |
+
+### `product_taxonomy_reference`
+Tabela de referência global no Postgres local, com um conjunto base por grupo de produto.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | `string` | Identificador da linha |
+| `product_group` | `ProductType` | grupo base da taxonomia |
+| `subgroups` | `string[]` | subgrupos padrão do grupo |
+| `variations` | `string[]` | variações padrão do grupo |
+| `created_at` | `string` | timestamp de criação |
+| `updated_at` | `string` | timestamp de atualização |
+
+> Observação: as variações são de nível de grupo e não ficam vinculadas a um subgrupo específico.
+
 ---
 
 ## Enums e Union Types
@@ -67,7 +100,7 @@ cancelado ← qualquer etapa (ação do usuário)
 `em_andamento` | `finalizado` | `cancelado` | `nao_confirmado`
 
 ### `ProductType`
-`Bolo` | `Doces` | `Salgados` | `Kit Festa`
+`Bolo` | `Doces` | `Salgados` | `Refeição`
 
 ### `MessageSender`
 `client` | `attendant`

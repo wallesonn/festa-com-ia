@@ -18,8 +18,8 @@ export type SupabaseDatabase = {
           phone: string | null
           email: string | null
           products_produced: string | null
-          product_subgroups: string[] | null
-          product_variations: string[] | null
+          product_subgroups: Record<string, string[]> | null
+          product_variations: Record<string, string[]> | null
           onboarding_completed: boolean
           slug: string | null
           style_prompt: string | null
@@ -37,8 +37,8 @@ export type SupabaseDatabase = {
           phone?: string | null
           email?: string | null
           products_produced?: string | null
-          product_subgroups?: string[] | null
-          product_variations?: string[] | null
+          product_subgroups?: Record<string, string[]> | null
+          product_variations?: Record<string, string[]> | null
           onboarding_completed?: boolean
           slug?: string | null
           style_prompt?: string | null
@@ -56,8 +56,8 @@ export type SupabaseDatabase = {
           phone?: string | null
           email?: string | null
           products_produced?: string | null
-          product_subgroups?: string[] | null
-          product_variations?: string[] | null
+          product_subgroups?: Record<string, string[]> | null
+          product_variations?: Record<string, string[]> | null
           onboarding_completed?: boolean
           slug?: string | null
           style_prompt?: string | null

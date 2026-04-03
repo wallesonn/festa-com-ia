@@ -85,8 +85,8 @@ const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: 
 
 type ProfessionalProductTags = {
   groups: ProductType[]
-  subgroups: string[]
-  variations: string[]
+  subgroups: Record<string, string[]>
+  variations: Record<string, string[]>
 }
 
 function parseProductsProduced(value: string | null | undefined) {
@@ -107,27 +107,6 @@ function parseProductsProduced(value: string | null | undefined) {
     .filter((item): item is ProductType => PRODUCT_GROUPS.includes(item as ProductType))
 }
 
-function parseStoredStringList(value: string[] | string | null | undefined) {
-  if (!value) return []
-
-  if (Array.isArray(value)) {
-    return value.map((item) => item.trim()).filter(Boolean)
-  }
-
-  try {
-    const parsed = JSON.parse(value)
-    if (Array.isArray(parsed)) {
-      return parsed.map((item) => String(item).trim()).filter(Boolean)
-    }
-  } catch {
-    // fallback para legado em texto livre
-  }
-
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; iconName: string }> = {
   em_andamento:   { label: 'Em andamento',  color: 'text-amber-400 bg-amber-400/10 border-amber-400/30',        iconName: 'alert' },
@@ -339,18 +318,20 @@ function RegisterModal({
   const fallbackGroup = allowedGroups[0] ?? PRODUCT_GROUPS[0]
   const [productGroup, setProductGroup] = useState<ProductType>(fallbackGroup)
   const [productSubgroup, setProductSubgroup] = useState(
-    tags.subgroups[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].subgroups[0],
+    (tags.subgroups[fallbackGroup] ?? [])[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].subgroups[0],
   )
   const [productVariations, setProductVariations] = useState<string[]>([
-    tags.variations[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].variations[0],
+    (tags.variations[fallbackGroup] ?? [])[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].variations[0],
   ])
 
   function getSubgroupOptions(group: ProductType) {
-    return tags.subgroups.length > 0 ? tags.subgroups : ORDER_FORM_TAXONOMY[group].subgroups
+    const fromProfessional = tags.subgroups[group] ?? []
+    return fromProfessional.length > 0 ? fromProfessional : ORDER_FORM_TAXONOMY[group].subgroups
   }
 
   function getVariationOptions(group: ProductType) {
-    return tags.variations.length > 0 ? tags.variations : ORDER_FORM_TAXONOMY[group].variations
+    const fromProfessional = tags.variations[group] ?? []
+    return fromProfessional.length > 0 ? fromProfessional : ORDER_FORM_TAXONOMY[group].variations
   }
 
   useEffect(() => {
@@ -571,8 +552,8 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
   const [filterSubtype, setFilterSubtype] = useState<string>('todos')
   const [professionalTags, setProfessionalTags] = useState<ProfessionalProductTags>({
     groups: PRODUCT_GROUPS,
-    subgroups: [],
-    variations: [],
+    subgroups: {},
+    variations: {},
   })
 
   useEffect(() => {
@@ -593,8 +574,8 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
       const selectedGroups = parseProductsProduced(profile?.products_produced)
       setProfessionalTags({
         groups: selectedGroups.length > 0 ? selectedGroups : PRODUCT_GROUPS,
-        subgroups: parseStoredStringList(profile?.product_subgroups),
-        variations: parseStoredStringList(profile?.product_variations),
+        subgroups: (profile?.product_subgroups as Record<string, string[]> | null) ?? {},
+        variations: (profile?.product_variations as Record<string, string[]> | null) ?? {},
       })
     }
 

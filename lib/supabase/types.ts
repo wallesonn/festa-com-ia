@@ -9,42 +9,6 @@ export type Json =
 export type SupabaseDatabase = {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          display_name: string | null
-          business_name: string | null
-          phone: string | null
-          products_produced: string | null
-          onboarding_completed: boolean
-          email: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          display_name?: string | null
-          business_name?: string | null
-          phone?: string | null
-          products_produced?: string | null
-          onboarding_completed?: boolean
-          email?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          display_name?: string | null
-          business_name?: string | null
-          phone?: string | null
-          products_produced?: string | null
-          onboarding_completed?: boolean
-          email?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       'festa-com-ia-professionals': {
         Row: {
           id: string
@@ -52,7 +16,11 @@ export type SupabaseDatabase = {
           display_name: string
           business_name: string
           phone: string | null
+          email: string | null
           products_produced: string | null
+          product_subgroups: string[] | null
+          product_variations: string[] | null
+          onboarding_completed: boolean
           slug: string | null
           style_prompt: string | null
           tone_of_voice: string | null
@@ -67,7 +35,11 @@ export type SupabaseDatabase = {
           display_name: string
           business_name: string
           phone?: string | null
+          email?: string | null
           products_produced?: string | null
+          product_subgroups?: string[] | null
+          product_variations?: string[] | null
+          onboarding_completed?: boolean
           slug?: string | null
           style_prompt?: string | null
           tone_of_voice?: string | null
@@ -82,7 +54,11 @@ export type SupabaseDatabase = {
           display_name?: string
           business_name?: string
           phone?: string | null
+          email?: string | null
           products_produced?: string | null
+          product_subgroups?: string[] | null
+          product_variations?: string[] | null
+          onboarding_completed?: boolean
           slug?: string | null
           style_prompt?: string | null
           tone_of_voice?: string | null

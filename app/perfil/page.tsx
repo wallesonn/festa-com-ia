@@ -62,12 +62,11 @@ export default function PerfilPage() {
       }
 
       const user = authData.user
-      setEmail(user.email ?? '')
       setUserId(user.id)
 
       const { data: profile, error: profileError } = await supabase
         .from('festa-com-ia-professionals')
-        .select('id,business_name,phone,products_produced')
+        .select('id,business_name,phone,email,products_produced,onboarding_completed')
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
@@ -80,12 +79,11 @@ export default function PerfilPage() {
       const selectedProducts = parseProductsProduced(profile?.products_produced)
       const firstAccess =
         !profile ||
-        !profile.business_name?.trim() ||
-        !profile?.phone?.trim() ||
-        selectedProducts.length === 0
+        !profile.onboarding_completed
 
       setIsFirstAccess(firstAccess)
       setProfessionalId(profile?.id ?? '')
+      setEmail(profile?.email ?? user.email ?? '')
       setForm({
         businessName: profile?.business_name ?? '',
         phone: profile?.phone ?? '',
@@ -120,7 +118,9 @@ export default function PerfilPage() {
       display_name: form.businessName.trim(),
       business_name: form.businessName.trim(),
       phone: form.phone.trim() || null,
+      email: email.trim() || null,
       products_produced: JSON.stringify(form.productsProduced),
+      onboarding_completed: true,
       status: 'active',
       updated_at: now,
     }

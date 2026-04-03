@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from 'react'
-import { Order, PRODUCT_SUBTYPES, ProductType } from '@/lib/types'
+import { useEffect, useState } from 'react'
+import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType } from '@/lib/types'
+import { supabase } from '@/lib/supabase/client'
 import { fmtDatetime } from '@/lib/utils'
-import { Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 
 const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: string[]; obs: string }> = {
   Bolo: {
@@ -82,11 +83,140 @@ const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: 
   },
 }
 
+type ProfessionalProductTags = {
+  groups: ProductType[]
+  subgroups: string[]
+  variations: string[]
+}
+
+function parseProductsProduced(value: string | null | undefined) {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is ProductType => PRODUCT_GROUPS.includes(item as ProductType))
+    }
+  } catch {
+    // fallback para legado em texto livre
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item): item is ProductType => PRODUCT_GROUPS.includes(item as ProductType))
+}
+
+function parseStoredStringList(value: string[] | string | null | undefined) {
+  if (!value) return []
+
+  if (Array.isArray(value)) {
+    return value.map((item) => item.trim()).filter(Boolean)
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item).trim()).filter(Boolean)
+    }
+  } catch {
+    // fallback para legado em texto livre
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; iconName: string }> = {
   em_andamento:   { label: 'Em andamento',  color: 'text-amber-400 bg-amber-400/10 border-amber-400/30',        iconName: 'alert' },
   finalizado:     { label: 'Finalizado',    color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',  iconName: 'check' },
   cancelado:      { label: 'Cancelado',     color: 'text-rose-400 bg-rose-400/10 border-rose-400/30',           iconName: 'x' },
   nao_confirmado: { label: 'Não confirmado',color: 'text-gray-400 bg-gray-400/10 border-gray-400/30',           iconName: 'package' },
+}
+
+const ORDER_FORM_TAXONOMY: Record<ProductType, { subgroups: string[]; variations: string[] }> = {
+  Bolo: {
+    subgroups: ['Tradicional', 'Recheado', 'Decorado', 'Naked Cake', 'Mini bolo'],
+    variations: [
+      'Receita tradicional',
+      'Massa de chocolate',
+      'Recheio trufado',
+      'Cobertura de chantilly',
+      'Cobertura de ganache',
+      'Massa fofinha',
+      'Massa branca',
+      'Massa de cenoura',
+      'Toque cítrico',
+      'Finalização com granulado',
+      'Recheio de frutas vermelhas',
+      'Camadas duplas',
+      'Acabamento rústico',
+      'Decoração com drip',
+      'Borda artesanal',
+    ],
+  },
+  Doces: {
+    subgroups: ['Brigadeiros', 'Docinhos de festa', 'Doces finos', 'Sobremesas', 'Copinhos'],
+    variations: [
+      'Docinho tradicional',
+      'Coco ralado fino',
+      'Castanha triturada',
+      'Chocolate ao leite',
+      'Chocolate meio amargo',
+      'Creme de leite ninho',
+      'Maracujá cremoso',
+      'Morango fresco',
+      'Doce de leite cremoso',
+      'Nozes picadas',
+      'Pó dourado',
+      'Papel arroz',
+      'Acabamento premium',
+      'Recheio aerado',
+      'Bocado gourmet',
+    ],
+  },
+  Salgados: {
+    subgroups: ['Fritos', 'Assados', 'Mini porções', 'Gourmet', 'Kits de salgados'],
+    variations: [
+      'Salgado tradicional',
+      'Massa assada',
+      'Massa frita',
+      'Recheio de frango',
+      'Recheio de carne',
+      'Queijo cremoso',
+      'Catupiry',
+      'Temperinho caseiro',
+      'Empanado leve',
+      'Tamanho coquetel',
+      'Porção individual',
+      'Porção para cento',
+      'Finalização dourada',
+      'Serviço misto',
+      'Sabor intenso',
+    ],
+  },
+  Refeição: {
+    subgroups: ['Feijoadas', 'Tortas', 'Lasanhas', 'Pratos executivos', 'Pratos caseiros'],
+    variations: [
+      'Prato tradicional',
+      'Arroz temperado',
+      'Feijão encorpado',
+      'Molho caseiro',
+      'Proteína grelhada',
+      'Proteína desfiada',
+      'Acompanha salada',
+      'Acompanha farofa',
+      'Porção individual',
+      'Travessa familiar',
+      'Temperos suaves',
+      'Temperos marcantes',
+      'Montagem executiva',
+      'Pronto para aquecer',
+      'Serviço completo',
+    ],
+  },
 }
 
 function StatusIcon({ name }: { name: string }) {
@@ -198,46 +328,230 @@ function OrderDetailModal({ order, onClose }: { order: Order; onClose: () => voi
   )
 }
 
-function RegisterModal({ onClose }: { onClose: () => void }) {
+function RegisterModal({
+  onClose,
+  tags,
+}: {
+  onClose: () => void
+  tags: ProfessionalProductTags
+}) {
+  const allowedGroups = tags.groups.length > 0 ? tags.groups : PRODUCT_GROUPS
+  const fallbackGroup = allowedGroups[0] ?? PRODUCT_GROUPS[0]
+  const [productGroup, setProductGroup] = useState<ProductType>(fallbackGroup)
+  const [productSubgroup, setProductSubgroup] = useState(
+    tags.subgroups[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].subgroups[0],
+  )
+  const [productVariations, setProductVariations] = useState<string[]>([
+    tags.variations[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].variations[0],
+  ])
+
+  function getSubgroupOptions(group: ProductType) {
+    return tags.subgroups.length > 0 ? tags.subgroups : ORDER_FORM_TAXONOMY[group].subgroups
+  }
+
+  function getVariationOptions(group: ProductType) {
+    return tags.variations.length > 0 ? tags.variations : ORDER_FORM_TAXONOMY[group].variations
+  }
+
+  useEffect(() => {
+    if (!allowedGroups.includes(productGroup)) {
+      const nextGroup = allowedGroups[0] ?? PRODUCT_GROUPS[0]
+      const nextSubgroups = getSubgroupOptions(nextGroup)
+      const nextVariations = getVariationOptions(nextGroup)
+      setProductGroup(nextGroup)
+      setProductSubgroup(nextSubgroups[0] ?? '')
+      setProductVariations(nextVariations.length > 0 ? [nextVariations[0]] : [])
+    }
+  }, [allowedGroups, productGroup, tags.subgroups, tags.variations])
+
+  function handleGroupChange(nextGroup: ProductType) {
+    const nextSubgroups = getSubgroupOptions(nextGroup)
+    const nextVariations = getVariationOptions(nextGroup)
+    setProductGroup(nextGroup)
+    setProductSubgroup((current) => (nextSubgroups.includes(current) ? current : nextSubgroups[0] ?? ''))
+    setProductVariations((current) => {
+      const kept = current.filter((variation) => nextVariations.includes(variation))
+      return kept.length > 0 ? kept : nextVariations.length > 0 ? [nextVariations[0]] : []
+    })
+  }
+
+  function toggleVariation(variation: string) {
+    setProductVariations((current) =>
+      current.includes(variation)
+        ? current.filter((item) => item !== variation)
+        : [...current, variation],
+    )
+  }
+
+  const subgroupOptions = getSubgroupOptions(productGroup)
+  const variationOptions = getVariationOptions(productGroup)
+
+  useEffect(() => {
+    if (!subgroupOptions.includes(productSubgroup)) {
+      setProductSubgroup(subgroupOptions[0] ?? '')
+    }
+  }, [productSubgroup, subgroupOptions])
+
+  useEffect(() => {
+    if (variationOptions.length === 0) return
+
+    const hasValidSelection = productVariations.some((variation) => variationOptions.includes(variation))
+    if (!hasValidSelection) {
+      setProductVariations([variationOptions[0]])
+    }
+  }, [productVariations, variationOptions])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-gray-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <span className="font-bold text-white">Novo Pedido</span>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"><X className="h-5 w-5" /></button>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-lg bg-gray-900 border border-white/10 sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[88vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle bar (mobile only) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
-        <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 flex flex-col gap-1.5">
-              <label className="text-xs text-gray-400">Nome do cliente</label>
-              <input className="h-10 rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Ex: Ana Lima" />
-            </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 shrink-0">
+          <span className="font-bold text-white">Novo Pedido</span>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {/* Cliente */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400">Nome do cliente</label>
+            <input
+              className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Ex: Ana Lima"
+            />
+          </div>
+
+          {/* Grupo + Subgrupo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-400">Tipo de produto</label>
-              <select className="h-10 rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary">
-                <option>Bolo</option>
-                <option>Doces</option>
-                <option>Salgados</option>
-                <option>Refeição</option>
+              <select
+                value={productGroup}
+                onChange={e => handleGroupChange(e.target.value as ProductType)}
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {allowedGroups.map(group => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400">Subgrupo</label>
+              <select
+                value={productSubgroup}
+                onChange={e => setProductSubgroup(e.target.value)}
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {subgroupOptions.map(subgroup => (
+                  <option key={subgroup} value={subgroup}>{subgroup}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Variações */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400">Variações</label>
+            <details className="group rounded-lg border border-white/15 bg-black/40">
+              <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-100 list-none [&::-webkit-details-marker]:hidden">
+                <span>
+                  {productVariations.length > 0
+                    ? `${productVariations.length} variação(ões) selecionada(s)`
+                    : 'Selecione uma ou mais variações'}
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="max-h-48 overflow-y-auto border-t border-white/10 p-2">
+                {variationOptions.map((variation) => {
+                  const selected = productVariations.includes(variation)
+                  return (
+                    <label
+                      key={variation}
+                      className={`flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm transition ${
+                        selected ? 'bg-fuchsia-500/15 text-white' : 'text-gray-200 hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{variation}</span>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleVariation(variation)}
+                        className="h-4 w-4 rounded border-white/20 bg-black/40 text-fuchsia-500 focus:ring-fuchsia-500"
+                      />
+                    </label>
+                  )
+                })}
+              </div>
+            </details>
+          </div>
+
+          {/* Tags resumo */}
+          {(productVariations.length > 0) && (
+            <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-gray-400">Tags selecionadas</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary">{productGroup}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-200">{productSubgroup}</span>
+                {productVariations.map((variation) => (
+                  <span key={variation} className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-2.5 py-1 text-xs text-fuchsia-100">
+                    {variation}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pessoas + Data */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-400">Nº de pessoas</label>
-              <input type="number" className="h-10 rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="30" />
+              <input
+                type="number"
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="30"
+              />
             </div>
-            <div className="col-span-2 flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-400">Data e hora da entrega</label>
-              <input type="datetime-local" className="h-10 rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div className="col-span-2 flex flex-col gap-1.5">
-              <label className="text-xs text-gray-400">Observações</label>
-              <textarea rows={3} className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Alergias, preferências, detalhes de entrega..." />
+              <input
+                type="datetime-local"
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
           </div>
-          <div className="flex gap-2 pt-1">
-            <button onClick={onClose} className="flex-1 h-10 rounded-lg border border-white/15 text-sm text-gray-300 hover:bg-white/5 transition-colors">Cancelar</button>
-            <button onClick={onClose} className="flex-1 h-10 rounded-lg bg-primary hover:bg-primary/80 text-white text-sm font-semibold transition-colors">Cadastrar</button>
+
+          {/* Observações */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400">Observações</label>
+            <textarea
+              rows={3}
+              className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              placeholder="Alergias, preferências, detalhes de entrega..."
+            />
           </div>
+        </div>
+
+        {/* Footer fixo */}
+        <div className="shrink-0 flex gap-2 px-5 py-4 border-t border-white/10">
+          <button onClick={onClose} className="flex-1 h-11 rounded-lg border border-white/15 text-sm text-gray-300 hover:bg-white/5 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={onClose} className="flex-1 h-11 rounded-lg bg-primary hover:bg-primary/80 text-white text-sm font-semibold transition-colors">
+            Cadastrar
+          </button>
         </div>
       </div>
     </div>
@@ -255,6 +569,41 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<string>('todos')
   const [filterSubtype, setFilterSubtype] = useState<string>('todos')
+  const [professionalTags, setProfessionalTags] = useState<ProfessionalProductTags>({
+    groups: PRODUCT_GROUPS,
+    subgroups: [],
+    variations: [],
+  })
+
+  useEffect(() => {
+    let active = true
+
+    async function loadProfessionalTags() {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!active || !authData.user) return
+
+      const { data: profile } = await supabase
+        .from('festa-com-ia-professionals')
+        .select('products_produced,product_subgroups,product_variations')
+        .eq('auth_user_id', authData.user.id)
+        .maybeSingle()
+
+      if (!active) return
+
+      const selectedGroups = parseProductsProduced(profile?.products_produced)
+      setProfessionalTags({
+        groups: selectedGroups.length > 0 ? selectedGroups : PRODUCT_GROUPS,
+        subgroups: parseStoredStringList(profile?.product_subgroups),
+        variations: parseStoredStringList(profile?.product_variations),
+      })
+    }
+
+    void loadProfessionalTags()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const activeSubtypes = filterType !== 'todos'
     ? PRODUCT_SUBTYPES[filterType as ProductType]
@@ -283,7 +632,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
   return (
     <div className="space-y-5">
       {selected && <OrderDetailModal order={selected} onClose={() => setSelected(null)} />}
-      {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
+      {showRegister && <RegisterModal onClose={() => setShowRegister(false)} tags={professionalTags} />}
 
       <div>
         <h1 className="text-xl font-bold text-white">Pedidos</h1>

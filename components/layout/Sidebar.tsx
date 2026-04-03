@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, LayoutDashboard, ShoppingBag, Users, UserCircle2 } from 'lucide-react'
+import { LayoutGrid, LayoutDashboard, ShoppingBag, Tags, Users, UserCircle2 } from 'lucide-react'
 
 const items = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/painel', label: 'Painel', icon: LayoutGrid },
   { href: '/pedidos', label: 'Pedidos', icon: ShoppingBag },
   { href: '/clientes', label: 'Clientes', icon: Users },
+  { href: '/produtos', label: 'Produtos', icon: Tags },
   { href: '/perfil', label: 'Perfil', icon: UserCircle2 },
 ]
 

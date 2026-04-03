@@ -8,35 +8,11 @@ import { Header } from './Header'
 import { supabase } from '@/lib/supabase/client'
 
 type ProfileState = {
-  business_name: string | null
-  phone: string | null
-  products_produced: string | null
-}
-
-function parseProductsProduced(value: string | null | undefined) {
-  if (!value) return []
-
-  try {
-    const parsed = JSON.parse(value)
-    if (Array.isArray(parsed)) {
-      return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    }
-  } catch {
-    // fallback para legado em texto livre
-  }
-
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
+  onboarding_completed: boolean | null
 }
 
 function isProfileComplete(profile: ProfileState | null) {
-  return Boolean(
-    profile?.business_name?.trim() &&
-    profile.phone?.trim() &&
-    parseProductsProduced(profile.products_produced).length > 0,
-  )
+  return Boolean(profile?.onboarding_completed)
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -71,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       const { data: profile } = await supabase
         .from('festa-com-ia-professionals')
-        .select('business_name,phone,products_produced')
+        .select('onboarding_completed')
         .eq('auth_user_id', nextSession.user.id)
         .maybeSingle()
 

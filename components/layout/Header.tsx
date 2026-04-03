@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bell, Menu } from 'lucide-react'
+import { AppLogo } from '@/components/branding/AppLogo'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
 
 export function Header({
@@ -44,7 +45,14 @@ export function Header({
           <button className="lg:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-gray-800" onClick={onToggleSidebar} aria-label="Abrir menu">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-semibold">Festa com IA</span>
+          <AppLogo
+            variant="transparent"
+            href="/"
+            size={34}
+            label="Festa com IA"
+            className="rounded-xl px-1 py-0.5"
+            labelClassName="hidden text-sm font-semibold tracking-wide sm:inline"
+          />
         </div>
         <div className="flex items-center gap-4">
           <button className="relative rounded-md p-2 hover:bg-gray-800" aria-label="Notificações">

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { AppLogo } from '@/components/branding/AppLogo'
 import { Button } from '@/components/ui/button'
 
 type Mode = 'signin' | 'signup'
@@ -109,13 +110,14 @@ export default function LoginPage() {
 
             <div className="relative flex h-full flex-col justify-between gap-10">
               <div className="space-y-7">
-                <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-gray-200 shadow-lg shadow-fuchsia-950/20">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-fuchsia-400/70 opacity-60" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-fuchsia-400" />
-                  </span>
-                  Festa com IA
-                </div>
+                <AppLogo
+                  variant="white"
+                  href="/login"
+                  size={34}
+                  label="Festa com IA"
+                  className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 shadow-lg shadow-fuchsia-950/20"
+                  labelClassName="text-sm font-semibold tracking-wide text-gray-100"
+                />
 
                 <div className="max-w-2xl space-y-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.38em] text-fuchsia-300/90">

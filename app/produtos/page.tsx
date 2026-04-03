@@ -5,12 +5,38 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
 import { CheckCircle2, Plus, Trash2 } from 'lucide-react'
+import { PRODUCT_GROUPS, type ProductType } from '@/lib/types'
 
 type ProfileData = {
   id: string
   business_name: string | null
+  products_produced: string | null
   product_subgroups: string[] | null
   product_variations: string[] | null
+}
+
+type TagSuggestion = {
+  subgroups: string[]
+  variations: string[]
+}
+
+const PRODUCT_TAG_SUGGESTIONS: Record<ProductType, TagSuggestion> = {
+  Bolo: {
+    subgroups: ['Tradicional', 'Recheado', 'Decorado', 'Naked Cake', 'Mini bolo'],
+    variations: ['Chocolate', 'Red Velvet', 'Morango', 'Limão', 'Baunilha', 'Massa de cenoura'],
+  },
+  Doces: {
+    subgroups: ['Brigadeiros', 'Docinhos de festa', 'Doces finos', 'Sobremesas', 'Copinhos'],
+    variations: ['Brigadeiro', 'Beijinho', 'Bicho-de-pé', 'Cajuzinho', 'Palha Italiana', 'Doce de leite'],
+  },
+  Salgados: {
+    subgroups: ['Fritos', 'Assados', 'Mini porções', 'Gourmet', 'Kits de salgados'],
+    variations: ['Coxinha', 'Enroladinho', 'Mini-quiche', 'Kibe', 'Bolinha de Queijo', 'Empanado leve'],
+  },
+  Refeição: {
+    subgroups: ['Feijoadas', 'Tortas', 'Lasanhas', 'Pratos executivos', 'Pratos caseiros'],
+    variations: ['Feijoada', 'Lasanha', 'Prato executivo', 'Arroz carreteiro', 'Porção individual', 'Travessa familiar'],
+  },
 }
 
 function normalizeTag(value: string) {
@@ -21,6 +47,28 @@ function dedupeTags(values: string[]) {
   return Array.from(new Set(values.map(normalizeTag).filter(Boolean)))
 }
 
+function parseProductsProduced(value: string | null | undefined) {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    }
+  } catch {
+    // fallback para legado em texto livre
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function isProductType(value: string): value is ProductType {
+  return PRODUCT_GROUPS.includes(value as ProductType)
+}
+
 export default function ProdutosPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -28,6 +76,7 @@ export default function ProdutosPage() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [professionalId, setProfessionalId] = useState('')
   const [businessName, setBusinessName] = useState('')
+  const [productsProduced, setProductsProduced] = useState<ProductType[]>([])
   const [subgroupInput, setSubgroupInput] = useState('')
   const [variationInput, setVariationInput] = useState('')
   const [subgroups, setSubgroups] = useState<string[]>([])
@@ -51,7 +100,7 @@ export default function ProdutosPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('festa-com-ia-professionals')
-        .select('id,business_name,product_subgroups,product_variations')
+        .select('id,business_name,products_produced,product_subgroups,product_variations')
         .eq('auth_user_id', authData.user.id)
         .maybeSingle<ProfileData>()
 
@@ -68,6 +117,7 @@ export default function ProdutosPage() {
 
       setProfessionalId(profile.id)
       setBusinessName(profile.business_name ?? '')
+      setProductsProduced(parseProductsProduced(profile.products_produced).filter(isProductType))
       setSubgroups(dedupeTags(profile.product_subgroups ?? []))
       setVariations(dedupeTags(profile.product_variations ?? []))
       setLoading(false)
@@ -100,6 +150,14 @@ export default function ProdutosPage() {
 
   function removeVariation(tag: string) {
     setVariations((current) => current.filter((item) => item !== tag))
+  }
+
+  function addSuggestedSubgroup(tag: string) {
+    setSubgroups((current) => dedupeTags([...current, tag]))
+  }
+
+  function addSuggestedVariation(tag: string) {
+    setVariations((current) => dedupeTags([...current, tag]))
   }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -171,6 +229,80 @@ export default function ProdutosPage() {
                 <p className="mt-1 text-gray-300/90">
                   O modal de novo pedido consulta esses campos para montar os dropdowns de subgrupo e variação.
                 </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-white">Sugestões baseadas nos seus grupos</p>
+                    <p className="mt-1 text-gray-300/90">Clique em uma sugestão para incluir no cadastro.</p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
+                    {productsProduced.length > 0 ? `${productsProduced.length} grupos cadastrados` : 'Usando grupos padrão'}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  {(productsProduced.length > 0 ? productsProduced : PRODUCT_GROUPS).map((group) => {
+                    const suggestion = PRODUCT_TAG_SUGGESTIONS[group]
+
+                    return (
+                      <div key={group} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-white">{group}</p>
+                            <p className="text-xs text-gray-400">Subgrupos e variações mais usados</p>
+                          </div>
+                          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gray-400">
+                            Sugestão
+                          </span>
+                        </div>
+
+                        <div className="mt-4 space-y-4">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Subgrupos</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {suggestion.subgroups.map((tag) => {
+                                const selected = subgroups.includes(tag)
+
+                                return (
+                                  <button
+                                    key={`${group}-subgroup-${tag}`}
+                                    type="button"
+                                    onClick={() => addSuggestedSubgroup(tag)}
+                                    className={`rounded-full border px-3 py-1 text-xs transition ${selected ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100' : 'border-white/10 bg-black/20 text-gray-200 hover:bg-white/10'}`}
+                                  >
+                                    {tag}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Variações</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {suggestion.variations.map((tag) => {
+                                const selected = variations.includes(tag)
+
+                                return (
+                                  <button
+                                    key={`${group}-variation-${tag}`}
+                                    type="button"
+                                    onClick={() => addSuggestedVariation(tag)}
+                                    className={`rounded-full border px-3 py-1 text-xs transition ${selected ? 'border-violet-400/30 bg-violet-500/10 text-violet-100' : 'border-white/10 bg-black/20 text-gray-200 hover:bg-white/10'}`}
+                                  >
+                                    {tag}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>

@@ -205,7 +205,7 @@ export default function ProdutosPage() {
               </div>
 
               <div className="space-y-3">
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Subgrupos e variações</h1>
+                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Linhas e variações</h1>
                 <p className="max-w-xl text-sm leading-6 text-gray-200/80 sm:text-base">
                   Cadastre as tags que serão usadas no formulário de novo pedido. Essas opções ficam salvas por profissional e podem ser ajustadas a qualquer momento.
                 </p>
@@ -231,7 +231,7 @@ export default function ProdutosPage() {
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-medium text-white">{group}</p>
-                            <p className="text-xs text-gray-400">Subgrupos e variações mais usados</p>
+                            <p className="text-xs text-gray-400">Linhas e variações mais usadas</p>
                           </div>
                           <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gray-400">
                             Sugestão
@@ -240,7 +240,7 @@ export default function ProdutosPage() {
 
                         <div className="mt-4 space-y-4">
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Subgrupos</p>
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Linhas</p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {suggestion.subgroups.map((tag) => {
                                 const selected = subgroups.includes(tag)
@@ -293,7 +293,7 @@ export default function ProdutosPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-semibold text-white">Subgrupos</h2>
+                      <h2 className="text-base font-semibold text-white">Linhas</h2>
                       <p className="text-xs text-gray-400">Ex: Brigadeiros, Tortas, Feijoadas.</p>
                     </div>
                     <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-gray-300">{subgroups.length}</span>
@@ -310,7 +310,7 @@ export default function ProdutosPage() {
                         }
                       }}
                       className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
-                      placeholder="Adicionar subgrupo"
+                      placeholder="Adicionar linha"
                     />
                     <button
                       type="button"
@@ -332,7 +332,7 @@ export default function ProdutosPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-gray-400">Nenhum subgrupo cadastrado.</span>
+                      <span className="text-sm text-gray-400">Nenhuma linha cadastrada.</span>
                     )}
                   </div>
                 </div>

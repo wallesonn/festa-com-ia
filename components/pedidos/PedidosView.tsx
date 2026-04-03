@@ -434,7 +434,7 @@ function RegisterModal({
             />
           </div>
 
-          {/* Grupo + Subgrupo */}
+          {/* Grupo + Linha */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-gray-400">Tipo de produto</label>
@@ -449,7 +449,7 @@ function RegisterModal({
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-gray-400">Subgrupo</label>
+              <label className="text-xs text-gray-400">Linha</label>
               <select
                 value={productSubgroup}
                 onChange={e => setProductSubgroup(e.target.value)}

@@ -285,7 +285,7 @@ export default function PerfilPage() {
                   })}
                 </div>
                 <p className="text-xs text-gray-400">
-                  Selecione apenas os grupos que você produz. Os subgrupos e variações serão usados depois como tags nos pedidos.
+                  Selecione apenas os grupos que você produz. As linhas e variações serão usadas depois como tags nos pedidos.
                 </p>
               </div>
 

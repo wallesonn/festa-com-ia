@@ -27,7 +27,7 @@ const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: 
     obs: 'Rendimento: 12–16 fatias. Conservar refrigerado por até 3 dias.',
   },
   Doces: {
-    emoji: '🍬',
+    emoji: '🧁',
     ingredients: [
       '1 lata de leite condensado (395g)', '3 colheres (sopa) de cacau em pó',
       '1 colher (sopa) de manteiga sem sal', '200g de chocolate granulado',
@@ -62,7 +62,7 @@ const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: 
     obs: 'Rendimento conforme pedido. Servir morno.',
   },
   'Refeição': {
-    emoji: '�',
+    emoji: '🍽',
     ingredients: [
       '1 kg de feijão ou massa principal da receita',
       '500g de proteína principal (carne, frango ou mix)',
@@ -611,97 +611,115 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-4xl space-y-6">
       {selected && <OrderDetailModal order={selected} onClose={() => setSelected(null)} />}
       {showRegister && <RegisterModal onClose={() => setShowRegister(false)} tags={professionalTags} />}
 
-      <div>
-        <h1 className="text-xl font-bold text-white">Pedidos</h1>
-        <p className="text-sm text-gray-400">{orders.length} pedidos no total</p>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {([
-          ['todos',     'Todos',     '🎊'],
-          ['Bolo',      'Bolos',     '🎂'],
-          ['Doces',     'Doces',     '🍬'],
-          ['Salgados',  'Salgados',  '🥐'],
-          ['Refeição',  'Refeição',  '�'],
-        ] as const).map(([key, label, emoji]) => (
-          <button
-            key={key}
-            onClick={() => handleTypeChange(key)}
-            className={`shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
-              filterType === key
-                ? 'bg-primary/20 border-primary/50 text-primary'
-                : 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
-            }`}
-          >
-            <span>{emoji}</span>
-            {label}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterType === key ? 'bg-primary/30' : 'bg-white/10'}`}>
-              {counts[key]}
+      {/* Header */}
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl">
+        <div className="relative overflow-hidden bg-gradient-to-br from-fuchsia-500/20 via-white/5 to-violet-500/15 p-6 sm:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_42%)]" />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-200">
+                Gestão de pedidos
+              </div>
+              <h1 className="text-3xl font-semibold text-white sm:text-4xl">Pedidos</h1>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-400">
+              {orders.length} pedido{orders.length !== 1 ? 's' : ''}
             </span>
-          </button>
-        ))}
-      </div>
-
-      {activeSubtypes.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <button
-            onClick={() => setFilterSubtype('todos')}
-            className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-colors border ${
-              filterSubtype === 'todos'
-                ? 'bg-white/15 border-white/30 text-white'
-                : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
-            }`}
-          >
-            Todos os subtipos
-          </button>
-          {activeSubtypes.map(sub => {
-            const subCount = orders.filter(o => o.productType === filterType && o.productSubtype === sub).length
-            return (
-              <button
-                key={sub}
-                onClick={() => setFilterSubtype(sub)}
-                className={`shrink-0 flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium transition-colors border ${
-                  filterSubtype === sub
-                    ? 'bg-white/15 border-white/30 text-white'
-                    : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
-                }`}
-              >
-                {sub}
-                <span className={`text-[10px] px-1 py-0.5 rounded-full ${filterSubtype === sub ? 'bg-white/20' : 'bg-white/10'}`}>{subCount}</span>
-              </button>
-            )
-          })}
+          </div>
         </div>
-      )}
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por cliente ou produto..."
-          className="w-full h-10 rounded-xl border border-white/10 bg-black/30 pl-9 pr-4 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
-        />
       </div>
 
+      {/* Filters + Search */}
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl px-5 py-4 space-y-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {([
+            ['todos',    'Todos',    '🎊'],
+            ['Bolo',     'Bolos',    '🎂'],
+            ['Doces',    'Doces',    '🧁'],
+            ['Salgados', 'Salgados', '🥐'],
+            ['Refeição', 'Refeição', '🍽'],
+          ] as const).map(([key, label, emoji]) => (
+            <button
+              key={key}
+              onClick={() => handleTypeChange(key)}
+              className={`shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
+                filterType === key
+                  ? 'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200'
+                  : 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
+              }`}
+            >
+              <span>{emoji}</span>
+              {label}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterType === key ? 'bg-fuchsia-500/30' : 'bg-white/10'}`}>
+                {counts[key]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {activeSubtypes.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setFilterSubtype('todos')}
+              className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-colors border ${
+                filterSubtype === 'todos'
+                  ? 'bg-white/15 border-white/30 text-white'
+                  : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+              }`}
+            >
+              Todos os subtipos
+            </button>
+            {activeSubtypes.map(sub => {
+              const subCount = orders.filter(o => o.productType === filterType && o.productSubtype === sub).length
+              return (
+                <button
+                  key={sub}
+                  onClick={() => setFilterSubtype(sub)}
+                  className={`shrink-0 flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium transition-colors border ${
+                    filterSubtype === sub
+                      ? 'bg-white/15 border-white/30 text-white'
+                      : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                  }`}
+                >
+                  {sub}
+                  <span className={`text-[10px] px-1 py-0.5 rounded-full ${filterSubtype === sub ? 'bg-white/20' : 'bg-white/10'}`}>{subCount}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por cliente ou produto..."
+            className="w-full h-10 rounded-xl border border-white/10 bg-black/30 pl-9 pr-4 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/50"
+          />
+        </div>
+      </div>
+
+      {/* Order grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <button
           onClick={() => setShowRegister(true)}
-          className="card flex flex-col items-center justify-center gap-3 p-5 min-h-[140px] border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors group cursor-pointer"
+          className="flex flex-col items-center justify-center gap-3 p-5 min-h-[160px] overflow-hidden rounded-2xl border-2 border-dashed border-fuchsia-400/30 bg-white/3 backdrop-blur-xl hover:border-fuchsia-400/60 hover:bg-fuchsia-500/5 transition-all group cursor-pointer"
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-dashed border-primary/50 group-hover:border-primary transition-colors">
-            <Plus className="h-6 w-6 text-primary/60 group-hover:text-primary transition-colors" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-dashed border-fuchsia-400/40 group-hover:border-fuchsia-400/80 transition-colors">
+            <Plus className="h-6 w-6 text-fuchsia-400/50 group-hover:text-fuchsia-300 transition-colors" />
           </div>
-          <span className="text-sm font-medium text-primary/60 group-hover:text-primary transition-colors">Novo Pedido</span>
+          <span className="text-sm font-medium text-fuchsia-400/60 group-hover:text-fuchsia-300 transition-colors">Novo Pedido</span>
         </button>
 
         {filtered.length === 0 && (
           <div className="col-span-full text-center py-16 text-gray-500">Nenhum pedido encontrado.</div>
         )}
+
         {filtered.map(o => {
           const recipe = RECIPE_MAP[o.productType] ?? RECIPE_MAP['Bolo']
           const status = STATUS_CONFIG[o.status]
@@ -709,10 +727,10 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
             <div
               key={o.id}
               onClick={() => setSelected(o)}
-              className="p-4 flex flex-col gap-3 cursor-pointer transition-colors group min-h-[140px] rounded-xl border border-violet-500/20 bg-violet-900/30 hover:bg-violet-800/40"
+              className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 flex flex-col gap-3 cursor-pointer hover:bg-white/8 hover:border-white/20 transition-all min-h-[160px]"
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-xl shrink-0">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-400/20 text-xl shrink-0">
                   {recipe.emoji}
                 </div>
                 <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${status?.color}`}>
@@ -727,7 +745,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-gray-500 border-t border-white/5 pt-2">
+              <div className="flex items-center justify-between text-[11px] text-gray-500 border-t border-white/10 pt-2">
                 <span className="flex items-center gap-1"><Users className="h-3 w-3" />{o.peopleCount}</span>
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{fmtDatetime(o.deliveryDatetime)}</span>
               </div>

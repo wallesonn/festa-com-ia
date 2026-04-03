@@ -81,52 +81,65 @@ export default async function DashboardPage() {
   }).length
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
+
+      {/* Header */}
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+        <div className="relative overflow-hidden bg-gradient-to-br from-fuchsia-500/20 via-white/5 to-violet-500/15 p-6 sm:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_42%)]" />
+          <div className="relative space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-200">
+              Visão geral
+            </div>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Dashboard</h1>
+          </div>
+        </div>
+      </div>
 
       {/* Ticker de atividade */}
       <ActivityTicker />
 
       {/* Métricas principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-4 flex flex-col gap-3">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400 uppercase tracking-wide">Mensagens hoje</span>
-            <div className="p-1.5 rounded-lg bg-blue-500/20"><MessageCircle className="h-4 w-4 text-blue-400" /></div>
+            <div className="p-1.5 rounded-xl border border-blue-500/20 bg-blue-500/15"><MessageCircle className="h-4 w-4 text-blue-400" /></div>
           </div>
-          <div className="text-3xl font-bold">{messagesToday || 7}</div>
+          <div className="text-3xl font-bold text-white">{messagesToday || 7}</div>
           <div className="flex items-center gap-1 text-xs text-emerald-400">
             <TrendingUp className="h-3 w-3" /> +12% vs ontem
           </div>
         </div>
 
-        <div className="card p-4 flex flex-col gap-3">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400 uppercase tracking-wide">Em andamento</span>
-            <div className="p-1.5 rounded-lg bg-amber-500/20"><ShoppingBag className="h-4 w-4 text-amber-400" /></div>
+            <div className="p-1.5 rounded-xl border border-amber-500/20 bg-amber-500/15"><ShoppingBag className="h-4 w-4 text-amber-400" /></div>
           </div>
-          <div className="text-3xl font-bold">{inProgress || 8}</div>
+          <div className="text-3xl font-bold text-white">{inProgress || 8}</div>
           <div className="flex items-center gap-1 text-xs text-amber-400">
             <Clock className="h-3 w-3" /> 3 entregam hoje
           </div>
         </div>
 
-        <div className="card p-4 flex flex-col gap-3">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400 uppercase tracking-wide">Finalizados (mês)</span>
-            <div className="p-1.5 rounded-lg bg-emerald-500/20"><CheckCircle className="h-4 w-4 text-emerald-400" /></div>
+            <div className="p-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/15"><CheckCircle className="h-4 w-4 text-emerald-400" /></div>
           </div>
-          <div className="text-3xl font-bold">{finished || 42}</div>
+          <div className="text-3xl font-bold text-white">{finished || 42}</div>
           <div className="flex items-center gap-1 text-xs text-emerald-400">
             <TrendingUp className="h-3 w-3" /> +8% vs mês anterior
           </div>
         </div>
 
-        <div className="card p-4 flex flex-col gap-3">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400 uppercase tracking-wide">Novos clientes</span>
-            <div className="p-1.5 rounded-lg bg-pink-500/20"><Users className="h-4 w-4 text-pink-400" /></div>
+            <div className="p-1.5 rounded-xl border border-pink-500/20 bg-pink-500/15"><Users className="h-4 w-4 text-pink-400" /></div>
           </div>
-          <div className="text-3xl font-bold">{newClients || 9}</div>
+          <div className="text-3xl font-bold text-white">{newClients || 9}</div>
           <div className="flex items-center gap-1 text-xs text-rose-400">
             <TrendingDown className="h-3 w-3" /> -3% vs semana anterior
           </div>
@@ -136,9 +149,8 @@ export default async function DashboardPage() {
       {/* Status + Top Produtos + Próximas Entregas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        {/* Status dos Pedidos */}
-        <div className="card p-4">
-          <div className="mb-4 font-semibold">Status dos Pedidos</div>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 font-semibold text-white">Status dos Pedidos</div>
           <div className="space-y-3">
             {orderStatusData.map(s => (
               <div key={s.label}>
@@ -158,9 +170,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Top Produtos */}
-        <div className="card p-4">
-          <div className="mb-4 flex items-center gap-2 font-semibold">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 flex items-center gap-2 font-semibold text-white">
             <Star className="h-4 w-4 text-amber-400" /> Top Produtos
           </div>
           <div className="space-y-3">
@@ -181,14 +192,13 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Próximas Entregas */}
-        <div className="card p-4">
-          <div className="mb-4 flex items-center gap-2 font-semibold">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 flex items-center gap-2 font-semibold text-white">
             <Package className="h-4 w-4 text-violet-400" /> Próximas Entregas
           </div>
           <div className="space-y-2">
             {upcoming.map((d, i) => (
-              <div key={i} className={`flex items-start gap-3 p-2.5 rounded-lg ${d.urgent ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-white/5'}`}>
+              <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${d.urgent ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-white/5 border border-white/5'}`}>
                 <div className={`mt-0.5 shrink-0 h-2 w-2 rounded-full ${d.urgent ? 'bg-rose-400' : 'bg-gray-500'}`} />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-gray-100 truncate">{d.client}</div>
@@ -204,13 +214,13 @@ export default async function DashboardPage() {
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card p-4">
-          <div className="mb-4 font-semibold">Pedidos por dia (semana atual)</div>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 font-semibold text-white">Pedidos por dia (semana atual)</div>
           <SimpleBarChart labels={['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']} values={[4, 6, 5, 8, 7, 3, 2]} />
         </div>
 
-        <div className="card p-4">
-          <div className="mb-4 font-semibold">Receita estimada (últimos 6 meses)</div>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 font-semibold text-white">Receita estimada (últimos 6 meses)</div>
           <SimpleBarChart labels={['Out','Nov','Dez','Jan','Fev','Mar']} values={[3200, 4100, 6800, 3900, 4500, 5200]} />
           <div className="mt-4 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
             <div>

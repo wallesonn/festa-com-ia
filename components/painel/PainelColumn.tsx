@@ -104,11 +104,11 @@ export function PainelColumn({ id, title, count, itemIds, children }: PainelColu
           )}
           <span className="text-sm font-semibold text-gray-100">{title}</span>
         </div>
-        <span className="text-xs text-gray-400 bg-gray-800 rounded-full px-2 py-0.5">{count}</span>
+        <span className="text-xs text-gray-400 rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{count}</span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 rounded-lg border p-2 min-h-[40vh] max-h-[calc(100vh-220px)] overflow-y-auto space-y-3 transition-colors ${isOver ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}
+        className={`flex-1 rounded-2xl border p-2 min-h-[40vh] max-h-[calc(100vh-260px)] overflow-y-auto space-y-3 transition-colors ${isOver ? 'border-fuchsia-400/50 bg-fuchsia-500/5' : 'border-white/10 bg-white/5'}`}
       >
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           {children}

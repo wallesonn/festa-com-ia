@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Order, PainelStatus } from '@/lib/types'
-import { urgencyBgClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
+import { urgencyLevel, fmtDatetime, fmtTimeShort } from '@/lib/utils'
 import { generateSuggestions } from '@/lib/mockData'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
 import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
@@ -24,12 +24,14 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const [replyOpen, setReplyOpen] = useState(true)
   const suggestions = generateSuggestions(order.lastMessage)
-  const bg =
-    order.painelStatus === 'atendimento'
-      ? 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-white'
-      : order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
-        ? 'bg-gray-900/90 border border-white/10'
-        : urgencyBgClass(order.deliveryDatetime)
+  const urgencyBorder = (() => {
+    if (order.painelStatus === 'atendimento') return 'border-l-[5px] border-l-white/60'
+    if (order.painelStatus === 'entregue' || order.painelStatus === 'cancelado') return ''
+    const level = urgencyLevel(order.deliveryDatetime)
+    if (level === 'vermelho') return 'border-l-[5px] border-l-rose-500'
+    if (level === 'laranja') return 'border-l-[5px] border-l-amber-400'
+    return 'border-l-[5px] border-l-emerald-400'
+  })()
 
   const isLast = order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
   const isCancelled = order.painelStatus === 'cancelado'
@@ -59,7 +61,7 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border p-3 space-y-2.5 ${bg} ${isDragging ? 'shadow-2xl ring-2 ring-primary' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`rounded-xl border border-white/10 bg-white/5 p-3 space-y-2.5 ${urgencyBorder} ${isDragging ? 'shadow-2xl ring-2 ring-fuchsia-400/50' : ''}`}>
       {/* Drag handle + header */}
       <div className="flex items-center gap-2">
         <button
@@ -108,7 +110,7 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
               <button
                 key={i}
                 onClick={() => setReply(sug)}
-                className="text-left text-xs px-3 py-2 rounded-lg bg-black/50 active:bg-black/70 text-white/90 truncate transition-colors min-h-[36px]"
+                className="text-left text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:bg-white/15 text-white/90 truncate transition-colors min-h-[36px]"
               >
                 {sug}
               </button>
@@ -133,12 +135,12 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
               onChange={e => setReply(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
               placeholder="Responder..."
-              className="flex-1 h-10 rounded-lg border border-white/20 bg-black/60 px-3 text-sm text-gray-100 placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/50"
             />
             <button
               onClick={handleSend}
               aria-label="Enviar"
-              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/80 active:bg-primary/60 text-white transition-colors"
+              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-violet-500 hover:from-fuchsia-400 hover:to-violet-400 text-white transition-all"
             >
               <Send className="h-4 w-4" />
             </button>

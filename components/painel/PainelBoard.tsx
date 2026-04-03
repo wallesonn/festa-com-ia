@@ -111,20 +111,30 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-        <h1 className="text-lg font-semibold text-gray-100">Painel</h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
-          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-rose-500" /> Urgente &lt;2h</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-400" /> Próximo 2–24h</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500" /> Agendado &gt;24h</span>
+    <div className="space-y-6">
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+        <div className="relative overflow-hidden bg-gradient-to-br from-fuchsia-500/20 via-white/5 to-violet-500/15 p-6 sm:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_42%)]" />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-200">
+                Gestão de pedidos
+              </div>
+              <h1 className="text-3xl font-semibold text-white sm:text-4xl">Painel</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-rose-200"><span className="inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0" /> Urgente &lt;2h</span>
+              <span className="flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-amber-200"><span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" /> Próximo 2–24h</span>
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-emerald-200"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" /> Agendado &gt;24h</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="relative">
         <button
           onClick={() => scrollKanban('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-r-xl bg-gray-900/90 hover:bg-gray-800 active:bg-gray-700 text-gray-100 shadow-xl transition-colors"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-r-xl border border-white/10 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-gray-100 shadow-xl transition-colors"
           aria-label="Rolar para esquerda"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -132,7 +142,7 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
 
         <button
           onClick={() => scrollKanban('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-l-xl bg-gray-900/90 hover:bg-gray-800 active:bg-gray-700 text-gray-100 shadow-xl transition-colors"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-l-xl border border-white/10 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-gray-100 shadow-xl transition-colors"
           aria-label="Rolar para direita"
         >
           <ChevronRightIcon className="h-5 w-5" />

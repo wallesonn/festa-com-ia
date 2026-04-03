@@ -211,26 +211,6 @@ export default function ProdutosPage() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { label: 'Empresa', value: businessName || 'Sem nome cadastrado' },
-                  { label: 'Subgrupos', value: `${subgroups.length}` },
-                  { label: 'Variações', value: `${variations.length}` },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-gray-200">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gray-400">{item.label}</p>
-                    <p className="mt-1 font-medium text-white">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
-                <p className="font-medium text-white">Como isso é usado</p>
-                <p className="mt-1 text-gray-300/90">
-                  O modal de novo pedido consulta esses campos para montar os dropdowns de subgrupo e variação.
-                </p>
-              </div>
-
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>

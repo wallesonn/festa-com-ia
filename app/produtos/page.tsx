@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
@@ -160,33 +160,39 @@ export default function ProdutosPage() {
     setVariations((current) => dedupeTags([...current, tag]))
   }
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!professionalId) return
+  async function handleSave() {
+    if (!professionalId) {
+      setError('ID do profissional não encontrado. Recarregue a página.')
+      return
+    }
 
     setSaving(true)
     setError(null)
     setFeedback(null)
 
-    const payload = {
-      product_subgroups: dedupeTags(subgroups),
-      product_variations: dedupeTags(variations),
-      updated_at: new Date().toISOString(),
-    }
+    try {
+      const payload = {
+        product_subgroups: dedupeTags(subgroups),
+        product_variations: dedupeTags(variations),
+        updated_at: new Date().toISOString(),
+      }
 
-    const { error: updateError } = await supabase
-      .from('festa-com-ia-professionals')
-      .update(payload)
-      .eq('id', professionalId)
+      const { error: updateError } = await supabase
+        .from('festa-com-ia-professionals')
+        .update(payload)
+        .eq('id', professionalId)
 
-    if (updateError) {
-      setError(updateError.message)
+      if (updateError) {
+        setError(updateError.message)
+        return
+      }
+
+      setFeedback('Tags salvas com sucesso.')
+    } catch {
+      setError('Erro ao salvar. Verifique a conexão e tente novamente.')
+    } finally {
       setSaving(false)
-      return
     }
-
-    setFeedback('Tags salvas com sucesso.')
-    setSaving(false)
   }
 
   if (loading) {
@@ -288,7 +294,7 @@ export default function ProdutosPage() {
           </div>
 
           <div className="p-6 sm:p-8">
-            <form onSubmit={handleSave} className="space-y-5">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
               <div className="grid gap-5">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
@@ -400,7 +406,8 @@ export default function ProdutosPage() {
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={handleSave}
                   className="h-12 rounded-2xl border border-white/10 bg-gradient-to-r from-fuchsia-500 via-fuchsia-500 to-violet-500 px-5 text-base shadow-[0_18px_50px_rgba(168,85,247,0.35)] transition-transform duration-300 hover:scale-[1.01]"
                   disabled={saving}
                 >

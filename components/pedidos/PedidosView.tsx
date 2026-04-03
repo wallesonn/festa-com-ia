@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { createOrder, deleteOrder } from '@/app/pedidos/actions'
 import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
 import { fmtDatetime } from '@/lib/utils'
-import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react'
 
 const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: string[]; obs: string }> = {
   Bolo: {
@@ -205,10 +206,22 @@ function StatusIcon({ name }: { name: string }) {
   return <Package className="h-3.5 w-3.5" />
 }
 
-function OrderDetailModal({ order, onClose }: { order: Order; onClose: () => void }) {
+function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; onClose: () => void; onOrderDeleted: (id: string) => void }) {
   const recipe = RECIPE_MAP[order.productType] ?? RECIPE_MAP['Bolo']
   const status = STATUS_CONFIG[order.status]
   const [tab, setTab] = useState<'info' | 'receita'>('info')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    const result = await deleteOrder(order.id)
+    setDeleting(false)
+    if (result.success) {
+      onOrderDeleted(order.id)
+      onClose()
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -221,9 +234,26 @@ function OrderDetailModal({ order, onClose }: { order: Order; onClose: () => voi
               <div className="text-xs text-gray-400">{order.productType} · {order.peopleCount} pessoas</div>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {confirmDelete ? (
+              <>
+                <span className="text-xs text-rose-400">Confirmar exclusão?</span>
+                <button onClick={handleDelete} disabled={deleting} className="text-xs px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-semibold transition-colors disabled:opacity-50">
+                  {deleting ? 'Deletando…' : 'Sim'}
+                </button>
+                <button onClick={() => setConfirmDelete(false)} className="text-xs px-2.5 py-1 rounded-lg border border-white/15 text-gray-300 hover:bg-white/5 transition-colors">
+                  Não
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex border-b border-white/10">
@@ -310,9 +340,11 @@ function OrderDetailModal({ order, onClose }: { order: Order; onClose: () => voi
 function RegisterModal({
   onClose,
   tags,
+  onOrderCreated,
 }: {
   onClose: () => void
   tags: ProfessionalProductTags
+  onOrderCreated: (order: Order) => void
 }) {
   const allowedGroups = tags.groups.length > 0 ? tags.groups : PRODUCT_GROUPS
   const fallbackGroup = allowedGroups[0] ?? PRODUCT_GROUPS[0]
@@ -323,6 +355,45 @@ function RegisterModal({
   const [productVariations, setProductVariations] = useState<string[]>([
     (tags.variations[fallbackGroup] ?? [])[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].variations[0],
   ])
+
+  const [clientName, setClientName] = useState('')
+  const [clientPhone, setClientPhone] = useState('')
+  const [peopleCount, setPeopleCount] = useState('')
+  const [deliveryDatetime, setDeliveryDatetime] = useState('')
+  const [observations, setObservations] = useState('')
+  const [totalPrice, setTotalPrice] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('pix')
+  const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  async function handleSubmit() {
+    if (!clientName.trim() || !clientPhone.trim()) {
+      setErrorMsg('Preencha o nome e o telefone do cliente.')
+      return
+    }
+    setSaving(true)
+    setErrorMsg(null)
+    const result = await createOrder({
+      clientName: clientName.trim(),
+      clientPhone: clientPhone.trim(),
+      productType: productGroup,
+      productSubtype: productVariations.length > 0
+        ? `${productSubgroup} · ${productVariations.join(', ')}`
+        : productSubgroup,
+      observations: observations.trim(),
+      peopleCount: Number(peopleCount) || 0,
+      deliveryDatetime,
+      totalPrice: Number(totalPrice) || 0,
+      paymentMethod,
+    })
+    setSaving(false)
+    if (result.success) {
+      onOrderCreated(result.order)
+      onClose()
+    } else {
+      setErrorMsg(result.error)
+    }
+  }
 
   function getSubgroupOptions(group: ProductType) {
     const fromProfessional = tags.subgroups[group] ?? []
@@ -407,12 +478,25 @@ function RegisterModal({
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           {/* Cliente */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-400">Nome do cliente</label>
-            <input
-              className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Ex: Ana Lima"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400">Nome do cliente</label>
+              <input
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Ex: Ana Lima"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400">Telefone (WhatsApp)</label>
+              <input
+                value={clientPhone}
+                onChange={e => setClientPhone(e.target.value)}
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Ex: 11999998888"
+              />
+            </div>
           </div>
 
           {/* Grupo + Linha */}
@@ -501,6 +585,8 @@ function RegisterModal({
               <label className="text-xs text-gray-400">Nº de pessoas</label>
               <input
                 type="number"
+                value={peopleCount}
+                onChange={e => setPeopleCount(e.target.value)}
                 className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="30"
               />
@@ -509,6 +595,8 @@ function RegisterModal({
               <label className="text-xs text-gray-400">Data e hora da entrega</label>
               <input
                 type="datetime-local"
+                value={deliveryDatetime}
+                onChange={e => setDeliveryDatetime(e.target.value)}
                 className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -519,20 +607,57 @@ function RegisterModal({
             <label className="text-xs text-gray-400">Observações</label>
             <textarea
               rows={3}
+              value={observations}
+              onChange={e => setObservations(e.target.value)}
               className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               placeholder="Alergias, preferências, detalhes de entrega..."
             />
           </div>
+
+          {/* Valor + Pagamento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400">Valor total (R$)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={totalPrice}
+                onChange={e => setTotalPrice(e.target.value)}
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="0,00"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400">Forma de pagamento</label>
+              <select
+                value={paymentMethod}
+                onChange={e => setPaymentMethod(e.target.value)}
+                className="h-10 w-full rounded-lg border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="pix">Pix</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="cartao_credito">Cartão de crédito</option>
+                <option value="cartao_debito">Cartão de débito</option>
+                <option value="transferencia">Transferência</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Footer fixo */}
-        <div className="shrink-0 flex gap-2 px-5 py-4 border-t border-white/10">
-          <button onClick={onClose} className="flex-1 h-11 rounded-lg border border-white/15 text-sm text-gray-300 hover:bg-white/5 transition-colors">
-            Cancelar
-          </button>
-          <button onClick={onClose} className="flex-1 h-11 rounded-lg bg-primary hover:bg-primary/80 text-white text-sm font-semibold transition-colors">
-            Cadastrar
-          </button>
+        <div className="shrink-0 px-5 py-4 border-t border-white/10 space-y-3">
+          {errorMsg && (
+            <p className="text-xs text-rose-400 text-center">{errorMsg}</p>
+          )}
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={saving} className="flex-1 h-11 rounded-lg border border-white/15 text-sm text-gray-300 hover:bg-white/5 transition-colors disabled:opacity-50">
+              Cancelar
+            </button>
+            <button onClick={handleSubmit} disabled={saving} className="flex-1 h-11 rounded-lg bg-primary hover:bg-primary/80 text-white text-sm font-semibold transition-colors disabled:opacity-50">
+              {saving ? 'Salvando…' : 'Cadastrar'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -544,7 +669,7 @@ interface PedidosViewProps {
 }
 
 export function PedidosView({ initialOrders }: PedidosViewProps) {
-  const [orders] = useState<Order[]>(initialOrders)
+  const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [selected, setSelected] = useState<Order | null>(null)
   const [showRegister, setShowRegister] = useState(false)
   const [search, setSearch] = useState('')
@@ -612,8 +737,23 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      {selected && <OrderDetailModal order={selected} onClose={() => setSelected(null)} />}
-      {showRegister && <RegisterModal onClose={() => setShowRegister(false)} tags={professionalTags} />}
+      {selected && (
+        <OrderDetailModal
+          order={selected}
+          onClose={() => setSelected(null)}
+          onOrderDeleted={id => {
+            setOrders(prev => prev.filter(o => o.id !== id))
+            setSelected(null)
+          }}
+        />
+      )}
+      {showRegister && (
+        <RegisterModal
+          onClose={() => setShowRegister(false)}
+          tags={professionalTags}
+          onOrderCreated={order => setOrders(prev => [order, ...prev])}
+        />
+      )}
 
       {/* Header */}
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl">

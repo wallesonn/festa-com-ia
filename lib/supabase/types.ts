@@ -17,6 +17,7 @@ export type SupabaseDatabase = {
           business_name: string
           phone: string | null
           email: string | null
+          photo_path: string | null
           products_produced: string | null
           product_subgroups: Record<string, string[]> | null
           product_variations: Record<string, string[]> | null
@@ -36,6 +37,7 @@ export type SupabaseDatabase = {
           business_name: string
           phone?: string | null
           email?: string | null
+          photo_path?: string | null
           products_produced?: string | null
           product_subgroups?: Record<string, string[]> | null
           product_variations?: Record<string, string[]> | null
@@ -55,6 +57,7 @@ export type SupabaseDatabase = {
           business_name?: string
           phone?: string | null
           email?: string | null
+          photo_path?: string | null
           products_produced?: string | null
           product_subgroups?: Record<string, string[]> | null
           product_variations?: Record<string, string[]> | null

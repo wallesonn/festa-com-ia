@@ -1,10 +1,12 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
 import { PRODUCT_GROUPS } from '@/lib/types'
+
+const STORAGE_BUCKET = 'festa-com-ia'
 
 type ProfileForm = {
   businessName: string
@@ -39,12 +41,40 @@ export default function PerfilPage() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isFirstAccess, setIsFirstAccess] = useState(false)
+  const [photoPath, setPhotoPath] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [form, setForm] = useState<ProfileForm>({
     businessName: '',
     phone: '',
     productsProduced: [],
   })
   const router = useRouter()
+
+  const normalizedEmail = useMemo(() => email.trim().toLowerCase().replace(/@/g, '-').replace(/\./g, '-'), [email])
+  const currentPhotoUrl = useMemo(() => {
+    if (!photoPath) return ''
+    return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(photoPath).data.publicUrl
+  }, [photoPath])
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreview(null)
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(photoFile)
+    setPhotoPreview(objectUrl)
+
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [photoFile])
+
+  function buildPhotoPath(filename: string) {
+    const safeFileName = filename.replace(/\s+/g, '-').toLowerCase()
+    return `${normalizedEmail}/profile-${Date.now()}-${safeFileName}`
+  }
 
   useEffect(() => {
     let active = true
@@ -66,7 +96,7 @@ export default function PerfilPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('festa-com-ia-professionals')
-        .select('id,business_name,phone,email,products_produced,onboarding_completed')
+        .select('id,business_name,phone,email,photo_path,products_produced,onboarding_completed')
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
@@ -84,6 +114,7 @@ export default function PerfilPage() {
       setIsFirstAccess(firstAccess)
       setProfessionalId(profile?.id ?? '')
       setEmail(profile?.email ?? user.email ?? '')
+      setPhotoPath(profile?.photo_path ?? null)
       setForm({
         businessName: profile?.business_name ?? '',
         phone: profile?.phone ?? '',
@@ -112,6 +143,36 @@ export default function PerfilPage() {
     setFeedback(null)
     setError(null)
 
+    if (!normalizedEmail) {
+      setError('Não foi possível identificar o email do profissional para salvar a foto.')
+      setSaving(false)
+      return
+    }
+
+    let nextPhotoPath = photoPath
+    let uploadedPhotoPath: string | null = null
+
+    if (photoFile) {
+      const extension = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+      nextPhotoPath = buildPhotoPath(`photo.${extension}`)
+
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(nextPhotoPath, photoFile, {
+          upsert: true,
+          contentType: photoFile.type || 'image/jpeg',
+          cacheControl: '3600',
+        })
+
+      if (uploadError) {
+        setError(uploadError.message)
+        setSaving(false)
+        return
+      }
+
+      uploadedPhotoPath = nextPhotoPath
+    }
+
     const now = new Date().toISOString()
     const payload = {
       auth_user_id: userId,
@@ -119,6 +180,7 @@ export default function PerfilPage() {
       business_name: form.businessName.trim(),
       phone: form.phone.trim() || null,
       email: email.trim() || null,
+      photo_path: nextPhotoPath,
       products_produced: JSON.stringify(form.productsProduced),
       onboarding_completed: true,
       status: 'active',
@@ -133,6 +195,9 @@ export default function PerfilPage() {
 
       if (updateError) {
         setError(updateError.message)
+        if (uploadedPhotoPath) {
+          await supabase.storage.from(STORAGE_BUCKET).remove([uploadedPhotoPath])
+        }
         setSaving(false)
         return
       }
@@ -145,12 +210,25 @@ export default function PerfilPage() {
 
       if (insertError) {
         setError(insertError.message)
+        if (uploadedPhotoPath) {
+          await supabase.storage.from(STORAGE_BUCKET).remove([uploadedPhotoPath])
+        }
         setSaving(false)
         return
       }
 
       setProfessionalId(inserted.id)
     }
+
+    if (photoFile && photoPath && photoPath !== nextPhotoPath) {
+      await supabase.storage.from(STORAGE_BUCKET).remove([photoPath])
+    }
+
+    if (nextPhotoPath) {
+      setPhotoPath(nextPhotoPath)
+    }
+    setPhotoFile(null)
+    setPhotoPreview(null)
 
     if (isFirstAccess) {
       router.replace('/')
@@ -185,6 +263,39 @@ export default function PerfilPage() {
                   Use esta área para informar os dados básicos do seu negócio. Isso ajuda a personalizar
                   o app e preparar o primeiro acesso.
                 </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative h-20 w-20 overflow-hidden rounded-2xl border border-white/10 bg-white/5 shrink-0">
+                    {photoPreview || currentPhotoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={photoPreview || currentPhotoUrl}
+                        alt="Foto do profissional ou da empresa"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                        Sem foto
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-white">Foto do profissional / empresa</p>
+                      <p className="text-xs text-gray-400">
+                        A imagem será salva em <code className="rounded bg-white/10 px-1 py-0.5 text-[11px]">{STORAGE_BUCKET}/{normalizedEmail || '...'}</code>
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
+                      className="block w-full max-w-sm text-xs text-gray-300 file:mr-4 file:rounded-xl file:border-0 file:bg-fuchsia-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-fuchsia-600"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">

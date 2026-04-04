@@ -13,7 +13,7 @@ export function getSql(): ReturnType<typeof postgres> {
     }
     globalThis._pgSql = postgres(connectionString, {
       max: 10,
-      idle_timeout: 600,
+      idle_timeout: 0,
       connect_timeout: 10,
       keep_alive: 60,
     })

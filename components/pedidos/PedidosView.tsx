@@ -217,7 +217,7 @@ function StatusIcon({ name }: { name: string }) {
 
 function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; onClose: () => void; onOrderDeleted: (id: string) => void }) {
   const recipe = RECIPE_MAP[order.productType] ?? RECIPE_MAP['Bolo']
-  const status = STATUS_CONFIG[order.status]
+  const status = PAINEL_STATUS_CONFIG[order.painelStatus] ?? STATUS_CONFIG[order.status]
   const [tab, setTab] = useState<'info' | 'receita'>('info')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)

@@ -12,6 +12,7 @@ type ProfileForm = {
   businessName: string
   phone: string
   productsProduced: string[]
+  conversationSamples: string
 }
 
 function parseProductsProduced(value: string | null | undefined) {
@@ -48,6 +49,7 @@ export default function PerfilPage() {
     businessName: '',
     phone: '',
     productsProduced: [],
+    conversationSamples: '',
   })
   const router = useRouter()
 
@@ -96,7 +98,7 @@ export default function PerfilPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('festa-com-ia-professionals')
-        .select('id,business_name,phone,email,photo_path,products_produced,onboarding_completed')
+        .select('id,business_name,phone,email,photo_path,products_produced,conversation_samples,onboarding_completed')
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
@@ -119,6 +121,7 @@ export default function PerfilPage() {
         businessName: profile?.business_name ?? '',
         phone: profile?.phone ?? '',
         productsProduced: selectedProducts,
+        conversationSamples: profile?.conversation_samples ?? '',
       })
       setLoading(false)
     }
@@ -182,6 +185,7 @@ export default function PerfilPage() {
       email: email.trim() || null,
       photo_path: nextPhotoPath,
       products_produced: JSON.stringify(form.productsProduced),
+      conversation_samples: form.conversationSamples.trim() || null,
       onboarding_completed: true,
       status: 'active',
       updated_at: now,
@@ -254,6 +258,8 @@ export default function PerfilPage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-200">
                 Perfil do profissional
               </div>
+
+
 
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">
@@ -397,6 +403,25 @@ export default function PerfilPage() {
                 </div>
                 <p className="text-xs text-gray-400">
                   Selecione apenas os grupos que você produz. As linhas e variações serão usadas depois como tags nos pedidos.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="conversationSamples" className="text-sm font-medium text-gray-200">
+                  Exemplo de conversa (cole o texto de pelo menos três conversas)
+                </label>
+                <textarea
+                  id="conversationSamples"
+                  value={form.conversationSamples}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, conversationSamples: event.target.value }))
+                  }
+                  rows={5}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                  placeholder="Cole aqui o texto completo de três ou mais conversas estilo WhatsApp"
+                />
+                <p className="text-xs text-gray-400">
+                  Use este campo para colar o conteúdo real das conversas. Emojis, gírias e o ritmo de atendimento ajudam a IA a imitar seu jeito.
                 </p>
               </div>
 

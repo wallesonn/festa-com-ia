@@ -17,7 +17,7 @@ set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
-
+ 
 drop policy if exists "festa_com_ia_profile_photos_insert" on storage.objects;
 drop policy if exists "festa_com_ia_profile_photos_update" on storage.objects;
 drop policy if exists "festa_com_ia_profile_photos_delete" on storage.objects;

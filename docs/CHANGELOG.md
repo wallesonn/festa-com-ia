@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-04
+
+### Alterado
+- **`app/painel/page.tsx`** e **`components/painel/*`** passaram a persistir no Postgres local as mudanças de `painel_status` feitas no Kanban
+- **`app/pedidos/page.tsx`** e **`components/pedidos/PedidosView.tsx`** passaram a exibir o status atual do painel no modal de detalhes, além de criar pedidos já com `painel_status = agendado` e permitir exclusão direta
+- **`lib/db/client.ts`** passou a reutilizar o cliente Postgres via `globalThis`, com `keep_alive` ativo e `idle_timeout` desativado para o ambiente local de desenvolvimento
+
+### Corrigido
+- Divergência entre o status exibido no card, no modal de detalhes e no estado persistido após mover cards no Kanban
+
 ## [Unreleased] — 2026-04-03
 
 ### Adicionado

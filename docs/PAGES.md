@@ -41,13 +41,13 @@ Kanban interativo unificado para gestão de pedidos em tempo real, carregado do 
   - 🔴 Vermelho: menos de 2h
   - 🟠 Laranja: 2h–24h
   - 🟢 Verde: mais de 24h
-- Botão **Avançar etapa**: move card para próxima coluna
-- Botão **Cancelar**: move card para coluna "Cancelado"
+- Botão **Avançar etapa**: move card para próxima coluna e persiste a mudança no Postgres local
+- Botão **Cancelar**: move card para coluna "Cancelado" e persiste a mudança no Postgres local
 - Histórico de mensagens com botão expandir
 - Sugestões de resposta com IA (expansíveis)
 - Campo de resposta inline
 
-**Estado:** o estado inicial vem do banco e as interações continuam locais no client component para preservar a experiência de drag-and-drop.
+**Estado:** o estado inicial vem do banco e as interações de drag-and-drop/ações rápidas persistem o `painel_status` no banco.
 
 ---
 
@@ -62,6 +62,9 @@ Lista de pedidos com filtros, subtipos, busca e modais de detalhes/cadastro, ini
 - busca por cliente, produto ou subtipo
 - modal de detalhes do pedido
 - modal de cadastro de novo pedido
+- criação de pedido já grava o `painel_status` como `agendado`
+- exclusão de pedido direto pelo modal de detalhes
+- status exibido no modal usa o estado atual do painel (`painel_status`)
 
 ---
 

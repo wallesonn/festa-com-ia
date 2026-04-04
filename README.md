@@ -11,7 +11,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 ## Funcionalidades Implementadas
 - **Login com Supabase Auth** em `/login` com email/senha
 - **Proteção de sessão** nas rotas internas da aplicação (redireciona para login quando não autenticado)
-- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local, com visual glassmorphism
+- **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local, com visual glassmorphism e persistência das mudanças de status no banco
   - Drag & drop entre colunas (mouse e toque mobile)
   - Scroll horizontal com botões e deslize de dedo
   - Cor de fundo dos cards por urgência de entrega
@@ -20,6 +20,9 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Botões Avançar etapa e Cancelar
 - **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local e layout em cards glassmorphism
 - **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local e às tags por grupo do profissional
+  - Criação de pedidos já inicia com status de painel em `agendado`
+  - Exclusão de pedidos direto pela tela de detalhes
+  - Modal de detalhes exibe o status atual do painel
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
 - **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos e cadastro da taxonomia do negócio
 - **Clientes** — listagem de clientes

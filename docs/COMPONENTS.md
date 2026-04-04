@@ -33,6 +33,22 @@ Letreiro animado de atividade recente usado no dashboard inicial. Exibe eventos 
 
 ---
 
+## Pedidos
+
+### `PedidosView` (`components/pedidos/PedidosView.tsx`)
+Componente principal da tela de Pedidos. Carrega a listagem do Postgres local, aplica filtros por grupo/subgrupo e controla os modais de cadastro e detalhes.
+
+**Funcionalidades:**
+- Lista pedidos reais carregados pelo servidor
+- Modal de cadastro cria pedidos no banco com `painel_status = agendado`
+- Modal de detalhes mostra o status atual do painel, histórico e informações do pedido
+- Exclusão de pedidos direto no modal de detalhes
+- Atualização otimista da lista após criar/deletar pedidos
+
+Props: não possui props externas diretas; gerencia estado local e server actions.
+
+---
+
 ## Kanban Genérico
 
 ### `KanbanColumn` (`components/kanban/KanbanColumn.tsx`)

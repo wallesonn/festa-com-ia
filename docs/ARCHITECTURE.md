@@ -20,9 +20,10 @@ Estado atual da aplicação web:
 - `app/page.tsx`, `app/painel/page.tsx` e `app/pedidos/page.tsx` já carregam dados do Postgres local no servidor
 - `app/produtos/page.tsx` e `app/perfil/page.tsx` mantêm o cadastro do profissional e a taxonomia comercial no Supabase
 - `app/configuracoes/page.tsx` apenas redireciona para `/perfil`
-- `lib/db/client.ts` centraliza o cliente `postgres.js`
+- `lib/db/client.ts` centraliza o cliente `postgres.js` em um singleton compartilhado via `globalThis`
 - `lib/db/queries.ts` concentra as leituras operacionais para dashboard, painel e pedidos
 - `lib/db/mappers.ts` converte rows do banco para os tipos de domínio usados no frontend
+- `app/pedidos/actions.ts` concentra as mutations de pedidos, incluindo criação, exclusão e atualização de `painel_status`
 
 Fluxo básico de dados:
 
@@ -32,6 +33,8 @@ Fluxo básico de dados:
                         [Painel da Aplicação]
                                 ↓
                      [Postgres local operacional]
+
+[Painel da Aplicação] → [Server Actions] → [Postgres local operacional]
 
 [Cliente WhatsApp] → [n8n Webhook] → [Postgres local]
                            ↓
@@ -95,6 +98,10 @@ Observação: O diagrama físico e o esquema detalhado serão definidos conforme
 - Ambientes: dev (local), staging (opcional), prod (VPS)
 - Deploy: a definir (CI/CD opcional em fase inicial)
 - O backend operacional local roda em Docker com Postgres e Redis; n8n seguirá fora do compose principal
+
+## Observações de Runtime
+- O cliente Postgres usa `keep_alive` e `idle_timeout` desativado para evitar cold start no ambiente local de desenvolvimento
+- Como o Next.js App Router separa Server Components e Server Actions em bundles distintos, o `globalThis` é usado para compartilhar a mesma conexão em todo o processo Node.js
 
 ## Segurança
 - Autenticação e autorização via Supabase Auth

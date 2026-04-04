@@ -2,7 +2,7 @@
 
 > A camada operacional já lê dados do Postgres local.
 >
-> Os mocks em `lib/mockData.ts` continuam existindo como fallback visual e base de seed.
+> Os mocks em `lib/mockData.ts` continuam existindo como massa demo e base de seed, mas as telas operacionais principais leem do Postgres local.
 >
 > A arquitetura atual está separada em duas camadas:
 >
@@ -25,7 +25,7 @@ Representa um pedido de cliente.
 | `deliveryDatetime` | `string` (ISO) | Data e hora da entrega |
 | `peopleCount` | `number` | Quantidade de pessoas |
 | `status` | `OrderStatus` | Status geral do pedido |
-| `painelStatus` | `PainelStatus` | Etapa no Kanban do Painel |
+| `painelStatus` | `PainelStatus` | Etapa atual no Kanban do Painel |
 | `lastMessage` | `string` | Texto da última mensagem |
 | `lastMessageAt` | `string` (ISO) | Timestamp da última mensagem |
 | `messages` | `ChatMessage[]` | Histórico de mensagens |
@@ -123,12 +123,12 @@ Calculado a partir de `deliveryDatetime`:
 
 | Função | Descrição |
 |--------|-----------|
-| `getOrders()` | Retorna array de 12 pedidos com dados mock para fallback/seed |
-| `getConversations()` | Retorna array de 12 conversas mock para fallback/seed |
+| `getOrders()` | Retorna array de 12 pedidos com dados mock para seed/demo |
+| `getConversations()` | Retorna array de 12 conversas mock para seed/demo |
 | `generateSuggestions(msg)` | Gera 3 sugestões de resposta baseadas no texto da mensagem |
 | `generateMessages(orderId)` | Gera histórico de 5 mensagens para um pedido |
 
-> Observação: estas funções continuam úteis para o frontend e para a geração de massa demo, mesmo após a migração da leitura principal para o Postgres local.
+> Observação: estas funções continuam úteis para a geração de massa demo, mesmo após a migração da leitura principal para o Postgres local.
 
 ---
 

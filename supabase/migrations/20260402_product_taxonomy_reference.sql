@@ -42,7 +42,7 @@ values
     ARRAY[
       'Docinho tradicional',
       'Coco ralado fino',
-      'Castanha triturada',
+      'Castanha triturad',
       'Chocolate ao leite',
       'Chocolate meio amargo',
       'Creme de leite ninho',

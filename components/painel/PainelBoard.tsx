@@ -18,6 +18,7 @@ import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus } from '@/lib/types'
 import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
+import { updateOrderPainelStatus } from '@/app/pedidos/actions'
 
 const COLUMNS: { key: PainelStatus; title: string }[] = [
   { key: 'atendimento', title: 'Atendimento' },
@@ -38,6 +39,7 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [activeId, setActiveId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
 
   function scrollKanban(direction: 'left' | 'right') {
     scrollRef.current?.scrollBy({ left: direction === 'right' ? 300 : -300, behavior: 'smooth' })
@@ -51,63 +53,88 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
   const activeOrder = activeId ? orders.find(o => o.id === activeId) : null
 
   function handleAdvance(id: string) {
-    setOrders(prev => prev.map(o => {
-      if (o.id !== id) return o
-      const idx = STATUS_ORDER.indexOf(o.painelStatus)
+    setOrders(prev => {
+      const order = prev.find(o => o.id === id)
+      if (!order) return prev
+      const idx = STATUS_ORDER.indexOf(order.painelStatus)
       const next = STATUS_ORDER[Math.min(idx + 1, STATUS_ORDER.indexOf('entregue'))]
-      return { ...o, painelStatus: next }
-    }))
+      updateOrderPainelStatus(id, next)
+      return prev.map(o => o.id === id ? { ...o, painelStatus: next } : o)
+    })
   }
 
   function handleCancel(id: string) {
-    setOrders(prev => prev.map(o =>
-      o.id === id ? { ...o, painelStatus: 'cancelado' as PainelStatus } : o
-    ))
+    setOrders(prev => prev.map(o => {
+      if (o.id !== id) return o
+      updateOrderPainelStatus(id, 'cancelado')
+      return { ...o, painelStatus: 'cancelado' as PainelStatus }
+    }))
   }
 
   function handleDragStart({ active }: DragStartEvent) {
     setActiveId(active.id as string)
+    setOrders(prev => {
+      const order = prev.find(o => o.id === active.id)
+      if (order) {
+        dragStateRef.current = { id: active.id as string, fromStatus: order.painelStatus, toStatus: order.painelStatus }
+      }
+      return prev
+    })
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
-    if (!over) return
-    const activeOrder = orders.find(o => o.id === active.id)
-    if (!activeOrder) return
+    if (!over || !dragStateRef.current) return
+    const drag = dragStateRef.current
 
-    const overColumn = COLUMNS.find(c => c.key === over.id)
-    if (overColumn && activeOrder.painelStatus !== overColumn.key) {
-      setOrders(prev => prev.map(o =>
-        o.id === active.id ? { ...o, painelStatus: overColumn.key } : o
-      ))
+    const overColumnKey = COLUMNS.find(c => c.key === over.id)?.key
+    if (overColumnKey) {
+      if (overColumnKey !== drag.toStatus) {
+        drag.toStatus = overColumnKey
+        setOrders(prev => prev.map(o =>
+          o.id === active.id ? { ...o, painelStatus: overColumnKey } : o
+        ))
+      }
       return
     }
 
-    const overOrder = orders.find(o => o.id === over.id)
-    if (overOrder && activeOrder.painelStatus !== overOrder.painelStatus) {
-      setOrders(prev => prev.map(o =>
-        o.id === active.id ? { ...o, painelStatus: overOrder.painelStatus } : o
-      ))
-    }
+    setOrders(prev => {
+      const activeOrder = prev.find(o => o.id === active.id)
+      const overOrder = prev.find(o => o.id === over.id)
+      if (!activeOrder || !overOrder) return prev
+      if (activeOrder.painelStatus !== overOrder.painelStatus) {
+        drag.toStatus = overOrder.painelStatus
+        return prev.map(o =>
+          o.id === active.id ? { ...o, painelStatus: overOrder.painelStatus } : o
+        )
+      }
+      return prev
+    })
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
+    const drag = dragStateRef.current
+    dragStateRef.current = null
     setActiveId(null)
+
+    if (drag && drag.toStatus !== drag.fromStatus) {
+      updateOrderPainelStatus(drag.id, drag.toStatus)
+    }
+
     if (!over) return
 
-    const activeOrder = orders.find(o => o.id === active.id)
-    const overOrder = orders.find(o => o.id === over.id)
-
-    if (!activeOrder) return
-
-    if (overOrder && activeOrder.painelStatus === overOrder.painelStatus && active.id !== over.id) {
-      setOrders(prev => {
+    setOrders(prev => {
+      const activeOrder = prev.find(o => o.id === active.id)
+      const overOrder = prev.find(o => o.id === over.id)
+      if (!activeOrder || !overOrder) return prev
+      if (activeOrder.painelStatus === overOrder.painelStatus && active.id !== over.id) {
         const colItems = prev.filter(o => o.painelStatus === activeOrder.painelStatus)
         const rest = prev.filter(o => o.painelStatus !== activeOrder.painelStatus)
         const oldIdx = colItems.findIndex(o => o.id === active.id)
         const newIdx = colItems.findIndex(o => o.id === over.id)
         return [...rest, ...arrayMove(colItems, oldIdx, newIdx)]
-      })
-    }
+      }
+      return prev
+    })
   }
 
   return (

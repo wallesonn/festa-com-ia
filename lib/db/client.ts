@@ -1,18 +1,22 @@
 import postgres from 'postgres'
 
-let _sql: ReturnType<typeof postgres> | undefined
+declare global {
+  // eslint-disable-next-line no-var
+  var _pgSql: ReturnType<typeof postgres> | undefined
+}
 
 export function getSql(): ReturnType<typeof postgres> {
-  if (!_sql) {
+  if (!globalThis._pgSql) {
     const connectionString = process.env.DATABASE_URL
     if (!connectionString) {
       throw new Error('DATABASE_URL não definida. Configure no .env.local ou nas variáveis de ambiente.')
     }
-    _sql = postgres(connectionString, {
+    globalThis._pgSql = postgres(connectionString, {
       max: 10,
-      idle_timeout: 30,
+      idle_timeout: 600,
       connect_timeout: 10,
+      keep_alive: 60,
     })
   }
-  return _sql
+  return globalThis._pgSql
 }

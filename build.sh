@@ -28,7 +28,7 @@ docker buildx build --platform linux/amd64 --no-cache --progress=plain \
   .
 
 echo ""
-echo "✅ Build e push concluídos com sucesso!"
+echo "✅ Build + push concluídos com sucesso! A imagem foi enviada para o registry sem erros."
 echo "   📦 Imagem : ${DOCKER_IMAGE}:${VERSION}"
 echo "   🏷️  Latest : ${DOCKER_IMAGE}:latest"
 echo "   🚀 Para atualizar a produção, rode: docker pull ${DOCKER_IMAGE}:${VERSION}"

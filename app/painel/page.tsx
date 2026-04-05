@@ -1,7 +1,6 @@
 import { PainelBoard } from '@/components/painel/PainelBoard'
 import { getFirstProfessional, getOrdersWithPayments } from '@/lib/db/queries'
 import { dbRowToOrder } from '@/lib/db/mappers'
-import { getOrders } from '@/lib/mockData'
 import type { Order } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +12,7 @@ export default async function PainelPage() {
     const rows = professional ? await getOrdersWithPayments(professional.id) : []
     orders = rows.map(dbRowToOrder)
   } catch {
-    orders = getOrders()
+    orders = []
   }
 
   return <PainelBoard initialOrders={orders} />

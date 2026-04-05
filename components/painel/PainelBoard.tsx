@@ -158,63 +158,76 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
         </div>
       </div>
 
-      <div className="relative">
-        <button
-          onClick={() => scrollKanban('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-r-xl border border-white/10 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-gray-100 shadow-xl transition-colors"
-          aria-label="Rolar para esquerda"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-
-        <button
-          onClick={() => scrollKanban('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-l-xl border border-white/10 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-gray-100 shadow-xl transition-colors"
-          aria-label="Rolar para direita"
-        >
-          <ChevronRightIcon className="h-5 w-5" />
-        </button>
-
-        <div ref={scrollRef} className="overflow-x-auto pb-2 select-none px-10" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="flex gap-4 pb-4 w-max min-w-full">
-              {COLUMNS.map(col => {
-                const items = orders.filter(o => o.painelStatus === col.key)
-                return (
-                  <PainelColumn key={col.key} id={col.key} title={col.title} count={items.length} itemIds={items.map(o => o.id)}>
-                    {items.map(o => (
-                      <PainelCard
-                        key={o.id}
-                        order={o}
-                        onAdvance={handleAdvance}
-                        onCancel={handleCancel}
-                      />
-                    ))}
-                  </PainelColumn>
-                )
-              })}
-            </div>
-
-            <DragOverlay>
-              {activeOrder ? (
-                <div className="opacity-90 rotate-1 scale-105">
-                  <PainelCard
-                    order={activeOrder}
-                    onAdvance={() => {}}
-                    onCancel={() => {}}
-                  />
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+      {orders.length === 0 ? (
+        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl p-8 sm:p-12 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-black/30 text-3xl">
+            📭
+          </div>
+          <h2 className="mt-5 text-2xl font-semibold text-white">Nenhum pedido real ainda</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-300">
+            Quando existirem pedidos operacionais no Postgres, eles aparecerão aqui organizados por etapa.
+            Por enquanto, o painel fica vazio para evitar exemplos mock e mostrar apenas dados reais.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="relative">
+          <button
+            onClick={() => scrollKanban('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-r-xl border border-white/10 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-gray-100 shadow-xl transition-colors"
+            aria-label="Rolar para esquerda"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <button
+            onClick={() => scrollKanban('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-16 rounded-l-xl border border-white/10 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-gray-100 shadow-xl transition-colors"
+            aria-label="Rolar para direita"
+          >
+            <ChevronRightIcon className="h-5 w-5" />
+          </button>
+
+          <div ref={scrollRef} className="overflow-x-auto pb-2 select-none px-10" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-4 pb-4 w-max min-w-full">
+                {COLUMNS.map(col => {
+                  const items = orders.filter(o => o.painelStatus === col.key)
+                  return (
+                    <PainelColumn key={col.key} id={col.key} title={col.title} count={items.length} itemIds={items.map(o => o.id)}>
+                      {items.map(o => (
+                        <PainelCard
+                          key={o.id}
+                          order={o}
+                          onAdvance={handleAdvance}
+                          onCancel={handleCancel}
+                        />
+                      ))}
+                    </PainelColumn>
+                  )
+                })}
+              </div>
+
+              <DragOverlay>
+                {activeOrder ? (
+                  <div className="opacity-90 rotate-1 scale-105">
+                    <PainelCard
+                      order={activeOrder}
+                      onAdvance={() => {}}
+                      onCancel={() => {}}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

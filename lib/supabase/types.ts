@@ -21,10 +21,10 @@ export type SupabaseDatabase = {
           products_produced: string | null
           product_subgroups: Record<string, string[]> | null
           product_variations: Record<string, string[]> | null
+          conversation_samples: string | null
           onboarding_completed: boolean
           slug: string | null
           style_prompt: string | null
-          tone_of_voice: string | null
           service_rules: string | null
           status: string
           created_at: string
@@ -41,10 +41,10 @@ export type SupabaseDatabase = {
           products_produced?: string | null
           product_subgroups?: Record<string, string[]> | null
           product_variations?: Record<string, string[]> | null
+          conversation_samples?: string | null
           onboarding_completed?: boolean
           slug?: string | null
           style_prompt?: string | null
-          tone_of_voice?: string | null
           service_rules?: string | null
           status?: string
           created_at?: string
@@ -61,10 +61,10 @@ export type SupabaseDatabase = {
           products_produced?: string | null
           product_subgroups?: Record<string, string[]> | null
           product_variations?: Record<string, string[]> | null
+          conversation_samples?: string | null
           onboarding_completed?: boolean
           slug?: string | null
           style_prompt?: string | null
-          tone_of_voice?: string | null
           service_rules?: string | null
           status?: string
           created_at?: string

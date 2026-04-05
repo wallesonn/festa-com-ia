@@ -163,10 +163,9 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-black/30 text-3xl">
             📭
           </div>
-          <h2 className="mt-5 text-2xl font-semibold text-white">Nenhum pedido real ainda</h2>
+          <h2 className="mt-5 text-2xl font-semibold text-white">Nenhum pedido ainda</h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-300">
-            Quando existirem pedidos operacionais no Postgres, eles aparecerão aqui organizados por etapa.
-            Por enquanto, o painel fica vazio para evitar exemplos mock e mostrar apenas dados reais.
+            Quando houver pedidos, eles aparecerão aqui.
           </p>
         </div>
       ) : (

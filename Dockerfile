@@ -25,17 +25,22 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+RUN apk add --no-cache postgresql-client
+
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 
-RUN mkdir -p ./public
+RUN mkdir -p ./public ./migrations
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --chown=nextjs:nodejs supabase/migrations/ ./migrations/
+COPY --chown=nextjs:nodejs scripts/migrate-and-start.sh ./migrate-and-start.sh
+RUN chmod +x ./migrate-and-start.sh
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["./migrate-and-start.sh"]

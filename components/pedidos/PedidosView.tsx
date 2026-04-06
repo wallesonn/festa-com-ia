@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createOrder, deleteOrder } from '@/app/pedidos/actions'
 import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
+import { addBrowserOrder, removeBrowserOrder, useBrowserOrders } from '@/lib/browser/orders-store'
 import { fmtDatetime } from '@/lib/utils'
 import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react'
 
@@ -675,10 +676,11 @@ function RegisterModal({
 
 interface PedidosViewProps {
   initialOrders: Order[]
+  professionalId: string
 }
 
-export function PedidosView({ initialOrders }: PedidosViewProps) {
-  const [orders, setOrders] = useState<Order[]>(initialOrders)
+export function PedidosView({ initialOrders, professionalId }: PedidosViewProps) {
+  const { orders } = useBrowserOrders(initialOrders, professionalId)
   const [selected, setSelected] = useState<Order | null>(null)
   const [showRegister, setShowRegister] = useState(false)
   const [search, setSearch] = useState('')
@@ -689,6 +691,20 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
     subgroups: {},
     variations: {},
   })
+
+  useEffect(() => {
+    if (!selected) return
+
+    const latestSelected = orders.find((order) => order.id === selected.id)
+    if (!latestSelected) {
+      setSelected(null)
+      return
+    }
+
+    if (latestSelected.updatedAt !== selected.updatedAt || latestSelected.painelStatus !== selected.painelStatus) {
+      setSelected(latestSelected)
+    }
+  }, [orders, selected])
 
   useEffect(() => {
     let active = true
@@ -751,7 +767,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
           order={selected}
           onClose={() => setSelected(null)}
           onOrderDeleted={id => {
-            setOrders(prev => prev.filter(o => o.id !== id))
+            removeBrowserOrder(id)
             setSelected(null)
           }}
         />
@@ -760,7 +776,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
         <RegisterModal
           onClose={() => setShowRegister(false)}
           tags={professionalTags}
-          onOrderCreated={order => setOrders(prev => [order, ...prev])}
+          onOrderCreated={order => addBrowserOrder(order)}
         />
       )}
 

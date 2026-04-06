@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -13,12 +13,11 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core'
-import { arrayMove } from '@dnd-kit/sortable'
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus } from '@/lib/types'
 import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
-import { updateOrderPainelStatus } from '@/app/pedidos/actions'
+import { previewOrderStatusLocal, queueOrderStatusSync, reorderOrderLocal, useBrowserOrders } from '@/lib/browser/orders-store'
 
 const COLUMNS: { key: PainelStatus; title: string }[] = [
   { key: 'atendimento', title: 'Atendimento' },
@@ -33,10 +32,11 @@ const STATUS_ORDER: PainelStatus[] = ['atendimento', 'agendado', 'preparando', '
 
 interface PainelBoardProps {
   initialOrders: Order[]
+  professionalId: string
 }
 
-export function PainelBoard({ initialOrders }: PainelBoardProps) {
-  const [orders, setOrders] = useState<Order[]>(initialOrders)
+export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps) {
+  const { orders } = useBrowserOrders(initialOrders, professionalId)
   const [activeId, setActiveId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
@@ -53,33 +53,23 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
   const activeOrder = activeId ? orders.find(o => o.id === activeId) : null
 
   function handleAdvance(id: string) {
-    setOrders(prev => {
-      const order = prev.find(o => o.id === id)
-      if (!order) return prev
-      const idx = STATUS_ORDER.indexOf(order.painelStatus)
-      const next = STATUS_ORDER[Math.min(idx + 1, STATUS_ORDER.indexOf('entregue'))]
-      updateOrderPainelStatus(id, next)
-      return prev.map(o => o.id === id ? { ...o, painelStatus: next } : o)
-    })
+    const order = orders.find(o => o.id === id)
+    if (!order) return
+    const idx = STATUS_ORDER.indexOf(order.painelStatus)
+    const next = STATUS_ORDER[Math.min(idx + 1, STATUS_ORDER.indexOf('entregue'))]
+    queueOrderStatusSync(id, next)
   }
 
   function handleCancel(id: string) {
-    setOrders(prev => prev.map(o => {
-      if (o.id !== id) return o
-      updateOrderPainelStatus(id, 'cancelado')
-      return { ...o, painelStatus: 'cancelado' as PainelStatus }
-    }))
+    queueOrderStatusSync(id, 'cancelado')
   }
 
   function handleDragStart({ active }: DragStartEvent) {
     setActiveId(active.id as string)
-    setOrders(prev => {
-      const order = prev.find(o => o.id === active.id)
-      if (order) {
-        dragStateRef.current = { id: active.id as string, fromStatus: order.painelStatus, toStatus: order.painelStatus }
-      }
-      return prev
-    })
+    const order = orders.find(o => o.id === active.id)
+    if (order) {
+      dragStateRef.current = { id: active.id as string, fromStatus: order.painelStatus, toStatus: order.painelStatus }
+    }
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
@@ -90,25 +80,19 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
     if (overColumnKey) {
       if (overColumnKey !== drag.toStatus) {
         drag.toStatus = overColumnKey
-        setOrders(prev => prev.map(o =>
-          o.id === active.id ? { ...o, painelStatus: overColumnKey } : o
-        ))
+        previewOrderStatusLocal(active.id as string, overColumnKey)
       }
       return
     }
 
-    setOrders(prev => {
-      const activeOrder = prev.find(o => o.id === active.id)
-      const overOrder = prev.find(o => o.id === over.id)
-      if (!activeOrder || !overOrder) return prev
-      if (activeOrder.painelStatus !== overOrder.painelStatus) {
-        drag.toStatus = overOrder.painelStatus
-        return prev.map(o =>
-          o.id === active.id ? { ...o, painelStatus: overOrder.painelStatus } : o
-        )
-      }
-      return prev
-    })
+    const overOrder = orders.find(o => o.id === over.id)
+    const activeOrder = orders.find(o => o.id === active.id)
+    if (!activeOrder || !overOrder) return
+
+    if (activeOrder.painelStatus !== overOrder.painelStatus) {
+      drag.toStatus = overOrder.painelStatus
+      previewOrderStatusLocal(active.id as string, overOrder.painelStatus)
+    }
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
@@ -116,25 +100,18 @@ export function PainelBoard({ initialOrders }: PainelBoardProps) {
     dragStateRef.current = null
     setActiveId(null)
 
-    if (drag && drag.toStatus !== drag.fromStatus) {
-      updateOrderPainelStatus(drag.id, drag.toStatus)
+    if (!over) {
+      if (drag) {
+        previewOrderStatusLocal(drag.id, drag.fromStatus)
+      }
+      return
     }
 
-    if (!over) return
+    if (drag && drag.toStatus !== drag.fromStatus) {
+      queueOrderStatusSync(drag.id, drag.toStatus)
+    }
 
-    setOrders(prev => {
-      const activeOrder = prev.find(o => o.id === active.id)
-      const overOrder = prev.find(o => o.id === over.id)
-      if (!activeOrder || !overOrder) return prev
-      if (activeOrder.painelStatus === overOrder.painelStatus && active.id !== over.id) {
-        const colItems = prev.filter(o => o.painelStatus === activeOrder.painelStatus)
-        const rest = prev.filter(o => o.painelStatus !== activeOrder.painelStatus)
-        const oldIdx = colItems.findIndex(o => o.id === active.id)
-        const newIdx = colItems.findIndex(o => o.id === over.id)
-        return [...rest, ...arrayMove(colItems, oldIdx, newIdx)]
-      }
-      return prev
-    })
+    reorderOrderLocal(active.id as string, over.id as string)
   }
 
   return (

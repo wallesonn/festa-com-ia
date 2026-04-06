@@ -26,12 +26,18 @@ export type DeleteOrderResult =
   | { success: true }
   | { success: false; error: string }
 
-export async function updateOrderPainelStatus(orderId: string, painelStatus: string): Promise<void> {
+export type UpdateOrderPainelStatusResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export async function updateOrderPainelStatus(orderId: string, painelStatus: string): Promise<UpdateOrderPainelStatusResult> {
   try {
     const sql = getSql()
     await sql`UPDATE orders SET painel_status = ${painelStatus}, updated_at = now() WHERE id = ${orderId}`
+    return { success: true }
   } catch (err) {
     console.error('[updateOrderPainelStatus]', err)
+    return { success: false, error: 'Erro ao atualizar o status do pedido.' }
   }
 }
 

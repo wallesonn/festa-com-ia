@@ -7,13 +7,15 @@ export const dynamic = 'force-dynamic'
 
 export default async function PainelPage() {
   let orders: Order[]
+  let professionalId = ''
   try {
     const professional = await getFirstProfessional()
+    professionalId = professional?.id ?? ''
     const rows = professional ? await getOrdersWithPayments(professional.id) : []
     orders = rows.map(dbRowToOrder)
   } catch {
     orders = []
   }
 
-  return <PainelBoard initialOrders={orders} />
+  return <PainelBoard initialOrders={orders} professionalId={professionalId} />
 }

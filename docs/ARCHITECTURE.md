@@ -90,7 +90,7 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
 
 Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres local, enquanto o Supabase fica restrito à autenticação e aos dados do usuário/profissional.
 
-Observação: O diagrama físico e o esquema detalhado serão definidos conforme o MVP evoluir.
+Observação: o esquema físico final do projeto está consolidado nos arquivos `supabase/schema/local_postgres_final.sql` e `supabase/schema/supabase_final.sql`.
 
 ## Operação e Infraestrutura
 - VPS com Portainer + Traefik (reverse proxy) já previstos
@@ -98,6 +98,9 @@ Observação: O diagrama físico e o esquema detalhado serão definidos conforme
 - Ambientes: dev (local), staging (opcional), prod (VPS)
 - Deploy: a definir (CI/CD opcional em fase inicial)
 - O backend operacional local roda em Docker com Postgres e Redis; n8n seguirá fora do compose principal
+- O bootstrap do stack usa o schema final consolidado do Postgres local e cria um profissional ativo padrão quando a tabela `professionals` estiver vazia
+- O schema final do Supabase fica separado e cobre Auth, perfil do profissional e Storage
+- Conceitos como `authenticated`, `storage.buckets`, `storage.objects` e RLS pertencem somente ao Supabase e não ao Postgres operacional local
 
 ## Observações de Runtime
 - O cliente Postgres usa `keep_alive` e `idle_timeout` desativado para evitar cold start no ambiente local de desenvolvimento

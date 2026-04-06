@@ -12,14 +12,16 @@ until pg_isready -d "$DATABASE_URL" -q; do
 done
 echo "✅ Postgres disponível."
 
-echo "📦 Aplicando migrations..."
-for f in \
-  /app/migrations/20260331_initial_schema.sql \
-  /app/migrations/20260402_product_taxonomy_reference.sql; do
-  echo "   → $f"
-  psql "$DATABASE_URL" -f "$f"
-done
-echo "✅ Migrations concluídas."
+SCHEMA_FILE="/app/schema/local_postgres_final.sql"
+SCHEMA_EXISTS=$(psql "$DATABASE_URL" -tAc "SELECT to_regclass('public.professionals') IS NOT NULL;" | tr -d '[:space:]')
+if [ "$SCHEMA_EXISTS" != "t" ]; then
+  echo "📦 Aplicando schema final local..."
+  echo "   → $SCHEMA_FILE"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$SCHEMA_FILE"
+  echo "✅ Schema local aplicado."
+else
+  echo "✅ Schema local já existe."
+fi
 
 ACTIVE_PROFESSIONALS=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM professionals WHERE status = 'active';" | tr -d '[:space:]')
 if [ "${ACTIVE_PROFESSIONALS:-0}" = "0" ]; then

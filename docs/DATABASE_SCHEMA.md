@@ -7,6 +7,11 @@
 > - **Supabase**: auth, `festa-com-ia-professionals` e tabela de regras
 > - **Postgres local**: toda a operação do negócio (clientes, pedidos, conversas, mensagens etc.) e a referência global de taxonomia
 
+> Os schemas finais consolidados ficam em:
+>
+> - `supabase/schema/local_postgres_final.sql`
+> - `supabase/schema/supabase_final.sql`
+
 ---
 
 ## Estratégia multi-tenant
@@ -22,6 +27,12 @@
 
 - `festa-com-ia-professionals` — cadastro do profissional/negócio, onboarding e taxonomia comercial
 - `regras_criacao_tabelas` — tabela simples de referência e regras
+
+> Conceitos Supabase usados nesse schema:
+>
+> - `authenticated` é a role padrão para usuários logados no Supabase.
+> - `storage.buckets` e `storage.objects` pertencem ao recurso de Storage do Supabase, não ao Postgres operacional local.
+> - RLS significa Row Level Security: políticas que filtram quem pode ler, inserir ou editar cada linha.
 
 ### `festa-com-ia-professionals`
 | Coluna | Tipo | Notas |

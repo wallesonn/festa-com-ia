@@ -8,6 +8,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ## [Unreleased] — 2026-04-04
 
 ### Alterado
+- O schema operacional passou a ser descrito em um único arquivo final consolidado em `supabase/schema/local_postgres_final.sql`
+- O schema do Supabase passou a ser descrito em um único arquivo final consolidado em `supabase/schema/supabase_final.sql`, separando Auth, Storage e RLS do Postgres operacional local
+
+### Corrigido
+- O boot do container da aplicação passou a aplicar apenas as migrations locais do Postgres e a criar um profissional ativo padrão quando a tabela `professionals` está vazia
+
+### Alterado
 - **`app/painel/page.tsx`** e **`components/painel/*`** passaram a persistir no Postgres local as mudanças de `painel_status` feitas no Kanban
 - **`app/pedidos/page.tsx`** e **`components/pedidos/PedidosView.tsx`** passaram a exibir o status atual do painel no modal de detalhes, além de criar pedidos já com `painel_status = agendado` e permitir exclusão direta
 - **`lib/db/client.ts`** passou a reutilizar o cliente Postgres via `globalThis`, com `keep_alive` ativo e `idle_timeout` desativado para o ambiente local de desenvolvimento

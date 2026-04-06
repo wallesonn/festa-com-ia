@@ -8,6 +8,13 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Supabase para Auth e cadastro do profissional (`festa-com-ia-professionals`)
   - Postgres local para toda a operação do sistema
 
+## Deploy e Banco de Dados
+- O container da aplicação aplica automaticamente o schema final local do Postgres ao subir no VPS
+- Se o banco estiver vazio, a stack cria um profissional ativo padrão para permitir o primeiro pedido sem intervenção manual
+- O schema final de Supabase fica separado e não entra no boot do banco operacional local
+- O schema operacional final do Postgres local fica em `supabase/schema/local_postgres_final.sql`
+- O schema final de Supabase fica em `supabase/schema/supabase_final.sql` e cobre Auth, perfil do profissional e Storage
+
 ## Funcionalidades Implementadas
 - **Login com Supabase Auth** em `/login` com email/senha
 - **Proteção de sessão** nas rotas internas da aplicação (redireciona para login quando não autenticado)
@@ -63,6 +70,7 @@ Acesse [http://localhost:3000](http://localhost:3000).
 - `lib/` — tipos, mock de dados e utilitários
 - `docs/` — documentação detalhada do projeto
 - `festa-com-ia-dockercompose/` — manifests de orquestração para VPS
+- `supabase/schema/` — schemas finais consolidados para o Postgres local e para o Supabase
 
 ## Documentação
 - [Arquitetura](./docs/ARCHITECTURE.md)

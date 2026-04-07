@@ -6,7 +6,7 @@ import { updateOrderPainelStatus } from '@/app/pedidos/actions'
 import type { Order, PainelStatus } from '@/lib/types'
 
 const STORAGE_PREFIX = 'festa-com-ia-browser-orders:v1'
-const SYNC_INTERVAL_MS = 60_000
+const SYNC_INTERVAL_MS = 30_000
 
 export type PendingStatusUpdate = {
   orderId: string

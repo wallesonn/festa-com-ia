@@ -20,7 +20,7 @@ function badgeFromOrder(order: Order) {
     case 'urgente':
       return '🔴 Urgente'
     case 'planejado':
-      return '🟢 Planejado'
+      return '⚪ Planejado'
     case 'atendimento':
       return '🔵 Atendimento'
     case 'finalizado':

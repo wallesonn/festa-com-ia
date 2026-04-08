@@ -111,19 +111,19 @@ function parseProductsProduced(value: string | null | undefined) {
 
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; iconName: string }> = {
-  em_andamento:   { label: 'Em andamento',  color: 'text-amber-400 bg-amber-400/10 border-amber-400/30',        iconName: 'alert' },
-  finalizado:     { label: 'Finalizado',    color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',  iconName: 'check' },
-  cancelado:      { label: 'Cancelado',     color: 'text-rose-400 bg-rose-400/10 border-rose-400/30',           iconName: 'x' },
-  nao_confirmado: { label: 'Não confirmado',color: 'text-gray-400 bg-gray-400/10 border-gray-400/30',           iconName: 'package' },
+  em_andamento:   { label: 'Em andamento',   color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'alert' },
+  finalizado:     { label: 'Finalizado',     color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'check' },
+  cancelado:      { label: 'Cancelado',      color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'x' },
+  nao_confirmado: { label: 'Não confirmado', color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'package' },
 }
 
 const PAINEL_STATUS_CONFIG: Record<string, { label: string; color: string; iconName: string }> = {
-  atendimento: { label: 'Atendimento', color: 'text-blue-400 bg-blue-400/10 border-blue-400/30',       iconName: 'alert' },
-  agendado:    { label: 'Agendado',    color: 'text-violet-400 bg-violet-400/10 border-violet-400/30', iconName: 'package' },
-  preparando:  { label: 'Preparando',  color: 'text-amber-400 bg-amber-400/10 border-amber-400/30',    iconName: 'alert' },
+  atendimento: { label: 'Atendimento', color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'alert' },
+  agendado:    { label: 'Agendado',    color: 'text-blue-400 bg-blue-400/10 border-blue-400/30', iconName: 'package' },
+  preparando:  { label: 'Preparando',  color: 'text-violet-400 bg-violet-400/10 border-violet-400/30', iconName: 'alert' },
   pronto:      { label: 'Pronto',      color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30', iconName: 'check' },
-  entregue:    { label: 'Entregue',    color: 'text-gray-400 bg-gray-400/10 border-gray-400/30',       iconName: 'check' },
-  cancelado:   { label: 'Cancelado',   color: 'text-rose-400 bg-rose-400/10 border-rose-400/30',       iconName: 'x' },
+  entregue:    { label: 'Entregue',    color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'check' },
+  cancelado:   { label: 'Cancelado',   color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'x' },
 }
 
 const ORDER_FORM_TAXONOMY: Record<ProductType, { subgroups: string[]; variations: string[] }> = {

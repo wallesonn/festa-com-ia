@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Order, PainelStatus } from '@/lib/types'
-import { urgencyLevel, fmtDatetime, fmtTimeShort } from '@/lib/utils'
+import { urgencyBorderClass, urgencyPulseClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
 import { generateSuggestions } from '@/lib/mockData'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
 import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
@@ -24,16 +24,13 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const [replyOpen, setReplyOpen] = useState(true)
   const suggestions = generateSuggestions(order.lastMessage)
-  const urgencyBorder = (() => {
-    if (order.painelStatus === 'atendimento') return 'border-l-[5px] border-l-white/60'
-    if (order.painelStatus === 'entregue' || order.painelStatus === 'cancelado') return ''
-    const level = urgencyLevel(order.deliveryDatetime)
-    if (level === 'vermelho') return 'border-l-[5px] border-l-rose-500'
-    if (level === 'laranja') return 'border-l-[5px] border-l-amber-400'
-    return 'border-l-[5px] border-l-emerald-400'
-  })()
+  const statusTone = order.painelStatus === 'pronto'
+    ? 'border-l-4 border-emerald-500'
+    : order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+      ? ''
+      : `${urgencyBorderClass(order.deliveryDatetime)} ${urgencyPulseClass(order.deliveryDatetime)}`
 
-  const isLast = order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+  const isLast = order.painelStatus === 'pronto' || order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
   const isCancelled = order.painelStatus === 'cancelado'
 
   const {
@@ -61,7 +58,7 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border border-white/10 bg-white/5 p-3 space-y-2.5 ${urgencyBorder} ${isDragging ? 'shadow-2xl ring-2 ring-fuchsia-400/50' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`rounded-xl border border-white/10 bg-white/5 p-3 space-y-2.5 ${statusTone} ${isDragging ? 'shadow-2xl ring-2 ring-fuchsia-400/50' : ''}`}>
       {/* Drag handle + header */}
       <div className="flex items-center gap-2">
         <button

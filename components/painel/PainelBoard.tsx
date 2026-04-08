@@ -129,7 +129,6 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-rose-200"><span className="inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0" /> Urgente &lt;2h</span>
               <span className="flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-amber-200"><span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" /> Próximo 2–24h</span>
-              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-emerald-200"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" /> Agendado &gt;24h</span>
             </div>
           </div>
         </div>

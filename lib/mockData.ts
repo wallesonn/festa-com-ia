@@ -109,13 +109,13 @@ function randomFutureDate(daysAheadMin = 0, daysAheadMax = 10) {
   return d.toISOString()
 }
 
-// Gera data/hora de entrega espalhada para cobrir os 3 níveis de urgência no mock
+// Gera data/hora de entrega espalhada para cobrir os níveis de urgência no mock
 const deliveryOffsets = [
   // vermelho: < 2h
   30, 60, 90,
   // laranja: 2h-24h
   3 * 60, 6 * 60, 12 * 60, 18 * 60,
-  // verde: > 24h
+  // neutro: > 24h
   36 * 60, 48 * 60, 72 * 60, 5 * 24 * 60, 7 * 24 * 60,
 ]
 

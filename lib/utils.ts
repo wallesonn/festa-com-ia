@@ -41,7 +41,7 @@ export function bucketColor(bucket: OrderBucket) {
     case 'atendimento':
       return 'border-l-4 border-blue-400'
     case 'planejado':
-      return 'border-l-4 border-lime-400'
+      return 'border-l-4 border-white/15'
     case 'proximo':
       return 'border-l-4 border-amber-400'
     case 'urgente':
@@ -75,21 +75,21 @@ export function urgencyLevel(deliveryIso: string): UrgencyLevel {
   const diffH = diffMs / (1000 * 60 * 60)
   if (diffH < 2) return 'vermelho'
   if (diffH < 24) return 'laranja'
-  return 'verde'
+  return 'neutro'
 }
 
 export function urgencyBorderClass(deliveryIso: string): string {
   const level = urgencyLevel(deliveryIso)
   if (level === 'vermelho') return 'border-l-4 border-rose-500'
   if (level === 'laranja') return 'border-l-4 border-amber-400'
-  return 'border-l-4 border-lime-400'
+  return 'border-l-4 border-white/15'
 }
 
 export function urgencyBgClass(deliveryIso: string): string {
   const level = urgencyLevel(deliveryIso)
   if (level === 'vermelho') return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-rose-500'
   if (level === 'laranja') return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-amber-400'
-  return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-emerald-400'
+  return 'bg-gray-900/90 border border-white/10 border-l-[5px] border-l-white/15'
 }
 
 
@@ -97,7 +97,14 @@ export function urgencyBadgeClass(deliveryIso: string): string {
   const level = urgencyLevel(deliveryIso)
   if (level === 'vermelho') return 'bg-rose-500/20 text-rose-400'
   if (level === 'laranja') return 'bg-amber-400/20 text-amber-400'
-  return 'bg-lime-400/20 text-lime-400'
+  return 'bg-white/5 text-gray-300'
+}
+
+export function urgencyPulseClass(deliveryIso: string): string {
+  const level = urgencyLevel(deliveryIso)
+  if (level === 'vermelho') return 'animate-urgency-border-red'
+  if (level === 'laranja') return 'animate-urgency-border-amber'
+  return ''
 }
 
 export function urgencyLabel(deliveryIso: string): string {

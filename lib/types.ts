@@ -108,7 +108,7 @@ export type OrderBucket = 'atendimento' | 'planejado' | 'proximo' | 'urgente' | 
 
 export type PainelStatus = 'atendimento' | 'agendado' | 'preparando' | 'pronto' | 'entregue' | 'cancelado'
 
-export type UrgencyLevel = 'verde' | 'laranja' | 'vermelho'
+export type UrgencyLevel = 'neutro' | 'laranja' | 'vermelho'
 
 export type DeliveryType = 'entrega' | 'retirada'
 

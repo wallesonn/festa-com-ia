@@ -4,6 +4,7 @@ import { getFirstProfessional, getOrdersWithPayments } from '@/lib/db/queries'
 import { dbRowToOrder } from '@/lib/db/mappers'
 import { getOrders } from '@/lib/mockData'
 import type { Order } from '@/lib/types'
+import { urgencyLevel } from '@/lib/utils'
 import { MessageCircle, ShoppingBag, CheckCircle, Users, TrendingUp, TrendingDown, Clock, Star, Package } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -53,11 +54,9 @@ function buildMetrics(orders: Order[]) {
     .sort((a, b) => new Date(a.deliveryDatetime).getTime() - new Date(b.deliveryDatetime).getTime())
     .slice(0, 5)
     .map(o => {
-      const diff = (new Date(o.deliveryDatetime).getTime() - now.getTime()) / (1000 * 60 * 60)
-      const urgent = diff < 24
       const dt = new Date(o.deliveryDatetime)
       const todayStr = dt.toDateString() === now.toDateString() ? `Hoje ${dt.getHours()}h` : `${dt.getDate()}/${dt.getMonth() + 1} ${dt.getHours()}h`
-      return { client: o.clientName, product: `${o.productType} · ${o.peopleCount}p`, time: todayStr, urgent }
+      return { client: o.clientName, product: `${o.productType} · ${o.peopleCount}p`, time: todayStr, urgency: urgencyLevel(o.deliveryDatetime) }
     })
 
   return { inProgress, finished, newClients, orderStatusData, totalActive, topProducts, upcoming }
@@ -198,13 +197,22 @@ export default async function DashboardPage() {
           </div>
           <div className="space-y-2">
             {upcoming.map((d, i) => (
-              <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${d.urgent ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-white/5 border border-white/5'}`}>
-                <div className={`mt-0.5 shrink-0 h-2 w-2 rounded-full ${d.urgent ? 'bg-rose-400' : 'bg-gray-500'}`} />
+              <div
+                key={i}
+                className={`flex items-start gap-3 p-2.5 rounded-xl ${
+                  d.urgency === 'vermelho'
+                    ? 'bg-rose-500/10 border border-rose-500/20 animate-urgency-red'
+                    : d.urgency === 'laranja'
+                      ? 'bg-amber-400/10 border border-amber-400/20 animate-urgency-amber'
+                      : 'bg-white/5 border border-white/5'
+                }`}
+              >
+                <div className={`mt-0.5 shrink-0 h-2 w-2 rounded-full ${d.urgency === 'vermelho' ? 'bg-rose-400 animate-urgency-red' : d.urgency === 'laranja' ? 'bg-amber-400 animate-urgency-amber' : 'bg-gray-500'}`} />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-gray-100 truncate">{d.client}</div>
                   <div className="text-[11px] text-gray-400 truncate">{d.product}</div>
                 </div>
-                <div className={`text-[11px] shrink-0 font-medium ${d.urgent ? 'text-rose-400' : 'text-gray-400'}`}>{d.time}</div>
+                <div className={`text-[11px] shrink-0 font-medium ${d.urgency === 'vermelho' ? 'text-rose-400 animate-urgency-red' : d.urgency === 'laranja' ? 'text-amber-400 animate-urgency-amber' : 'text-gray-400'}`}>{d.time}</div>
               </div>
             ))}
           </div>

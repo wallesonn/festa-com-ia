@@ -22,3 +22,48 @@ body {
   @apply bg-card text-gray-100 rounded-lg shadow-card border border-border;
 }
 
+@keyframes urgency-border-amber {
+  0%, 100% {
+    border-left-color: rgba(251, 191, 36, 0.95);
+  }
+
+  50% {
+    border-left-color: rgba(251, 191, 36, 0.45);
+  }
+}
+
+@keyframes urgency-border-red {
+  0%, 100% {
+    border-left-color: rgba(244, 63, 94, 0.98);
+  }
+
+  50% {
+    border-left-color: rgba(244, 63, 94, 0.48);
+  }
+}
+
+.animate-urgency-border-amber {
+  animation: urgency-border-amber 1s ease-in-out infinite;
+}
+
+.animate-urgency-border-red {
+  animation: urgency-border-red 0.5s ease-in-out infinite;
+}
+
+.animate-urgency-amber {
+  animation: urgency-border-amber 1s ease-in-out infinite;
+}
+
+.animate-urgency-red {
+  animation: urgency-border-red 0.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-urgency-border-amber,
+  .animate-urgency-border-red,
+  .animate-urgency-amber,
+  .animate-urgency-red {
+    animation: none;
+  }
+}
+

@@ -9,8 +9,6 @@ import { generateSuggestions } from '@/lib/mockData'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
 import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 
-const STATUS_ORDER: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
-
 interface PainelCardProps {
   order: Order
   onAdvance: (id: string) => void
@@ -30,7 +28,20 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
       ? ''
       : `${urgencyBorderClass(order.deliveryDatetime)} ${urgencyPulseClass(order.deliveryDatetime)}`
 
-  const isLast = order.painelStatus === 'pronto' || order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+  const primaryActionLabel =
+    order.painelStatus === 'atendimento' ? 'Agendar'
+      : order.painelStatus === 'agendado' ? 'Preparar'
+        : order.painelStatus === 'preparando' ? 'Finalizar'
+          : order.painelStatus === 'pronto' ? 'Entregar'
+            : 'Arquivar'
+
+  const primaryActionDisabled = order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+
+  function handlePrimaryAction() {
+    if (primaryActionDisabled) return
+    onAdvance(order.id)
+  }
+
   const isCancelled = order.painelStatus === 'cancelado'
 
   const {
@@ -153,8 +164,8 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
       )}
 
       {/* Ações de etapa */}
-      {!isCancelled && (
-        <div className="flex gap-2 pt-1 border-t border-white/10">
+      <div className="flex gap-2 pt-1 border-t border-white/10">
+        {order.painelStatus !== 'entregue' && !isCancelled && (
           <button
             onClick={() => onCancel(order.id)}
             className="flex items-center justify-center gap-1 text-xs font-semibold px-3 min-h-[40px] rounded-lg bg-rose-900/60 active:bg-rose-700 text-rose-200 transition-colors"
@@ -162,17 +173,20 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
             <X className="h-4 w-4" />
             Cancelar
           </button>
-          {!isLast && (
-            <button
-              onClick={() => onAdvance(order.id)}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold min-h-[40px] rounded-lg bg-white text-gray-900 active:bg-white/80 transition-colors"
-            >
-              <ChevronRight className="h-4 w-4" />
-              Avançar
-            </button>
-          )}
-        </div>
-      )}
+        )}
+        <button
+          onClick={handlePrimaryAction}
+          disabled={primaryActionDisabled}
+          className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold min-h-[40px] rounded-lg transition-colors ${
+            primaryActionDisabled
+              ? 'bg-white/10 text-gray-300 cursor-default'
+              : 'bg-white text-gray-900 active:bg-white/80'
+          }`}
+        >
+          <ChevronRight className="h-4 w-4" />
+          {primaryActionLabel}
+        </button>
+      </div>
     </div>
   )
 }

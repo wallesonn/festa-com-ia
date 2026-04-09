@@ -22,6 +22,9 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const [replyOpen, setReplyOpen] = useState(true)
   const suggestions = generateSuggestions(order.lastMessage)
+  const [productLineRaw, ...productVariationParts] = order.productSubtype.split('·')
+  const productLine = productLineRaw?.trim() || 'Sem linha'
+  const productVariations = productVariationParts.join('·').trim()
   const statusTone = order.painelStatus === 'pronto'
     ? 'border-l-4 border-emerald-500'
     : order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
@@ -71,7 +74,7 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
   return (
     <div ref={setNodeRef} style={style} className={`rounded-xl border border-white/10 bg-white/5 p-3 space-y-2.5 ${statusTone} ${isDragging ? 'shadow-2xl ring-2 ring-fuchsia-400/50' : ''}`}>
       {/* Drag handle + header */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-3">
         <button
           {...attributes}
           {...listeners}
@@ -80,10 +83,16 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
         >
           <GripVertical className="h-5 w-5" />
         </button>
-        <AvatarDefault size={32} className="rounded-full shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-sm text-gray-100 truncate leading-tight">{order.clientName}</div>
-          <div className="text-xs text-white/60 truncate">{order.productType} · {order.peopleCount} pessoas</div>
+        <AvatarDefault size={64} className="rounded-full shrink-0" />
+        <div className="flex-1 min-w-0 pt-1">
+          <div className="font-semibold text-xl sm:text-2xl text-gray-100 leading-tight">{order.clientName}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm sm:text-base leading-tight text-white/80">
+            <span className="font-medium">{order.productType}</span>
+            <span className="shrink-0 text-white/35">·</span>
+            <span className="font-medium">{productLine}</span>
+            <span className="shrink-0 text-white/35">·</span>
+            <span className="font-medium">{productVariations || 'Sem variações'}</span>
+          </div>
         </div>
       </div>
 

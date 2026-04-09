@@ -74,7 +74,7 @@ export function urgencyLevel(deliveryIso: string): UrgencyLevel {
   const diffMs = new Date(deliveryIso).getTime() - Date.now()
   const diffH = diffMs / (1000 * 60 * 60)
   if (diffH < 2) return 'vermelho'
-  if (diffH < 24) return 'laranja'
+  if (diffH < 12) return 'laranja'
   return 'neutro'
 }
 

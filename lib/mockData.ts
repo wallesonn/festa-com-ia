@@ -113,9 +113,10 @@ function randomFutureDate(daysAheadMin = 0, daysAheadMax = 10) {
 const deliveryOffsets = [
   // vermelho: < 2h
   30, 60, 90,
-  // laranja: 2h-24h
-  3 * 60, 6 * 60, 12 * 60, 18 * 60,
-  // neutro: > 24h
+  // laranja: 2h-12h
+  3 * 60, 6 * 60, 9 * 60,
+  // neutro: >= 12h
+  12 * 60, 18 * 60,
   36 * 60, 48 * 60, 72 * 60, 5 * 24 * 60, 7 * 24 * 60,
 ]
 

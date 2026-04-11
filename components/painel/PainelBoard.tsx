@@ -16,8 +16,8 @@ import {
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus } from '@/lib/types'
-import { ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
-import { previewOrderStatusLocal, queueOrderStatusSync, reorderOrderLocal, useBrowserOrders } from '@/lib/browser/orders-store'
+import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
+import { previewOrderStatusLocal, queueOrderScheduleSync, queueOrderStatusSync, reorderOrderLocal, useBrowserOrders } from '@/lib/browser/orders-store'
 
 const COLUMNS: { key: PainelStatus; title: string }[] = [
   { key: 'atendimento', title: 'Atendimento' },
@@ -38,6 +38,9 @@ interface PainelBoardProps {
 export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps) {
   const { orders } = useBrowserOrders(initialOrders, professionalId)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [schedulingId, setSchedulingId] = useState<string | null>(null)
+  const [scheduleValue, setScheduleValue] = useState('')
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
 
@@ -51,6 +54,58 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   )
 
   const activeOrder = activeId ? orders.find(o => o.id === activeId) : null
+  const schedulingOrder = schedulingId ? orders.find((order) => order.id === schedulingId) : null
+
+  function toDatetimeLocalValue(date: Date) {
+    const pad = (value: number) => String(value).padStart(2, '0')
+    const year = date.getFullYear()
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  function handleOpenSchedule(id: string) {
+    const order = orders.find((item) => item.id === id)
+    if (!order) return
+
+    const current = order.deliveryDatetime ? new Date(order.deliveryDatetime) : new Date()
+    if (!Number.isNaN(current.getTime())) {
+      if (!order.deliveryDatetime) {
+        current.setHours(current.getHours() + 1)
+        current.setMinutes(0, 0, 0)
+      }
+      setScheduleValue(toDatetimeLocalValue(current))
+    } else {
+      const fallback = new Date()
+      fallback.setHours(fallback.getHours() + 1)
+      fallback.setMinutes(0, 0, 0)
+      setScheduleValue(toDatetimeLocalValue(fallback))
+    }
+
+    setSchedulingId(id)
+    setScheduleError(null)
+  }
+
+  function handleConfirmSchedule() {
+    if (!schedulingOrder) return
+    if (!scheduleValue) {
+      setScheduleError('Escolha uma data e hora para agendar.')
+      return
+    }
+
+    queueOrderScheduleSync(schedulingOrder.id, new Date(scheduleValue).toISOString())
+    setSchedulingId(null)
+    setScheduleValue('')
+    setScheduleError(null)
+  }
+
+  function handleCloseSchedule() {
+    setSchedulingId(null)
+    setScheduleValue('')
+    setScheduleError(null)
+  }
 
   function handleAdvance(id: string) {
     const order = orders.find(o => o.id === id)
@@ -128,7 +183,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-rose-200"><span className="inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0" /> Urgente &lt;2h</span>
-              <span className="flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-amber-200"><span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" /> Próximo 2–24h</span>
+              <span className="flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-amber-200"><span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" /> Próximo 2–12h</span>
             </div>
           </div>
         </div>
@@ -180,6 +235,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                           key={o.id}
                           order={o}
                           onAdvance={handleAdvance}
+                          onSchedule={handleOpenSchedule}
                           onCancel={handleCancel}
                         />
                       ))}
@@ -194,12 +250,61 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                     <PainelCard
                       order={activeOrder}
                       onAdvance={() => {}}
+                      onSchedule={() => {}}
                       onCancel={() => {}}
                     />
                   </div>
                 ) : null}
               </DragOverlay>
             </DndContext>
+          </div>
+        </div>
+      )}
+
+      {schedulingOrder && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 py-6 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111111] shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-gray-400">Agendamento</p>
+                <h2 className="mt-1 text-xl font-semibold text-white">Agendar pedido</h2>
+                <p className="mt-1 text-sm text-gray-300">{schedulingOrder.clientName}</p>
+              </div>
+              <button onClick={handleCloseSchedule} className="rounded-full p-2 text-gray-400 hover:bg-white/5 hover:text-white" aria-label="Fechar modal de agendamento">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center gap-2 text-sm text-gray-300">
+                  <Calendar className="h-4 w-4 text-amber-400" />
+                  Defina a data e hora da entrega/retirada
+                </div>
+                <input
+                  type="datetime-local"
+                  value={scheduleValue}
+                  onChange={(e) => setScheduleValue(e.target.value)}
+                  className="mt-3 h-11 w-full rounded-xl border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                {scheduleError && <p className="mt-2 text-xs text-rose-300">{scheduleError}</p>}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCloseSchedule}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmSchedule}
+                  className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black hover:bg-amber-300"
+                >
+                  Confirmar agendamento
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -12,10 +12,11 @@ import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'luc
 interface PainelCardProps {
   order: Order
   onAdvance: (id: string) => void
+  onSchedule: (id: string) => void
   onCancel: (id: string) => void
 }
 
-export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
+export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCardProps) {
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -42,6 +43,10 @@ export function PainelCard({ order, onAdvance, onCancel }: PainelCardProps) {
 
   function handlePrimaryAction() {
     if (primaryActionDisabled) return
+    if (order.painelStatus === 'atendimento') {
+      onSchedule(order.id)
+      return
+    }
     onAdvance(order.id)
   }
 

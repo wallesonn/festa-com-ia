@@ -11,6 +11,7 @@ const SYNC_INTERVAL_MS = 30_000
 export type PendingStatusUpdate = {
   orderId: string
   painelStatus: PainelStatus
+  deliveryDatetime?: string
   createdAt: number
   attempts: number
 }
@@ -110,10 +111,11 @@ function notifySubscribers(shouldPersist = true) {
   listeners.forEach((listener) => listener())
 }
 
-function upsertPendingStatusUpdate(orderId: string, painelStatus: PainelStatus) {
+function upsertPendingStatusUpdate(orderId: string, painelStatus: PainelStatus, deliveryDatetime?: string) {
   const nextAction: PendingStatusUpdate = {
     orderId,
     painelStatus,
+    deliveryDatetime,
     createdAt: Date.now(),
     attempts: 0,
   }
@@ -128,11 +130,16 @@ function removePendingStatusUpdate(orderId: string) {
   state.pendingStatusUpdates = state.pendingStatusUpdates.filter((action) => action.orderId !== orderId)
 }
 
-function setOrderStatusInState(orderId: string, painelStatus: PainelStatus) {
+function setOrderStatusInState(orderId: string, painelStatus: PainelStatus, deliveryDatetime?: string) {
   const updatedAt = new Date().toISOString()
   state.orders = state.orders.map((order) => (
     order.id === orderId
-      ? { ...order, painelStatus, updatedAt }
+      ? {
+          ...order,
+          painelStatus,
+          ...(deliveryDatetime ? { deliveryDatetime, eventDate: deliveryDatetime } : {}),
+          updatedAt,
+        }
       : order
   ))
 }
@@ -207,7 +214,7 @@ async function flushPendingStatusUpdates() {
     const pending = [...state.pendingStatusUpdates].sort((a, b) => a.createdAt - b.createdAt)
 
     for (const action of pending) {
-      const result = await updateOrderPainelStatus(action.orderId, action.painelStatus)
+      const result = await updateOrderPainelStatus(action.orderId, action.painelStatus, action.deliveryDatetime)
       if (!result.success) {
         const nextAction = state.pendingStatusUpdates.find((item) => item.orderId === action.orderId)
         if (nextAction) {
@@ -225,8 +232,8 @@ async function flushPendingStatusUpdates() {
   }
 }
 
-export function updateOrderStatusLocal(orderId: string, painelStatus: PainelStatus) {
-  setOrderStatusInState(orderId, painelStatus)
+export function updateOrderStatusLocal(orderId: string, painelStatus: PainelStatus, deliveryDatetime?: string) {
+  setOrderStatusInState(orderId, painelStatus, deliveryDatetime)
   notifySubscribers()
 }
 
@@ -257,6 +264,12 @@ export function reorderOrderLocal(orderId: string, overId: string) {
 export function queueOrderStatusSync(orderId: string, painelStatus: PainelStatus) {
   setOrderStatusInState(orderId, painelStatus)
   upsertPendingStatusUpdate(orderId, painelStatus)
+  notifySubscribers()
+}
+
+export function queueOrderScheduleSync(orderId: string, deliveryDatetime: string) {
+  setOrderStatusInState(orderId, 'agendado', deliveryDatetime)
+  upsertPendingStatusUpdate(orderId, 'agendado', deliveryDatetime)
   notifySubscribers()
 }
 

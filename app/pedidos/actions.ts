@@ -30,10 +30,14 @@ export type UpdateOrderPainelStatusResult =
   | { success: true }
   | { success: false; error: string }
 
-export async function updateOrderPainelStatus(orderId: string, painelStatus: string): Promise<UpdateOrderPainelStatusResult> {
+export async function updateOrderPainelStatus(orderId: string, painelStatus: string, deliveryDatetime?: string): Promise<UpdateOrderPainelStatusResult> {
   try {
     const sql = getSql()
-    await sql`UPDATE orders SET painel_status = ${painelStatus}, updated_at = now() WHERE id = ${orderId}`
+    if (deliveryDatetime) {
+      await sql`UPDATE orders SET painel_status = ${painelStatus}, delivery_datetime = ${deliveryDatetime}, event_date = ${deliveryDatetime}, updated_at = now() WHERE id = ${orderId}`
+    } else {
+      await sql`UPDATE orders SET painel_status = ${painelStatus}, updated_at = now() WHERE id = ${orderId}`
+    }
     return { success: true }
   } catch (err) {
     console.error('[updateOrderPainelStatus]', err)

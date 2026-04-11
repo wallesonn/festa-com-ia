@@ -267,9 +267,9 @@ export function queueOrderStatusSync(orderId: string, painelStatus: PainelStatus
   notifySubscribers()
 }
 
-export function queueOrderScheduleSync(orderId: string, deliveryDatetime: string) {
-  setOrderStatusInState(orderId, 'agendado', deliveryDatetime)
-  upsertPendingStatusUpdate(orderId, 'agendado', deliveryDatetime)
+export function queueOrderScheduleSync(orderId: string, painelStatus: PainelStatus, deliveryDatetime: string) {
+  setOrderStatusInState(orderId, painelStatus, deliveryDatetime)
+  upsertPendingStatusUpdate(orderId, painelStatus, deliveryDatetime)
   notifySubscribers()
 }
 

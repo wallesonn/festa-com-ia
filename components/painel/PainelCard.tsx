@@ -12,7 +12,7 @@ import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'luc
 interface PainelCardProps {
   order: Order
   onAdvance: (id: string) => void
-  onSchedule: (id: string) => void
+  onSchedule: (id: string, targetStatus?: PainelStatus) => void
   onCancel: (id: string) => void
 }
 

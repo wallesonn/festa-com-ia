@@ -39,6 +39,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const { orders } = useBrowserOrders(initialOrders, professionalId)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [schedulingId, setSchedulingId] = useState<string | null>(null)
+  const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
   const [scheduleValue, setScheduleValue] = useState('')
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -66,7 +67,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     return `${year}-${month}-${day}T${hours}:${minutes}`
   }
 
-  function handleOpenSchedule(id: string) {
+  function handleOpenSchedule(id: string, targetStatus: PainelStatus = 'agendado') {
     const order = orders.find((item) => item.id === id)
     if (!order) return
 
@@ -85,6 +86,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     }
 
     setSchedulingId(id)
+    setSchedulingTargetStatus(targetStatus)
     setScheduleError(null)
   }
 
@@ -95,14 +97,16 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       return
     }
 
-    queueOrderScheduleSync(schedulingOrder.id, new Date(scheduleValue).toISOString())
+    queueOrderScheduleSync(schedulingOrder.id, schedulingTargetStatus, new Date(scheduleValue).toISOString())
     setSchedulingId(null)
+    setSchedulingTargetStatus('agendado')
     setScheduleValue('')
     setScheduleError(null)
   }
 
   function handleCloseSchedule() {
     setSchedulingId(null)
+    setSchedulingTargetStatus('agendado')
     setScheduleValue('')
     setScheduleError(null)
   }
@@ -159,6 +163,12 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       if (drag) {
         previewOrderStatusLocal(drag.id, drag.fromStatus)
       }
+      return
+    }
+
+    if (drag && drag.fromStatus === 'atendimento' && drag.toStatus !== drag.fromStatus) {
+      previewOrderStatusLocal(drag.id, drag.fromStatus)
+      handleOpenSchedule(drag.id, drag.toStatus)
       return
     }
 
@@ -281,6 +291,9 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                   <Calendar className="h-4 w-4 text-amber-400" />
                   Defina a data e hora da entrega/retirada
                 </div>
+                <p className="mt-2 text-xs text-gray-400">
+                  Ao confirmar, o pedido irá para <span className="font-semibold text-white">{schedulingTargetStatus === 'agendado' ? 'Agendado' : schedulingTargetStatus === 'preparando' ? 'Preparando' : schedulingTargetStatus === 'pronto' ? 'Pronto' : schedulingTargetStatus === 'entregue' ? 'Entregue' : 'Cancelado'}</span>.
+                </p>
                 <input
                   type="datetime-local"
                   value={scheduleValue}

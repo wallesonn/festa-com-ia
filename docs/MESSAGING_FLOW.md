@@ -152,6 +152,110 @@ WHERE id = '<messageId recebido no payload>';
 
 ---
 
+## Configuração do n8n
+
+### Responsabilidades do n8n
+
+O n8n executa **dois workflows**:
+
+**Workflow 1 — Inbound** (WhatsApp → Postgres)
+- Recebe mensagem do cliente via provider WhatsApp
+- Resolve `conversation_id` pelo telefone do cliente (busca no Postgres)
+- Chama IA para gerar 3 sugestões de resposta
+- Grava mensagem + sugestões em `messages` e atualiza `conversations`
+- O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
+
+**Workflow 2 — Outbound** (App → WhatsApp → Postgres)
+- Recebe `POST /webhook/send-message` do app (a mensagem já foi gravada com `pending_send`)
+- Busca o telefone do cliente via `conversation_id` no Postgres
+- Envia a mensagem pelo provider WhatsApp
+- Atualiza `messages.status` para `sent` (ou `failed`) conforme resultado
+- O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
+
+---
+
+### Docker — adicionar n8n ao stack
+
+O n8n deve estar nas redes `web` (Traefik) e `internal` (Postgres). Adicione ao `docker-compose.yml` do stack:
+
+```yaml
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: festa-n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_DOMAIN:-n8n.festacomia.pro}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://${N8N_DOMAIN:-n8n.festacomia.pro}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-festacomia}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-festacomia}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY is required}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - web
+      - internal
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.festa-n8n.rule=Host(`${N8N_DOMAIN:-n8n.festacomia.pro}`)"
+      - "traefik.http.routers.festa-n8n.entrypoints=websecure"
+      - "traefik.http.routers.festa-n8n.tls=true"
+      - "traefik.http.routers.festa-n8n.tls.certresolver=lets-encrypt"
+      - "traefik.http.services.festa-n8n.loadbalancer.server.port=5678"
+```
+
+Adicione o volume ao bloco `volumes:`:
+```yaml
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+```
+
+---
+
+### Variáveis adicionais no Portainer
+
+Adicione ao `portainer.env.example` (e ao Portainer):
+
+```
+# Domínio público do n8n (roteado pelo Traefik)
+N8N_DOMAIN=n8n.festacomia.pro
+
+# Chave de criptografia do n8n — gere com: openssl rand -hex 32
+N8N_ENCRYPTION_KEY=<chave-aleatória-32-bytes>
+
+# N8N_WEBHOOK_URL já configurada acima, usando o container name na rede Docker:
+N8N_WEBHOOK_URL=http://n8n:5678/webhook/send-message
+```
+
+> **`N8N_WEBHOOK_URL`** usa `http://n8n:5678` (rede interna Docker) — sem Traefik, comunicação direta entre containers.
+
+---
+
+### Conexão do n8n com o Postgres
+
+No n8n, ao criar uma credencial Postgres, use:
+
+| Campo | Valor |
+|-------|-------|
+| Host | `postgres` (nome do container na rede `internal`) |
+| Porta | `5432` |
+| Database | `festacomia` |
+| Usuário | `festacomia` |
+| Senha | mesma do `POSTGRES_PASSWORD` |
+
+> O n8n usa o mesmo banco Postgres da aplicação — tabelas `messages`, `conversations`, `clients`, `professionals`.
+
+---
+
 ## Camada de dados — aplicação
 
 ### Tipos TypeScript (`lib/types.ts`)
@@ -202,7 +306,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 | 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | ✅ Concluído | `lib/types.ts`, `lib/db/mappers.ts`, `components/painel/PainelCard.tsx` |
 | 5 | Envio: server action grava no Postgres + chama webhook n8n | ✅ Concluído | `app/painel/actions.ts` |
 | 6 | UI — envio: campo de resposta integrado com server action | ✅ Concluído | `components/painel/PainelCard.tsx`, `components/painel/PainelBoard.tsx` |
-| 7 | Config: `N8N_WEBHOOK_URL` no docker-compose e Portainer | 🔲 Pendente | `festa-com-ia-dockercompose/docker-compose.yml`, `portainer.env.example` |
+| 7 | Config: `N8N_WEBHOOK_URL` no docker-compose e Portainer | ✅ Concluído | `festa-com-ia-dockercompose/docker-compose.yml`, `portainer.env.example`, `env.local.example` |
 
 ---
 

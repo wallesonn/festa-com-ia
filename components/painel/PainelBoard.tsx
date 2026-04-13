@@ -244,6 +244,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                         <PainelCard
                           key={o.id}
                           order={o}
+                          professionalId={professionalId}
                           onAdvance={handleAdvance}
                           onSchedule={handleOpenSchedule}
                           onCancel={handleCancel}
@@ -259,6 +260,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                   <div className="opacity-90 rotate-1 scale-105">
                     <PainelCard
                       order={activeOrder}
+                      professionalId={professionalId}
                       onAdvance={() => {}}
                       onSchedule={() => {}}
                       onCancel={() => {}}

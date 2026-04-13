@@ -1,24 +1,28 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Order, PainelStatus } from '@/lib/types'
 import { urgencyBorderClass, urgencyPulseClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
 import { useConversationPolling } from '@/lib/hooks/useConversationPolling'
+import { sendMessage } from '@/app/painel/actions'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
 import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 
 interface PainelCardProps {
   order: Order
+  professionalId: string
   onAdvance: (id: string) => void
   onSchedule: (id: string, targetStatus?: PainelStatus) => void
   onCancel: (id: string) => void
 }
 
-export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCardProps) {
+export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel }: PainelCardProps) {
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
   const [expanded, setExpanded] = useState(false)
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const [replyOpen, setReplyOpen] = useState(true)
@@ -75,12 +79,32 @@ export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCar
   }
 
   function handleSend() {
-    if (!reply.trim()) return
-    setSent(true)
-    setReply('')
-    setReplyOpen(false)
-    setExpandedSuggestions(false)
-    setTimeout(() => setSent(false), 2000)
+    const text = reply.trim()
+    if (!text || isPending) return
+    if (!order.conversationId) {
+      setSendError('Pedido sem conversa vinculada')
+      setTimeout(() => setSendError(null), 3000)
+      return
+    }
+    setSendError(null)
+    startTransition(async () => {
+      const result = await sendMessage({
+        conversationId: order.conversationId!,
+        orderId: order.id,
+        professionalId,
+        text,
+      })
+      if (result.ok) {
+        setSent(true)
+        setReply('')
+        setReplyOpen(false)
+        setExpandedSuggestions(false)
+        setTimeout(() => setSent(false), 2000)
+      } else {
+        setSendError(result.error ?? 'Erro ao enviar')
+        setTimeout(() => setSendError(null), 4000)
+      }
+    })
   }
 
   return (
@@ -160,6 +184,9 @@ export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCar
             )}
           </div>
 
+          {sendError && (
+            <p className="text-[11px] text-rose-300 px-1">{sendError}</p>
+          )}
           <div className="flex gap-2 items-center">
             <input
               type="text"
@@ -168,14 +195,16 @@ export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCar
               onChange={e => setReply(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
               placeholder="Responder..."
-              className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/50"
+              disabled={isPending}
+              className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-gray-100 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/50 disabled:opacity-50"
             />
             <button
               onClick={handleSend}
+              disabled={isPending}
               aria-label="Enviar"
-              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-violet-500 hover:from-fuchsia-400 hover:to-violet-400 text-white transition-all"
+              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-violet-500 hover:from-fuchsia-400 hover:to-violet-400 text-white transition-all disabled:opacity-50"
             >
-              <Send className="h-4 w-4" />
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
         </>

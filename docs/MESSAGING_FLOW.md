@@ -176,7 +176,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 |---|-------|--------|----------------------|
 | 1 | Schema: coluna `suggestions` em `messages` | ✅ Concluído | `supabase/schema/local_postgres_final.sql` |
 | 2 | Leitura: queries e tipos TypeScript | ✅ Concluído | `lib/types.ts`, `lib/database.types.ts`, `lib/db/mappers.ts`, `lib/db/queries.ts` |
-| 3 | Polling: hook React para atualizar mensagens a cada 15–30s | 🔲 Pendente | `lib/hooks/useConversationPolling.ts` (a criar) |
+| 3 | Polling: hook React para atualizar mensagens a cada 15–30s | ✅ Concluído | `app/painel/actions.ts`, `lib/hooks/useConversationPolling.ts` |
 | 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | 🔲 Pendente | `components/painel/PainelCard.tsx` |
 | 5 | Envio: server action grava no Postgres + chama webhook n8n | 🔲 Pendente | `app/painel/actions.ts` (a criar) |
 | 6 | UI — envio: campo de resposta integrado com server action | 🔲 Pendente | `components/painel/PainelCard.tsx` |
@@ -199,3 +199,42 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 - As sugestões exibidas na UI serão sempre as da **última mensagem do cliente** na conversa.
 - O campo de envio do `PainelCard` continuará visualmente no mesmo lugar — apenas a lógica de envio mudará de mock para real.
 - A coluna `suggestions` é `jsonb` no Postgres; o postgres.js a retorna como `string[]` quando o n8n gravar um array JSON de strings.
+
+---
+
+## Polling — detalhes de implementação (Etapa 3)
+
+### Server action (`app/painel/actions.ts`)
+
+```typescript
+// Busca as últimas 10 mensagens de uma conversa e retorna em ordem cronológica (ASC)
+fetchConversationMessages(conversationId: string): Promise<ChatMessage[]>
+```
+
+- Chama `getLastMessagesByConversation` (query do Postgres)
+- Mapeia `DbMessageRow` → `ChatMessage` incluindo `suggestions`
+- Inverte a ordem (DESC do banco → ASC para exibição)
+
+### Hook (`lib/hooks/useConversationPolling.ts`)
+
+```typescript
+useConversationPolling(
+  conversationId: string | null,
+  intervalMs?: number  // padrão: 20_000ms (20s)
+): { messages: ChatMessage[], isLoading: boolean }
+```
+
+**Comportamento:**
+- Faz uma busca imediata ao receber um `conversationId`
+- Repete a busca a cada `intervalMs` milissegundos
+- Para automaticamente quando `conversationId` é `null`
+- Cancela requisições em andamento ao desmontar ou trocar de conversa
+- Em caso de erro, mantém silenciosamente as mensagens anteriores
+
+**Uso previsto no `PainelCard` (Etapa 4):**
+
+```typescript
+const { messages, isLoading } = useConversationPolling(
+  expanded ? order.conversationId : null
+)
+```

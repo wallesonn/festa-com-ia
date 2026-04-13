@@ -125,6 +125,7 @@ export interface ChatMessage {
 export interface Order {
   id: string
   clientId: string
+  conversationId?: string  // ref à conversa de WhatsApp associada
   clientName: string
   clientPhone: string
   productType: ProductType

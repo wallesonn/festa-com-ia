@@ -62,6 +62,7 @@ export function dbRowToOrder(row: DbOrderRow): Order {
   return {
     id: row.id,
     clientId: row.client_id,
+    conversationId: row.conversation_id ?? undefined,
     clientName: row.client_name,
     clientPhone: row.client_phone,
     productType: row.product_type as ProductType,

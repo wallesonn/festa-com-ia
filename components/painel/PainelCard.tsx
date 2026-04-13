@@ -5,9 +5,9 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Order, PainelStatus } from '@/lib/types'
 import { urgencyBorderClass, urgencyPulseClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
-import { generateSuggestions } from '@/lib/mockData'
+import { useConversationPolling } from '@/lib/hooks/useConversationPolling'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
-import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 
 interface PainelCardProps {
   order: Order
@@ -22,7 +22,14 @@ export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCar
   const [expanded, setExpanded] = useState(false)
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const [replyOpen, setReplyOpen] = useState(true)
-  const suggestions = generateSuggestions(order.lastMessage)
+
+  const { messages: liveMessages, isLoading: isPolling } = useConversationPolling(
+    expanded ? (order.conversationId ?? null) : null
+  )
+  const displayMessages = liveMessages.length > 0 ? liveMessages : order.messages
+  const lastClientMsg = [...displayMessages].reverse().find(m => m.sender === 'client')
+  const suggestions = lastClientMsg?.suggestions ?? []
+
   const [productLineRaw, ...productVariationParts] = order.productSubtype.split('·')
   const productLine = productLineRaw?.trim() || 'Sem linha'
   const productVariations = productVariationParts.join('·').trim()
@@ -108,7 +115,7 @@ export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCar
 
       {/* Histórico de mensagens */}
       <div className="border-t border-white/10 pt-2 space-y-1.5">
-        {(expanded ? order.messages.slice(-5) : order.messages.slice(-1)).map(msg => (
+        {(expanded ? displayMessages.slice(-10) : displayMessages.slice(-1)).map(msg => (
           <div key={msg.id} className={`flex flex-col gap-0.5 ${msg.sender === 'attendant' ? 'items-end' : 'items-start'}`}>
             <div className={`max-w-[85%] px-2.5 py-1.5 rounded-xl text-xs leading-snug ${msg.sender === 'attendant' ? 'bg-black/40 text-white rounded-br-none' : 'bg-white/15 text-white/90 rounded-bl-none'}`}>
               {msg.text}
@@ -120,7 +127,11 @@ export function PainelCard({ order, onAdvance, onSchedule, onCancel }: PainelCar
           onClick={() => setExpanded(v => !v)}
           className="w-full flex items-center justify-center gap-1 text-[11px] text-white/50 hover:text-white/80 py-1 transition-colors"
         >
-          {expanded ? <><ChevronUp className="h-3 w-3" /> Recolher</> : <><ChevronDown className="h-3 w-3" /> Ver conversa ({order.messages.length} msgs)</>}
+          {expanded
+            ? <><ChevronUp className="h-3 w-3" /> Recolher</>
+            : isPolling
+              ? <><Loader2 className="h-3 w-3 animate-spin" /> Carregando...</>
+              : <><ChevronDown className="h-3 w-3" /> Ver conversa ({displayMessages.length} msgs)</>}
         </button>
       </div>
 

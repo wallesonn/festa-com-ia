@@ -6,7 +6,7 @@ import type { ChatMessage } from '@/lib/types'
 
 export function useConversationPolling(
   conversationId: string | null,
-  intervalMs = 20_000,
+  intervalMs = 15_000,
 ) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)

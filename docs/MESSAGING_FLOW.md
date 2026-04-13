@@ -177,7 +177,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 | 1 | Schema: coluna `suggestions` em `messages` | ✅ Concluído | `supabase/schema/local_postgres_final.sql` |
 | 2 | Leitura: queries e tipos TypeScript | ✅ Concluído | `lib/types.ts`, `lib/database.types.ts`, `lib/db/mappers.ts`, `lib/db/queries.ts` |
 | 3 | Polling: hook React para atualizar mensagens a cada 15–30s | ✅ Concluído | `app/painel/actions.ts`, `lib/hooks/useConversationPolling.ts` |
-| 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | 🔲 Pendente | `components/painel/PainelCard.tsx` |
+| 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | ✅ Concluído | `lib/types.ts`, `lib/db/mappers.ts`, `components/painel/PainelCard.tsx` |
 | 5 | Envio: server action grava no Postgres + chama webhook n8n | 🔲 Pendente | `app/painel/actions.ts` (a criar) |
 | 6 | UI — envio: campo de resposta integrado com server action | 🔲 Pendente | `components/painel/PainelCard.tsx` |
 | 7 | Config: `N8N_WEBHOOK_URL` no docker-compose e Portainer | 🔲 Pendente | `festa-com-ia-dockercompose/docker-compose.yml`, `portainer.env.example` |

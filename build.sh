@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION=${1:-v1.0.0}
+if [ $# -lt 1 ] || [ -z "${1:-}" ]; then
+  echo "❌ Uso: ./build.sh <version>"
+  echo "   Exemplo: ./build.sh v1.2.8"
+  exit 1
+fi
+
+VERSION=$1
 
 if [ -f .env.build ]; then
   set -a
@@ -13,8 +19,8 @@ else
   exit 1
 fi
 
-if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
-  echo "❌ NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY são obrigatórios no .env.build"
+if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${NEXT_PUBLIC_SITE_URL:-}" ]; then
+  echo "❌ NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e NEXT_PUBLIC_SITE_URL são obrigatórios no .env.build"
   exit 1
 fi
 
@@ -24,6 +30,7 @@ docker buildx build --platform linux/amd64 --no-cache --progress=plain \
   -t "${DOCKER_IMAGE}:latest" \
   --build-arg NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL}" \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+  --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
   --push \
   .
 

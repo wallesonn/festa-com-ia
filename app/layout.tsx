@@ -4,7 +4,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://festacomia.elizax.cloud'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://festacomia.pro'
 
 export const metadata: Metadata = {
   title: 'Festa com IA',

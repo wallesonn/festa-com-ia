@@ -119,6 +119,7 @@ export interface ChatMessage {
   sender: MessageSender
   text: string
   at: string // ISO
+  suggestions?: string[] // sugestões geradas pelo n8n (apenas em mensagens do cliente)
 }
 
 export interface Order {

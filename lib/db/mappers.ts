@@ -34,7 +34,7 @@ export type DbOrderRow = {
   payment_deposit_percent: number | null
   payment_deposit_paid_at: string | null
   payment_full_paid_at: string | null
-  messages_json: Array<{ id: string; sender: string; text: string; at: string }> | null
+  messages_json: Array<{ id: string; sender: string; text: string; at: string; suggestions?: string[] | null }> | null
 }
 
 export function dbRowToOrder(row: DbOrderRow): Order {
@@ -56,6 +56,7 @@ export function dbRowToOrder(row: DbOrderRow): Order {
     sender: m.sender as MessageSender,
     text: m.text,
     at: m.at,
+    ...(m.suggestions?.length ? { suggestions: m.suggestions } : {}),
   }))
 
   return {

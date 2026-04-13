@@ -44,12 +44,12 @@ export async function getOrdersWithPayments(professionalId: string): Promise<DbO
       p.full_paid_at       AS payment_full_paid_at,
       COALESCE(
         (SELECT json_agg(
-          json_build_object('id', m.id, 'sender', m.sender, 'text', m.text, 'at', m.sent_at)
+          json_build_object('id', m.id, 'sender', m.sender, 'text', m.text, 'at', m.sent_at, 'suggestions', m.suggestions)
           ORDER BY m.sent_at ASC
         ) FROM (
-          SELECT id, sender, text, sent_at FROM messages
+          SELECT id, sender, text, sent_at, suggestions FROM messages
           WHERE conversation_id = o.conversation_id
-          ORDER BY sent_at DESC LIMIT 5
+          ORDER BY sent_at DESC LIMIT 10
         ) m),
         '[]'::json
       ) AS messages_json
@@ -72,12 +72,26 @@ export async function getConversationsByProfessional(professionalId: string) {
   `
 }
 
-export async function getMessagesByConversation(conversationId: string) {
+export type DbMessageRow = {
+  id: string
+  conversation_id: string
+  order_id: string | null
+  sender: string
+  direction: string
+  text: string
+  status: string
+  sent_at: string
+  suggestions: string[] | null
+}
+
+export async function getLastMessagesByConversation(conversationId: string, limit = 10): Promise<DbMessageRow[]> {
   const sql = getSql()
-  return sql<Tables<'messages'>[]>`
-    SELECT * FROM messages
+  return sql<DbMessageRow[]>`
+    SELECT id, conversation_id, order_id, sender, direction, text, status, sent_at, suggestions
+    FROM messages
     WHERE conversation_id = ${conversationId}
-    ORDER BY sent_at ASC
+    ORDER BY sent_at DESC
+    LIMIT ${limit}
   `
 }
 

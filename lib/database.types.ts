@@ -407,6 +407,7 @@ export type Database = {
           sender: string
           sent_at: string
           status: string
+          suggestions: Json | null
           text: string
         }
         Insert: {
@@ -421,6 +422,7 @@ export type Database = {
           sender: string
           sent_at?: string
           status?: string
+          suggestions?: Json | null
           text: string
         }
         Update: {
@@ -435,6 +437,7 @@ export type Database = {
           sender?: string
           sent_at?: string
           status?: string
+          suggestions?: Json | null
           text?: string
         }
         Relationships: [

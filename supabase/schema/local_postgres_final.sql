@@ -137,7 +137,8 @@ create table messages (
   provider_message_id text,
   error_message text,
   sent_at timestamptz not null default now(),
-  metadata jsonb
+  metadata jsonb,
+  suggestions jsonb
 );
 
 create table appointments (

@@ -114,18 +114,40 @@ WHERE id = '<conversation_id>';
 
 ### Mensagem enviada pelo atendente (outbound)
 
-O n8n recebe o webhook do app e após envio ao WhatsApp deve gravar:
+> ⚠️ **Importante:** o app **já insere** a mensagem no Postgres com `status = 'pending_send'` antes de chamar o webhook. O n8n **não deve inserir** uma nova linha — deve apenas enviar ao WhatsApp e **atualizar** o registro existente.
+
+**Payload recebido pelo webhook n8n (enviado pelo app):**
+
+```json
+{
+  "messageId": "uuid-da-mensagem-já-inserida",
+  "conversationId": "uuid",
+  "orderId": "uuid ou null",
+  "professionalId": "uuid",
+  "text": "Texto da resposta",
+  "sender": "attendant",
+  "direction": "outbound"
+}
+```
+
+**O que o n8n deve fazer após enviar ao WhatsApp:**
 
 ```sql
-INSERT INTO messages (
-  professional_id, conversation_id, order_id,
-  sender, direction, text, status,
-  provider_message_id, sent_at
-) VALUES (
-  '<professional_id>', '<conversation_id>', '<order_id ou null>',
-  'attendant', 'outbound', '<texto>',
-  'sent', '<id retornado pelo WhatsApp>', now()
-);
+-- Marcar como enviado e registrar o ID do WhatsApp
+UPDATE messages
+SET
+  status               = 'sent',
+  provider_message_id  = '<id retornado pelo WhatsApp>',
+  sent_at              = now()
+WHERE id = '<messageId recebido no payload>';
+```
+
+**Em caso de falha no envio ao WhatsApp:**
+
+```sql
+UPDATE messages
+SET status = 'failed', error_message = '<descrição do erro>'
+WHERE id = '<messageId recebido no payload>';
 ```
 
 ---
@@ -178,7 +200,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 | 2 | Leitura: queries e tipos TypeScript | ✅ Concluído | `lib/types.ts`, `lib/database.types.ts`, `lib/db/mappers.ts`, `lib/db/queries.ts` |
 | 3 | Polling: hook React para atualizar mensagens a cada 15–30s | ✅ Concluído | `app/painel/actions.ts`, `lib/hooks/useConversationPolling.ts` |
 | 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | ✅ Concluído | `lib/types.ts`, `lib/db/mappers.ts`, `components/painel/PainelCard.tsx` |
-| 5 | Envio: server action grava no Postgres + chama webhook n8n | 🔲 Pendente | `app/painel/actions.ts` (a criar) |
+| 5 | Envio: server action grava no Postgres + chama webhook n8n | ✅ Concluído | `app/painel/actions.ts` |
 | 6 | UI — envio: campo de resposta integrado com server action | 🔲 Pendente | `components/painel/PainelCard.tsx` |
 | 7 | Config: `N8N_WEBHOOK_URL` no docker-compose e Portainer | 🔲 Pendente | `festa-com-ia-dockercompose/docker-compose.yml`, `portainer.env.example` |
 
@@ -220,7 +242,7 @@ fetchConversationMessages(conversationId: string): Promise<ChatMessage[]>
 ```typescript
 useConversationPolling(
   conversationId: string | null,
-  intervalMs?: number  // padrão: 20_000ms (20s)
+  intervalMs?: number  // padrão: 15_000ms (15s)
 ): { messages: ChatMessage[], isLoading: boolean }
 ```
 

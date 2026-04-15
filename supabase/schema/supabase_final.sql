@@ -18,7 +18,6 @@ create table if not exists public."festa-com-ia-professionals" (
   conversation_samples text,
   onboarding_completed boolean not null default false,
   slug text,
-  style_prompt text,
   service_rules text,
   status text not null default 'active',
   created_at timestamptz not null default now(),

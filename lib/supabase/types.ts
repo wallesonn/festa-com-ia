@@ -24,7 +24,6 @@ export type SupabaseDatabase = {
           conversation_samples: string | null
           onboarding_completed: boolean
           slug: string | null
-          style_prompt: string | null
           service_rules: string | null
           status: string
           created_at: string
@@ -44,7 +43,6 @@ export type SupabaseDatabase = {
           conversation_samples?: string | null
           onboarding_completed?: boolean
           slug?: string | null
-          style_prompt?: string | null
           service_rules?: string | null
           status?: string
           created_at?: string
@@ -64,7 +62,6 @@ export type SupabaseDatabase = {
           conversation_samples?: string | null
           onboarding_completed?: boolean
           slug?: string | null
-          style_prompt?: string | null
           service_rules?: string | null
           status?: string
           created_at?: string

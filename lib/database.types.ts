@@ -789,7 +789,6 @@ export type Database = {
           service_rules: string | null
           slug: string | null
           status: string
-          style_prompt: string | null
           updated_at: string
         }
         Insert: {
@@ -801,7 +800,6 @@ export type Database = {
           service_rules?: string | null
           slug?: string | null
           status?: string
-          style_prompt?: string | null
           updated_at?: string
         }
         Update: {
@@ -813,7 +811,6 @@ export type Database = {
           service_rules?: string | null
           slug?: string | null
           status?: string
-          style_prompt?: string | null
           updated_at?: string
         }
         Relationships: []

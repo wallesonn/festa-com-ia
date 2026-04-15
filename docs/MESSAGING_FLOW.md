@@ -190,7 +190,6 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
 |-------|--------|---------------|
 | `display_name` | Supabase / Postgres | nome de exibição do profissional |
 | `business_name` | Supabase / Postgres | nome do negócio |
-| `style_prompt` | Supabase / Postgres | instrução manual de estilo |
 | `service_rules` | Supabase / Postgres | regras de atendimento, limites e prazos |
 | `products_produced` | Supabase | grupos de produtos que o profissional produz |
 | `product_subgroups` | Supabase | subgrupos de produtos disponíveis |

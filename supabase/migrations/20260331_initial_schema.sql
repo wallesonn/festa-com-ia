@@ -13,7 +13,6 @@ create table professionals (
   business_name text not null,
   slug text,
   style_prompt text,
-  tone_of_voice text,
   service_rules text,
   status text not null default 'active',
   created_at timestamptz not null default now(),

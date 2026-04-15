@@ -49,7 +49,6 @@
 | `onboarding_completed` | `boolean` | concluiu primeiro acesso |
 | `slug` | `text` | nullable, útil para URL |
 | `style_prompt` | `text` | nullable |
-| `tone_of_voice` | `text` | nullable |
 | `service_rules` | `text` | nullable |
 | `status` | `text` | active / paused / archived |
 | `created_at` | `timestamptz` | |
@@ -85,7 +84,6 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `business_name` | `text` | nome do negócio |
 | `slug` | `text` | nullable, útil para subdomínio/URL |
 | `style_prompt` | `text` | prompt manual com o jeito do profissional falar |
-| `tone_of_voice` | `text` | ex: acolhedor, objetivo, formal |
 | `service_rules` | `text` | regras de atendimento, prazos e limites |
 | `status` | `text` | enum: active, paused, archived |
 | `created_at` | `timestamptz` | |

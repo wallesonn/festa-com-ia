@@ -68,9 +68,9 @@ async function seed() {
   // 1. Profissional demo
   const [professional] = await sql<{ id: string }[]>`
     INSERT INTO professionals
-      (display_name, business_name, slug, tone_of_voice, style_prompt, service_rules, status)
+      (display_name, business_name, slug, style_prompt, service_rules, status)
     VALUES
-      ('Juliana Demo', 'Doceria da Ju', 'doceria-da-ju', 'acolhedor',
+      ('Juliana Demo', 'Doceria da Ju', 'doceria-da-ju',
        'Atendo com carinho e atenção, como se cada cliente fosse especial. Uso linguagem simples e próxima.',
        'Prazo mínimo de 3 dias úteis. Entrega de 10h às 20h. Sinal de 50% para confirmar.',
        'active')

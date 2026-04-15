@@ -790,7 +790,6 @@ export type Database = {
           slug: string | null
           status: string
           style_prompt: string | null
-          tone_of_voice: string | null
           updated_at: string
         }
         Insert: {
@@ -803,7 +802,6 @@ export type Database = {
           slug?: string | null
           status?: string
           style_prompt?: string | null
-          tone_of_voice?: string | null
           updated_at?: string
         }
         Update: {
@@ -816,7 +814,6 @@ export type Database = {
           slug?: string | null
           status?: string
           style_prompt?: string | null
-          tone_of_voice?: string | null
           updated_at?: string
         }
         Relationships: []

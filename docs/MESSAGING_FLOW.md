@@ -87,6 +87,8 @@ Sem alteração de schema. Campos relevantes:
 
 O n8n deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`:
 
+Antes de chamar a IA para gerar sugestões de resposta, o n8n deve buscar as **10 últimas mensagens trocadas** na conversa e usar esse histórico como contexto para a geração das respostas.
+
 ```sql
 -- 1. Inserir mensagem recebida
 INSERT INTO messages (
@@ -161,6 +163,7 @@ O n8n executa **dois workflows**:
 **Workflow 1 — Inbound** (WhatsApp → Postgres)
 - Recebe mensagem do cliente via provider WhatsApp
 - Resolve `conversation_id` pelo telefone do cliente (busca no Postgres)
+- Busca as 10 últimas mensagens trocadas e usa o histórico como contexto
 - Chama IA para gerar 3 sugestões de resposta
 - Grava mensagem + sugestões em `messages` e atualiza `conversations`
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
@@ -171,6 +174,43 @@ O n8n executa **dois workflows**:
 - Envia a mensagem pelo provider WhatsApp
 - Atualiza `messages.status` para `sent` (ou `failed`) conforme resultado
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
+
+### Prompt de sistema da IA
+
+A geração das respostas deve usar um **prompt de sistema** montado com os dados do profissional e com o contexto recente da conversa.
+
+**Fontes de dados do profissional:**
+
+- **Supabase**: tabela `public."festa-com-ia-professionals"`
+- **Postgres local**: tabela `professionals`
+
+**Campos do profissional disponíveis para o prompt:**
+
+| Campo | Origem | Uso no prompt |
+|-------|--------|---------------|
+| `display_name` | Supabase / Postgres | nome de exibição do profissional |
+| `business_name` | Supabase / Postgres | nome do negócio |
+| `style_prompt` | Supabase / Postgres | instrução manual de estilo |
+| `service_rules` | Supabase / Postgres | regras de atendimento, limites e prazos |
+| `products_produced` | Supabase | grupos de produtos que o profissional produz |
+| `product_subgroups` | Supabase | subgrupos de produtos disponíveis |
+| `product_variations` | Supabase | variações por grupo de produto |
+| `conversation_samples` | Supabase | exemplos de conversas do profissional |
+
+**Como o prompt deve ser montado:**
+
+1. Identificar o profissional da conversa.
+2. Carregar os dados do profissional acima.
+3. Buscar as **10 últimas mensagens trocadas** na conversa.
+4. Montar o prompt de sistema com:
+   - identidade do negócio
+   - regras de atendimento
+   - portfólio/produtos
+   - exemplos de conversa
+   - histórico recente da conversa
+5. Enviar esse contexto para a IA gerar as **3 sugestões de resposta**.
+
+> Observação: hoje o fluxo já documenta os campos do profissional, mas a montagem exata do prompt de sistema deve ser implementada no workflow do n8n ou na camada que chamar a IA.
 
 ---
 

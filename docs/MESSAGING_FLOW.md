@@ -203,7 +203,7 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
 3. Buscar as **10 últimas mensagens trocadas** na conversa.
 4. Montar o prompt de sistema com:
    - identidade do negócio
-   - regras de atendimento
+   - regras de atendimento (`service_rules`)
    - portfólio/produtos
    - exemplos de conversa
    - histórico recente da conversa

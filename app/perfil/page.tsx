@@ -8,11 +8,128 @@ import { PRODUCT_GROUPS } from '@/lib/types'
 
 const STORAGE_BUCKET = 'festa-com-ia'
 
+type RulesBuilderState = {
+  hours: 'horario_comercial' | 'manha' | 'tarde' | 'noite' | 'sob_consulta'
+  delivery: 'sim' | 'nao' | 'depende' | 'somente_retirada'
+  cakes: boolean
+  sweets: boolean
+  meals: boolean
+  savory: boolean
+  lactoseFree: boolean
+  glutenFree: boolean
+  sugarFree: boolean
+  veganOptions: boolean
+  customNotes: string
+}
+
+const RULES_HOURS_OPTIONS = [
+  {
+    value: 'horario_comercial',
+    label: 'Horário comercial',
+    hint: 'Atende em horário comercial',
+  },
+  {
+    value: 'manha',
+    label: 'Manhã',
+    hint: 'Atende pela manhã',
+  },
+  {
+    value: 'tarde',
+    label: 'Tarde',
+    hint: 'Atende à tarde',
+  },
+  {
+    value: 'noite',
+    label: 'Noite',
+    hint: 'Atende à noite',
+  },
+  {
+    value: 'sob_consulta',
+    label: 'Sob consulta',
+    hint: 'Horário flexível, conforme combinado',
+  },
+] as const
+
+const RULES_DELIVERY_OPTIONS = [
+  { value: 'sim', label: 'Sim', hint: 'Faz delivery' },
+  { value: 'nao', label: 'Não', hint: 'Não faz delivery' },
+  { value: 'depende', label: 'Depende', hint: 'Depende do produto ou da região' },
+  { value: 'somente_retirada', label: 'Somente retirada', hint: 'Funciona apenas por retirada' },
+] as const
+
+const RULES_PRODUCT_OPTIONS = [
+  { key: 'cakes' as const, label: 'Bolos e tortas', hint: 'Bolos de festa, bolos caseiros e tortas' },
+  { key: 'sweets' as const, label: 'Doces e sobremesas', hint: 'Brigadeiros, brownies, pudins e afins' },
+  { key: 'meals' as const, label: 'Refeições', hint: 'Marmitas, pratos feitos e refeições completas' },
+  { key: 'savory' as const, label: 'Salgados', hint: 'Lanches, salgadinhos e itens de festa' },
+] as const
+
+const RULES_DIETARY_OPTIONS = [
+  { key: 'lactoseFree' as const, label: 'Sem lactose', hint: 'Opções sem leite ou derivados' },
+  { key: 'glutenFree' as const, label: 'Sem glúten', hint: 'Opções sem trigo ou glúten' },
+  { key: 'sugarFree' as const, label: 'Sem açúcar', hint: 'Opções diet ou sem açúcar' },
+  { key: 'veganOptions' as const, label: 'Veganas', hint: 'Opções sem ingredientes de origem animal' },
+] as const
+
+const DEFAULT_RULES_BUILDER: RulesBuilderState = {
+  hours: 'horario_comercial',
+  delivery: 'depende',
+  cakes: true,
+  sweets: true,
+  meals: false,
+  savory: false,
+  lactoseFree: false,
+  glutenFree: false,
+  sugarFree: false,
+  veganOptions: false,
+  customNotes: '',
+}
+
+function joinPortugueseList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? ''
+  if (items.length === 2) return `${items[0]} e ${items[1]}`
+
+  return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`
+}
+
+function buildServiceRulesText(builder: RulesBuilderState) {
+  const hoursLabel = RULES_HOURS_OPTIONS.find((option) => option.value === builder.hours)?.label ?? 'Horário comercial'
+  const deliveryLabel = RULES_DELIVERY_OPTIONS.find((option) => option.value === builder.delivery)?.label ?? 'Depende'
+
+  const products = [
+    builder.cakes ? 'bolos e tortas' : null,
+    builder.sweets ? 'doces e sobremesas' : null,
+    builder.meals ? 'refeições' : null,
+    builder.savory ? 'salgados' : null,
+  ].filter((item): item is string => Boolean(item))
+
+  const dietaryOptions = [
+    builder.lactoseFree ? 'sem lactose' : null,
+    builder.glutenFree ? 'sem glúten' : null,
+    builder.sugarFree ? 'sem açúcar' : null,
+    builder.veganOptions ? 'opções veganas' : null,
+  ].filter((item): item is string => Boolean(item))
+
+  const lines = [
+    'Regras de atendimento:',
+    `- Horário de atendimento: ${hoursLabel.toLowerCase()}.`,
+    `- Delivery: ${deliveryLabel.toLowerCase()}.`,
+    products.length ? `- Trabalha com ${joinPortugueseList(products)}.` : '- Tipos de produto a confirmar conforme o pedido.',
+    dietaryOptions.length
+      ? `- Oferece ${joinPortugueseList(dietaryOptions)}.`
+      : '- Restrições alimentares e versões especiais a confirmar conforme o item.',
+    builder.customNotes.trim() ? `- Observações extras: ${builder.customNotes.trim()}.` : null,
+  ]
+
+  return lines.filter((line): line is string => Boolean(line)).join('\n')
+}
+
 type ProfileForm = {
   businessName: string
   phone: string
   productsProduced: string[]
   conversationSamples: string
+  serviceRules: string
 }
 
 function parseProductsProduced(value: string | null | undefined) {
@@ -45,11 +162,14 @@ export default function PerfilPage() {
   const [photoPath, setPhotoPath] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [isStyleModalOpen, setIsStyleModalOpen] = useState(false)
+  const [rulesBuilder, setRulesBuilder] = useState<RulesBuilderState>(DEFAULT_RULES_BUILDER)
   const [form, setForm] = useState<ProfileForm>({
     businessName: '',
     phone: '',
     productsProduced: [],
     conversationSamples: '',
+    serviceRules: '',
   })
   const router = useRouter()
 
@@ -98,7 +218,7 @@ export default function PerfilPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('festa-com-ia-professionals')
-        .select('id,business_name,phone,email,photo_path,products_produced,conversation_samples,onboarding_completed')
+        .select('id,business_name,phone,email,photo_path,products_produced,conversation_samples,service_rules,onboarding_completed')
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
@@ -122,6 +242,7 @@ export default function PerfilPage() {
         phone: profile?.phone ?? '',
         productsProduced: selectedProducts,
         conversationSamples: profile?.conversation_samples ?? '',
+        serviceRules: profile?.service_rules ?? '',
       })
       setLoading(false)
     }
@@ -186,6 +307,7 @@ export default function PerfilPage() {
       photo_path: nextPhotoPath,
       products_produced: JSON.stringify(form.productsProduced),
       conversation_samples: form.conversationSamples.trim() || null,
+      service_rules: form.serviceRules.trim() || null,
       onboarding_completed: true,
       status: 'active',
       updated_at: now,
@@ -242,6 +364,14 @@ export default function PerfilPage() {
 
     setFeedback('Perfil atualizado com sucesso.')
     setSaving(false)
+  }
+
+  function handleApplyStyleBuilder() {
+    setForm((prev) => ({
+      ...prev,
+      serviceRules: buildServiceRulesText(rulesBuilder),
+    }))
+    setIsStyleModalOpen(false)
   }
 
   if (loading) {
@@ -425,6 +555,34 @@ export default function PerfilPage() {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="serviceRules" className="text-sm font-medium text-gray-200">
+                    Regras de atendimento
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsStyleModalOpen(true)}
+                    className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-medium text-fuchsia-100 transition hover:border-fuchsia-300 hover:bg-fuchsia-500/20"
+                  >
+                    Montar regras
+                  </button>
+                </div>
+                <textarea
+                  id="serviceRules"
+                  value={form.serviceRules}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, serviceRules: event.target.value }))
+                  }
+                  rows={4}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                  placeholder="Clique em 'Montar regras' para gerar regras simples do negócio, ou edite manualmente aqui."
+                />
+                <p className="text-xs text-gray-400">
+                  Essas regras podem orientar a IA no atendimento e evitar respostas fora da política do negócio.
+                </p>
+              </div>
+
               {feedback && (
                 <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
                   {feedback}
@@ -450,6 +608,164 @@ export default function PerfilPage() {
           </div>
         </div>
       </div>
+
+      {isStyleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.75rem] border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-black/40">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-fuchsia-300/80">Regras de atendimento</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Monte as regras do seu negócio</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-300">
+                  Selecione horários, delivery, tipos de produtos e restrições alimentares para gerar um texto pronto
+                  com as regras do seu atendimento.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStyleModalOpen(false)}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:border-white/20 hover:bg-white/10"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-200">
+                <span className="font-medium">Horário de atendimento</span>
+                <select
+                  value={rulesBuilder.hours}
+                  onChange={(event) =>
+                    setRulesBuilder((prev) => ({ ...prev, hours: event.target.value as RulesBuilderState['hours'] }))
+                  }
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                >
+                  {RULES_HOURS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value} className="bg-slate-950">
+                      {option.label} — {option.hint}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 text-sm text-gray-200">
+                <span className="font-medium">Delivery</span>
+                <select
+                  value={rulesBuilder.delivery}
+                  onChange={(event) =>
+                    setRulesBuilder((prev) => ({ ...prev, delivery: event.target.value as RulesBuilderState['delivery'] }))
+                  }
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                >
+                  {RULES_DELIVERY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value} className="bg-slate-950">
+                      {option.label} — {option.hint}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <p className="text-sm font-medium text-white">Tipos de produtos</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {RULES_PRODUCT_OPTIONS.map((item) => (
+                  <label
+                    key={item.key}
+                    className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-200 transition hover:border-white/20 hover:bg-white/10"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rulesBuilder[item.key]}
+                      onChange={(event) =>
+                        setRulesBuilder((prev) => ({ ...prev, [item.key]: event.target.checked }))
+                      }
+                      className="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-fuchsia-500 focus:ring-fuchsia-500/40"
+                    />
+                    <span>
+                      <span className="block font-medium text-white">{item.label}</span>
+                      <span className="mt-1 block text-xs text-gray-400">{item.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <p className="text-sm font-medium text-white">Restrições e versões especiais</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {RULES_DIETARY_OPTIONS.map((item) => (
+                  <label
+                    key={item.key}
+                    className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-200 transition hover:border-white/20 hover:bg-white/10"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rulesBuilder[item.key]}
+                      onChange={(event) =>
+                        setRulesBuilder((prev) => ({ ...prev, [item.key]: event.target.checked }))
+                      }
+                      className="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-fuchsia-500 focus:ring-fuchsia-500/40"
+                    />
+                    <span>
+                      <span className="block font-medium text-white">{item.label}</span>
+                      <span className="mt-1 block text-xs text-gray-400">{item.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              <label htmlFor="rulesCustomNotes" className="text-sm font-medium text-gray-200">
+                Observações extras
+              </label>
+              <textarea
+                id="rulesCustomNotes"
+                value={rulesBuilder.customNotes}
+                onChange={(event) =>
+                  setRulesBuilder((prev) => ({ ...prev, customNotes: event.target.value }))
+                }
+                rows={4}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                placeholder="Ex.: atende apenas sob encomenda, prazo mínimo de 2 dias, entrega em bairros específicos..."
+              />
+              <p className="text-xs text-gray-400">
+                Use este campo para regras adicionais específicas do seu negócio.
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-white">Prévia das regras geradas</p>
+                <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-fuchsia-100">
+                  Preview
+                </span>
+              </div>
+              <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-white/5 bg-white/5 p-4 text-sm leading-6 text-gray-200">
+{buildServiceRulesText(rulesBuilder)}
+              </pre>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsStyleModalOpen(false)}
+                className="h-11 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-gray-200 transition hover:border-white/20 hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyStyleBuilder}
+                className="h-11 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-500 via-fuchsia-500 to-violet-500 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(168,85,247,0.3)] transition hover:scale-[1.01]"
+              >
+                OK, usar este texto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-16
+
+### Adicionado
+- **Dashboard com dados reais** (`app/page.tsx`, `lib/db/queries.ts`): nova função `getDashboardStats` (agregação única em SQL) fornece KPIs (`messages_today`, `orders_in_progress`, `orders_finished_month`, `new_clients_week`, receita mensal dos últimos 6 meses), contagens por `painel_status`, pedidos por dia da semana e top produtos — todos com deltas contra o período anterior
+- **Conversas recentes no dashboard** (`components/dashboard/RecentConversations.tsx`, `lib/db/queries.ts → getRecentConversations`): bloco com abas **Não respondidas** e **Respondidas**, classificação pela direção da última mensagem (`outbound`/`attendant` → respondida), contador de não lidas e timestamp relativo
+- **Foto de perfil no header** (`components/layout/Header.tsx`, `components/layout/AppShell.tsx`): AppShell busca `photo_path` do profissional, gera URL pública do bucket `festa-com-ia` e passa ao `Header`, que renderiza `<img>` com fallback para `AvatarDefault`
+- **Evento `profile-photo-updated`** (`app/perfil/page.tsx`): disparado após salvar o perfil para que o header atualize a foto sem reload
+
+### Corrigido
+- Erro "new row violates row-level security policy" ao salvar o perfil: a tabela `festa-com-ia-professionals` estava com RLS habilitado sem policies. Reativado com policies `SELECT/INSERT/UPDATE` restritas ao próprio usuário (`auth_user_id = auth.uid()`)
+- Policies de `storage.objects` para o bucket `festa-com-ia` ajustadas: `SELECT` público (bucket é public) e `INSERT/UPDATE/DELETE` restritos a `authenticated`
+
 ## [Unreleased] — 2026-04-04
 
 ### Alterado

@@ -72,9 +72,16 @@ set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "festa_com_ia_profile_photos_select" on storage.objects;
 drop policy if exists "festa_com_ia_profile_photos_insert" on storage.objects;
 drop policy if exists "festa_com_ia_profile_photos_update" on storage.objects;
 drop policy if exists "festa_com_ia_profile_photos_delete" on storage.objects;
+
+create policy "festa_com_ia_profile_photos_select"
+on storage.objects
+for select
+to public
+using (bucket_id = 'festa-com-ia');
 
 create policy "festa_com_ia_profile_photos_insert"
 on storage.objects

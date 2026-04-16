@@ -356,6 +356,11 @@ export default function PerfilPage() {
     setPhotoFile(null)
     setPhotoPreview(null)
 
+    // Sinaliza ao AppShell para recarregar a foto no header
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('profile-photo-updated'))
+    }
+
     if (isFirstAccess) {
       router.replace('/')
       router.refresh()

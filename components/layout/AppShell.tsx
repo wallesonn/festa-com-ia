@@ -9,10 +9,20 @@ import { supabase } from '@/lib/supabase/client'
 
 type ProfileState = {
   onboarding_completed: boolean | null
+  photo_path: string | null
 }
+
+const STORAGE_BUCKET = 'festa-com-ia'
 
 function isProfileComplete(profile: ProfileState | null) {
   return Boolean(profile?.onboarding_completed)
+}
+
+function buildPhotoUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
+  // cache-bust: garante que a imagem atualize logo após novo upload
+  return data.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -20,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const pathname = usePathname()
   const router = useRouter()
   const isLoginPage = pathname === '/login'
@@ -47,13 +58,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       const { data: profile } = await supabase
         .from('festa-com-ia-professionals')
-        .select('onboarding_completed')
+        .select('onboarding_completed,photo_path')
         .eq('auth_user_id', nextSession.user.id)
         .maybeSingle()
 
       if (!mounted) return
 
       const complete = isProfileComplete(profile)
+      setPhotoUrl(buildPhotoUrl(profile?.photo_path))
       setAuthLoading(false)
       setProfileLoading(false)
 
@@ -75,9 +87,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       void resolveAuthenticatedState(nextSession)
     })
 
+    async function refreshPhoto() {
+      const { data: sess } = await supabase.auth.getSession()
+      const uid = sess.session?.user.id
+      if (!uid || !mounted) return
+      const { data: profile } = await supabase
+        .from('festa-com-ia-professionals')
+        .select('photo_path')
+        .eq('auth_user_id', uid)
+        .maybeSingle()
+      if (!mounted) return
+      setPhotoUrl(buildPhotoUrl(profile?.photo_path))
+    }
+
+    const handleProfileUpdated = () => { void refreshPhoto() }
+    window.addEventListener('profile-photo-updated', handleProfileUpdated)
+
     return () => {
       mounted = false
       listener.subscription.unsubscribe()
+      window.removeEventListener('profile-photo-updated', handleProfileUpdated)
     }
   }, [isLoginPage, pathname, router])
 
@@ -109,7 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="lg:pl-[var(--sidebar-width)] min-h-screen">
-        <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} onSignOut={handleSignOut} />
+        <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} onSignOut={handleSignOut} photoUrl={photoUrl} />
         <main className="px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>

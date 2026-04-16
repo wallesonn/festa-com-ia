@@ -104,6 +104,217 @@ export async function getClientsByProfessional(professionalId: string) {
   `
 }
 
+export type DashboardStats = {
+  messages_today: number
+  messages_yesterday: number
+  orders_in_progress: number
+  orders_delivering_today: number
+  orders_finished_month: number
+  orders_finished_prev_month: number
+  new_clients_week: number
+  new_clients_prev_week: number
+  revenue_month: number
+  revenue_prev_month: number
+  total_active: number
+  painel_atendimento: number
+  painel_agendado: number
+  painel_preparando: number
+  painel_pronto: number
+  painel_entregue: number
+  weekday_counts: number[] // Seg..Dom (7 valores) — pedidos criados na semana atual
+  monthly_revenue: Array<{ month: string; total: number }> // 6 últimos meses ASC
+  top_products: Array<{ name: string; orders: number }>
+}
+
+export async function getDashboardStats(professionalId: string): Promise<DashboardStats> {
+  const sql = getSql()
+  const [row] = await sql<[DashboardStats]>`
+    WITH
+    m_today AS (
+      SELECT COUNT(*)::int AS c FROM messages
+      WHERE professional_id = ${professionalId} AND sent_at::date = CURRENT_DATE
+    ),
+    m_yesterday AS (
+      SELECT COUNT(*)::int AS c FROM messages
+      WHERE professional_id = ${professionalId} AND sent_at::date = CURRENT_DATE - INTERVAL '1 day'
+    ),
+    o_inprogress AS (
+      SELECT COUNT(*)::int AS c FROM orders
+      WHERE professional_id = ${professionalId}
+        AND status IN ('em_andamento','nao_confirmado')
+    ),
+    o_today AS (
+      SELECT COUNT(*)::int AS c FROM orders
+      WHERE professional_id = ${professionalId}
+        AND delivery_datetime::date = CURRENT_DATE
+        AND painel_status NOT IN ('entregue','cancelado')
+    ),
+    o_fin_month AS (
+      SELECT COUNT(*)::int AS c FROM orders
+      WHERE professional_id = ${professionalId}
+        AND status = 'finalizado'
+        AND updated_at >= date_trunc('month', CURRENT_DATE)
+    ),
+    o_fin_prev AS (
+      SELECT COUNT(*)::int AS c FROM orders
+      WHERE professional_id = ${professionalId}
+        AND status = 'finalizado'
+        AND updated_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+        AND updated_at <  date_trunc('month', CURRENT_DATE)
+    ),
+    c_week AS (
+      SELECT COUNT(*)::int AS c FROM clients
+      WHERE professional_id = ${professionalId}
+        AND created_at >= CURRENT_DATE - INTERVAL '7 days'
+    ),
+    c_prev_week AS (
+      SELECT COUNT(*)::int AS c FROM clients
+      WHERE professional_id = ${professionalId}
+        AND created_at >= CURRENT_DATE - INTERVAL '14 days'
+        AND created_at <  CURRENT_DATE - INTERVAL '7 days'
+    ),
+    r_month AS (
+      SELECT COALESCE(SUM(p.paid_amount),0)::numeric AS total
+      FROM payments p
+      WHERE p.professional_id = ${professionalId}
+        AND COALESCE(p.full_paid_at, p.deposit_paid_at) >= date_trunc('month', CURRENT_DATE)
+    ),
+    r_prev AS (
+      SELECT COALESCE(SUM(p.paid_amount),0)::numeric AS total
+      FROM payments p
+      WHERE p.professional_id = ${professionalId}
+        AND COALESCE(p.full_paid_at, p.deposit_paid_at) >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+        AND COALESCE(p.full_paid_at, p.deposit_paid_at) <  date_trunc('month', CURRENT_DATE)
+    ),
+    painel AS (
+      SELECT
+        COUNT(*) FILTER (WHERE painel_status = 'atendimento')::int AS atendimento,
+        COUNT(*) FILTER (WHERE painel_status = 'agendado')::int    AS agendado,
+        COUNT(*) FILTER (WHERE painel_status = 'preparando')::int  AS preparando,
+        COUNT(*) FILTER (WHERE painel_status = 'pronto')::int      AS pronto,
+        COUNT(*) FILTER (WHERE painel_status = 'entregue')::int    AS entregue,
+        COUNT(*) FILTER (WHERE status <> 'cancelado' AND painel_status NOT IN ('entregue','cancelado'))::int AS ativo
+      FROM orders WHERE professional_id = ${professionalId}
+    ),
+    week_days AS (
+      SELECT
+        EXTRACT(ISODOW FROM created_at)::int AS dow,
+        COUNT(*)::int AS c
+      FROM orders
+      WHERE professional_id = ${professionalId}
+        AND created_at >= date_trunc('week', CURRENT_DATE)
+        AND created_at <  date_trunc('week', CURRENT_DATE) + INTERVAL '7 days'
+      GROUP BY 1
+    ),
+    week_arr AS (
+      SELECT ARRAY[
+        COALESCE((SELECT c FROM week_days WHERE dow = 1),0),
+        COALESCE((SELECT c FROM week_days WHERE dow = 2),0),
+        COALESCE((SELECT c FROM week_days WHERE dow = 3),0),
+        COALESCE((SELECT c FROM week_days WHERE dow = 4),0),
+        COALESCE((SELECT c FROM week_days WHERE dow = 5),0),
+        COALESCE((SELECT c FROM week_days WHERE dow = 6),0),
+        COALESCE((SELECT c FROM week_days WHERE dow = 7),0)
+      ] AS arr
+    ),
+    months AS (
+      SELECT
+        to_char(date_trunc('month', d), 'YYYY-MM') AS month,
+        COALESCE(SUM(p.paid_amount),0)::numeric AS total
+      FROM generate_series(
+        date_trunc('month', CURRENT_DATE) - INTERVAL '5 months',
+        date_trunc('month', CURRENT_DATE),
+        INTERVAL '1 month'
+      ) d
+      LEFT JOIN payments p
+        ON p.professional_id = ${professionalId}
+       AND date_trunc('month', COALESCE(p.full_paid_at, p.deposit_paid_at)) = date_trunc('month', d)
+      GROUP BY 1
+      ORDER BY 1 ASC
+    ),
+    months_json AS (
+      SELECT COALESCE(json_agg(json_build_object('month', month, 'total', total) ORDER BY month), '[]'::json) AS arr
+      FROM months
+    ),
+    products AS (
+      SELECT product_type AS name, COUNT(*)::int AS orders
+      FROM orders
+      WHERE professional_id = ${professionalId}
+      GROUP BY product_type
+      ORDER BY orders DESC
+      LIMIT 5
+    ),
+    products_json AS (
+      SELECT COALESCE(json_agg(json_build_object('name', name, 'orders', orders) ORDER BY orders DESC), '[]'::json) AS arr
+      FROM products
+    )
+    SELECT
+      (SELECT c FROM m_today)         AS messages_today,
+      (SELECT c FROM m_yesterday)     AS messages_yesterday,
+      (SELECT c FROM o_inprogress)    AS orders_in_progress,
+      (SELECT c FROM o_today)         AS orders_delivering_today,
+      (SELECT c FROM o_fin_month)     AS orders_finished_month,
+      (SELECT c FROM o_fin_prev)      AS orders_finished_prev_month,
+      (SELECT c FROM c_week)          AS new_clients_week,
+      (SELECT c FROM c_prev_week)     AS new_clients_prev_week,
+      (SELECT total FROM r_month)     AS revenue_month,
+      (SELECT total FROM r_prev)      AS revenue_prev_month,
+      (SELECT ativo FROM painel)      AS total_active,
+      (SELECT atendimento FROM painel) AS painel_atendimento,
+      (SELECT agendado FROM painel)    AS painel_agendado,
+      (SELECT preparando FROM painel)  AS painel_preparando,
+      (SELECT pronto FROM painel)      AS painel_pronto,
+      (SELECT entregue FROM painel)    AS painel_entregue,
+      (SELECT arr FROM week_arr)       AS weekday_counts,
+      (SELECT arr FROM months_json)    AS monthly_revenue,
+      (SELECT arr FROM products_json)  AS top_products
+  `
+  return row
+}
+
+export type RecentConversationRow = {
+  id: string
+  client_id: string
+  client_name: string
+  client_phone: string
+  status: string
+  unread_count: number
+  last_message: string | null
+  last_message_at: string | null
+  last_sender: 'client' | 'attendant' | null
+  last_direction: 'inbound' | 'outbound' | null
+}
+
+export async function getRecentConversations(professionalId: string, limit = 20): Promise<RecentConversationRow[]> {
+  const sql = getSql()
+  return sql<RecentConversationRow[]>`
+    SELECT
+      conv.id,
+      conv.client_id,
+      c.name  AS client_name,
+      c.phone AS client_phone,
+      conv.status,
+      conv.unread_count,
+      conv.last_message,
+      conv.last_message_at,
+      lm.sender    AS last_sender,
+      lm.direction AS last_direction
+    FROM conversations conv
+    JOIN clients c ON c.id = conv.client_id
+    LEFT JOIN LATERAL (
+      SELECT sender, direction
+      FROM messages
+      WHERE conversation_id = conv.id
+      ORDER BY sent_at DESC
+      LIMIT 1
+    ) lm ON TRUE
+    WHERE conv.professional_id = ${professionalId}
+      AND conv.archived_at IS NULL
+    ORDER BY conv.last_message_at DESC NULLS LAST
+    LIMIT ${limit}
+  `
+}
+
 export async function getPaymentsByProfessional(professionalId: string) {
   const sql = getSql()
   return sql<Array<Tables<'payments'> & { product_type: string; client_name: string }>>`

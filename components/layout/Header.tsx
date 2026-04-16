@@ -9,9 +9,11 @@ import { AvatarDefault } from '@/components/ui/AvatarDefault'
 export function Header({
   onToggleSidebar,
   onSignOut,
+  photoUrl,
 }: {
   onToggleSidebar: () => void
   onSignOut: () => Promise<void>
+  photoUrl?: string | null
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -67,7 +69,18 @@ export function Header({
               aria-label="Abrir menu do perfil"
               aria-expanded={menuOpen}
             >
-              <AvatarDefault size={32} className="rounded-full" />
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt="Foto do perfil"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <AvatarDefault size={32} className="rounded-full" />
+              )}
             </button>
 
             {menuOpen && (

@@ -49,9 +49,33 @@
 | `onboarding_completed` | `boolean` | concluiu primeiro acesso |
 | `slug` | `text` | nullable, útil para URL |
 | `service_rules` | `text` | nullable; regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
+| `photo_path` | `text` | nullable; caminho no bucket `festa-com-ia` do Supabase Storage |
 | `status` | `text` | active / paused / archived |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
+
+#### RLS e policies
+
+A tabela tem **RLS habilitado** com policies restritas ao próprio usuário autenticado:
+
+| Policy | Operação | Regra |
+|--------|----------|-------|
+| `professionals_select_own` | `SELECT` | `auth_user_id = auth.uid()` |
+| `professionals_insert_own` | `INSERT` | `WITH CHECK (auth_user_id = auth.uid())` |
+| `professionals_update_own` | `UPDATE` | `USING` e `WITH CHECK (auth_user_id = auth.uid())` |
+
+#### Storage — bucket `festa-com-ia`
+
+Bucket **público** (leitura via URL pública), usado pelas fotos do profissional referenciadas em `photo_path`.
+
+Policies em `storage.objects`:
+
+| Policy | Operação | Role | Regra |
+|--------|----------|------|-------|
+| `festa_com_ia_profile_photos_select` | `SELECT` | `public` | `bucket_id = 'festa-com-ia'` |
+| `festa_com_ia_profile_photos_insert` | `INSERT` | `authenticated` | `bucket_id = 'festa-com-ia'` |
+| `festa_com_ia_profile_photos_update` | `UPDATE` | `authenticated` | `bucket_id = 'festa-com-ia'` |
+| `festa_com_ia_profile_photos_delete` | `DELETE` | `authenticated` | `bucket_id = 'festa-com-ia'` |
 
 ### Postgres local
 

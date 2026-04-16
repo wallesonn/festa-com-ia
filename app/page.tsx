@@ -5,7 +5,9 @@ import {
   getDashboardStats,
   getFirstProfessional,
   getOrdersWithPayments,
+  getRecentActivity,
   getRecentConversations,
+  type ActivityItem,
   type DashboardStats,
   type RecentConversationRow,
 } from '@/lib/db/queries'
@@ -51,23 +53,25 @@ async function loadDashboard(): Promise<{
   stats: DashboardStats | null
   orders: Order[]
   conversations: RecentConversationRow[]
+  activity: ActivityItem[]
 }> {
   try {
     const professional = await getFirstProfessional()
-    if (!professional) return { stats: null, orders: [], conversations: [] }
-    const [stats, rows, conversations] = await Promise.all([
+    if (!professional) return { stats: null, orders: [], conversations: [], activity: [] }
+    const [stats, rows, conversations, activity] = await Promise.all([
       getDashboardStats(professional.id),
       getOrdersWithPayments(professional.id),
       getRecentConversations(professional.id, 30),
+      getRecentActivity(professional.id, 2, 30),
     ])
-    return { stats, orders: rows.map(dbRowToOrder), conversations }
+    return { stats, orders: rows.map(dbRowToOrder), conversations, activity }
   } catch {
-    return { stats: null, orders: [], conversations: [] }
+    return { stats: null, orders: [], conversations: [], activity: [] }
   }
 }
 
 export default async function DashboardPage() {
-  const { stats, orders, conversations } = await loadDashboard()
+  const { stats, orders, conversations, activity } = await loadDashboard()
 
   // KPIs
   const messagesToday = stats?.messages_today ?? 0
@@ -168,7 +172,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <ActivityTicker />
+      <ActivityTicker initialItems={activity} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -296,7 +300,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-            <div className="mb-4 font-semibold text-white">Receita estimada (últimos 6 meses)</div>
+            <div className="mb-4 font-semibold text-white">Receita entregue por mês (últimos 6 meses)</div>
             <SimpleBarChart labels={monthsLabels.length ? monthsLabels : ['—']} values={monthsValues.length ? monthsValues : [0]} />
             <div className="mt-4 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
               <div>

@@ -45,6 +45,109 @@ export async function updateOrderPainelStatus(orderId: string, painelStatus: str
   }
 }
 
+export type MarkPaymentKind = 'deposit' | 'full' | 'reset'
+
+export type MarkPaymentResult =
+  | { success: true; order: Order }
+  | { success: false; error: string }
+
+export async function markPayment(orderId: string, kind: MarkPaymentKind): Promise<MarkPaymentResult> {
+  try {
+    const sql = getSql()
+
+    // Busca totais atuais do pagamento para calcular paid/due corretamente
+    const [current] = await sql<Array<{
+      total_amount: number
+      deposit_percent: number | null
+      deposit_paid_at: string | null
+      full_paid_at: string | null
+    }>>`
+      SELECT total_amount, deposit_percent, deposit_paid_at, full_paid_at
+      FROM payments
+      WHERE order_id = ${orderId}
+      LIMIT 1
+    `
+
+    if (!current) {
+      return { success: false, error: 'Pagamento do pedido não encontrado.' }
+    }
+
+    const total = Number(current.total_amount) || 0
+    const depositPct = current.deposit_percent ?? 50
+    const depositAmount = Math.round((total * depositPct) / 100 * 100) / 100
+
+    if (kind === 'deposit') {
+      await sql`
+        UPDATE payments
+        SET
+          deposit_paid_at = COALESCE(deposit_paid_at, NOW()),
+          paid_amount     = GREATEST(paid_amount, ${depositAmount}),
+          due_amount      = GREATEST(0, ${total} - GREATEST(paid_amount, ${depositAmount})),
+          status          = CASE WHEN full_paid_at IS NOT NULL THEN 'pago' ELSE 'parcial' END
+        WHERE order_id = ${orderId}
+      `
+    } else if (kind === 'full') {
+      await sql`
+        UPDATE payments
+        SET
+          deposit_paid_at = COALESCE(deposit_paid_at, NOW()),
+          full_paid_at    = COALESCE(full_paid_at, NOW()),
+          paid_amount     = ${total},
+          due_amount      = 0,
+          status          = 'pago'
+        WHERE order_id = ${orderId}
+      `
+    } else {
+      // reset: marca como pendente de novo
+      await sql`
+        UPDATE payments
+        SET
+          deposit_paid_at = NULL,
+          full_paid_at    = NULL,
+          paid_amount     = 0,
+          due_amount      = ${total},
+          status          = 'pendente'
+        WHERE order_id = ${orderId}
+      `
+    }
+
+    await sql`UPDATE orders SET updated_at = now() WHERE id = ${orderId}`
+
+    const rows = await sql<DbOrderRow[]>`
+      SELECT
+        o.id, o.client_id, o.conversation_id, o.product_type, o.product_subtype,
+        o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
+        o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
+        o.last_message, o.last_message_at, o.created_at, o.updated_at,
+        c.name  AS client_name,
+        c.phone AS client_phone,
+        p.id             AS payment_id,
+        p.method         AS payment_method,
+        p.status         AS payment_status,
+        p.total_amount   AS payment_total_amount,
+        p.paid_amount    AS payment_paid_amount,
+        p.due_amount     AS payment_due_amount,
+        p.deposit_percent    AS payment_deposit_percent,
+        p.deposit_paid_at    AS payment_deposit_paid_at,
+        p.full_paid_at       AS payment_full_paid_at,
+        '[]'::json AS messages_json
+      FROM orders o
+      JOIN clients c ON c.id = o.client_id
+      LEFT JOIN payments p ON p.order_id = o.id
+      WHERE o.id = ${orderId}
+    `
+
+    if (rows.length === 0) {
+      return { success: false, error: 'Pedido não encontrado após atualização.' }
+    }
+
+    return { success: true, order: dbRowToOrder(rows[0]) }
+  } catch (err) {
+    console.error('[markPayment]', err)
+    return { success: false, error: 'Erro ao atualizar o pagamento. Tente novamente.' }
+  }
+}
+
 export async function deleteOrder(orderId: string): Promise<DeleteOrderResult> {
   try {
     const sql = getSql()
@@ -53,6 +156,86 @@ export async function deleteOrder(orderId: string): Promise<DeleteOrderResult> {
   } catch (err) {
     console.error('[deleteOrder]', err)
     return { success: false, error: 'Erro ao deletar pedido.' }
+  }
+}
+
+export type UpdateOrderInput = {
+  productType: string
+  productSubtype: string
+  peopleCount: number
+  deliveryDatetime: string
+  deliveryType: string
+  observations: string
+  totalPrice: number
+  paymentMethod: string
+  painelStatus: string
+}
+
+export type UpdateOrderResult =
+  | { success: true; order: Order }
+  | { success: false; error: string }
+
+export async function updateOrder(orderId: string, input: UpdateOrderInput): Promise<UpdateOrderResult> {
+  try {
+    const sql = getSql()
+
+    const deliveryDt = input.deliveryDatetime || null
+
+    await sql`
+      UPDATE orders SET
+        product_type       = ${input.productType},
+        product_subtype    = ${input.productSubtype || null},
+        people_count       = ${input.peopleCount || null},
+        delivery_datetime  = ${deliveryDt},
+        event_date         = ${deliveryDt},
+        delivery_type      = ${input.deliveryType || 'entrega'},
+        observations       = ${input.observations || null},
+        total_price        = ${input.totalPrice || 0},
+        painel_status      = ${input.painelStatus},
+        updated_at         = now()
+      WHERE id = ${orderId}
+    `
+
+    await sql`
+      UPDATE payments SET
+        method       = ${input.paymentMethod || 'pix'},
+        total_amount = ${input.totalPrice || 0},
+        due_amount   = GREATEST(0, ${input.totalPrice || 0} - paid_amount)
+      WHERE order_id = ${orderId}
+    `
+
+    const rows = await sql<DbOrderRow[]>`
+      SELECT
+        o.id, o.client_id, o.conversation_id, o.product_type, o.product_subtype,
+        o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
+        o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
+        o.last_message, o.last_message_at, o.created_at, o.updated_at,
+        c.name  AS client_name,
+        c.phone AS client_phone,
+        p.id             AS payment_id,
+        p.method         AS payment_method,
+        p.status         AS payment_status,
+        p.total_amount   AS payment_total_amount,
+        p.paid_amount    AS payment_paid_amount,
+        p.due_amount     AS payment_due_amount,
+        p.deposit_percent    AS payment_deposit_percent,
+        p.deposit_paid_at    AS payment_deposit_paid_at,
+        p.full_paid_at       AS payment_full_paid_at,
+        '[]'::json AS messages_json
+      FROM orders o
+      JOIN clients c ON c.id = o.client_id
+      LEFT JOIN payments p ON p.order_id = o.id
+      WHERE o.id = ${orderId}
+    `
+
+    if (rows.length === 0) {
+      return { success: false, error: 'Pedido não encontrado após atualização.' }
+    }
+
+    return { success: true, order: dbRowToOrder(rows[0]) }
+  } catch (err) {
+    console.error('[updateOrder]', err)
+    return { success: false, error: 'Erro ao atualizar pedido. Tente novamente.' }
   }
 }
 

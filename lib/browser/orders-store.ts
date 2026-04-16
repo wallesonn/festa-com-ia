@@ -273,6 +273,12 @@ export function queueOrderScheduleSync(orderId: string, painelStatus: PainelStat
   notifySubscribers()
 }
 
+export function updateBrowserOrder(order: Order) {
+  const nextOrder = cloneOrders([order])[0]
+  state.orders = state.orders.map((item) => (item.id === order.id ? nextOrder : item))
+  notifySubscribers()
+}
+
 export function addBrowserOrder(order: Order) {
   const nextOrder = cloneOrders([order])[0]
   state.orders = [nextOrder, ...state.orders.filter((item) => item.id !== order.id)]

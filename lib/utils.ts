@@ -125,7 +125,9 @@ export function painelStatusLabel(status: import('./types').PainelStatus): strin
   }
 }
 
-export function fmtDatetime(iso: string): string {
+export function fmtDatetime(iso: string | null | undefined): string {
+  if (!iso) return 'Sem data definida'
   const d = new Date(iso)
+  if (isNaN(d.getTime())) return 'Sem data definida'
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }

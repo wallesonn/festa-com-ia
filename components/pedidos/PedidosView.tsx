@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { createOrder, deleteOrder } from '@/app/pedidos/actions'
-import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType } from '@/lib/types'
+import { createOrder, deleteOrder, markPayment, updateOrder } from '@/app/pedidos/actions'
+import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType, PainelStatus, DeliveryType, PaymentMethod } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
-import { addBrowserOrder, removeBrowserOrder, useBrowserOrders } from '@/lib/browser/orders-store'
+import { addBrowserOrder, removeBrowserOrder, updateBrowserOrder, useBrowserOrders } from '@/lib/browser/orders-store'
 import { fmtDatetime } from '@/lib/utils'
-import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react'
+import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2, Wallet, RotateCcw, Pencil, Save } from 'lucide-react'
 
 const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: string[]; obs: string }> = {
   Bolo: {
@@ -216,12 +216,91 @@ function StatusIcon({ name }: { name: string }) {
   return <Package className="h-3.5 w-3.5" />
 }
 
+function toDatetimeLocal(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const offset = d.getTimezoneOffset() * 60000
+  const local = new Date(d.getTime() - offset)
+  return local.toISOString().slice(0, 16)
+}
+
+const PAINEL_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'atendimento', label: 'Atendimento' },
+  { value: 'agendado',    label: 'Agendado' },
+  { value: 'preparando',  label: 'Preparando' },
+  { value: 'pronto',      label: 'Pronto' },
+  { value: 'entregue',    label: 'Entregue' },
+  { value: 'cancelado',   label: 'Cancelado' },
+]
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'pix',              label: 'PIX' },
+  { value: 'dinheiro',         label: 'Dinheiro' },
+  { value: 'cartão_credito',   label: 'Cartão Crédito' },
+  { value: 'cartão_debito',    label: 'Cartão Débito' },
+  { value: 'transferência',    label: 'Transferência' },
+]
+
 function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; onClose: () => void; onOrderDeleted: (id: string) => void }) {
   const recipe = RECIPE_MAP[order.productType] ?? RECIPE_MAP['Bolo']
   const status = PAINEL_STATUS_CONFIG[order.painelStatus] ?? STATUS_CONFIG[order.status]
   const [tab, setTab] = useState<'info' | 'receita'>('info')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState<null | 'deposit' | 'full' | 'reset'>(null)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editProductType, setEditProductType] = useState(order.productType)
+  const [editProductSubtype, setEditProductSubtype] = useState(order.productSubtype)
+  const [editPeopleCount, setEditPeopleCount] = useState(String(order.peopleCount || ''))
+  const [editDeliveryDatetime, setEditDeliveryDatetime] = useState(toDatetimeLocal(order.deliveryDatetime))
+  const [editDeliveryType, setEditDeliveryType] = useState(order.deliveryType)
+  const [editObservations, setEditObservations] = useState(order.observations)
+  const [editTotalPrice, setEditTotalPrice] = useState(String(order.totalPrice || ''))
+  const [editPaymentMethod, setEditPaymentMethod] = useState(order.payment.method)
+  const [editPainelStatus, setEditPainelStatus] = useState(order.painelStatus)
+
+  function handleStartEdit() {
+    setEditProductType(order.productType)
+    setEditProductSubtype(order.productSubtype)
+    setEditPeopleCount(String(order.peopleCount || ''))
+    setEditDeliveryDatetime(toDatetimeLocal(order.deliveryDatetime))
+    setEditDeliveryType(order.deliveryType)
+    setEditObservations(order.observations)
+    setEditTotalPrice(String(order.totalPrice || ''))
+    setEditPaymentMethod(order.payment.method)
+    setEditPainelStatus(order.painelStatus)
+    setEditError(null)
+    setIsEditing(true)
+  }
+
+  async function handleSave() {
+    setEditSaving(true)
+    setEditError(null)
+    const isoDatetime = editDeliveryDatetime ? new Date(editDeliveryDatetime).toISOString() : ''
+    const result = await updateOrder(order.id, {
+      productType: editProductType,
+      productSubtype: editProductSubtype,
+      peopleCount: Number(editPeopleCount) || 0,
+      deliveryDatetime: isoDatetime,
+      deliveryType: editDeliveryType,
+      observations: editObservations,
+      totalPrice: Number(editTotalPrice) || 0,
+      paymentMethod: editPaymentMethod,
+      painelStatus: editPainelStatus,
+    })
+    setEditSaving(false)
+    if (result.success) {
+      updateBrowserOrder(result.order)
+      setIsEditing(false)
+    } else {
+      setEditError(result.error)
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true)
@@ -232,6 +311,27 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
       onClose()
     }
   }
+
+  async function handleMarkPayment(kind: 'deposit' | 'full' | 'reset') {
+    setPaymentLoading(kind)
+    setPaymentError(null)
+    const result = await markPayment(order.id, kind)
+    setPaymentLoading(null)
+    if (result.success) {
+      updateBrowserOrder(result.order)
+    } else {
+      setPaymentError(result.error)
+    }
+  }
+
+  const payment = order.payment
+  const depositAmount = Math.round((payment.totalAmount * (payment.depositPercent || 0)) / 100 * 100) / 100
+  const depositPaid = Boolean(payment.depositPaidAt)
+  const fullPaid = Boolean(payment.fullPaidAt)
+  const fmtBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+
+  const inputCls = 'w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2 focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 placeholder:text-gray-500 [color-scheme:dark]'
+  const labelCls = 'block text-[11px] text-gray-400 uppercase tracking-wide mb-1'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -245,6 +345,11 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!isEditing && !confirmDelete && (
+              <button onClick={handleStartEdit} className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors" title="Editar pedido">
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
             {confirmDelete ? (
               <>
                 <span className="text-xs text-rose-400">Confirmar exclusão?</span>
@@ -256,11 +361,13 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
                 </button>
               </>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
-                <Trash2 className="h-4 w-4" />
-              </button>
+              !isEditing && (
+                <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )
             )}
-            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+            <button onClick={isEditing ? () => setIsEditing(false) : onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -280,6 +387,86 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           {tab === 'info' ? (
+            isEditing ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Tipo de produto</label>
+                    <select value={editProductType} onChange={e => setEditProductType(e.target.value as ProductType)} className={inputCls}>
+                      {PRODUCT_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Status</label>
+                    <select value={editPainelStatus} onChange={e => setEditPainelStatus(e.target.value as PainelStatus)} className={inputCls}>
+                      {PAINEL_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Subtipo / Sabor</label>
+                  <input type="text" value={editProductSubtype} onChange={e => setEditProductSubtype(e.target.value)} placeholder="Ex: Festa · Chocolate, Brigadeiro" className={inputCls} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Pessoas</label>
+                    <input type="number" min="0" value={editPeopleCount} onChange={e => setEditPeopleCount(e.target.value)} placeholder="0" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Tipo de entrega</label>
+                    <select value={editDeliveryType} onChange={e => setEditDeliveryType(e.target.value as DeliveryType)} className={inputCls}>
+                      <option value="entrega">Entrega</option>
+                      <option value="retirada">Retirada</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Data e hora de entrega</label>
+                  <input type="datetime-local" value={editDeliveryDatetime} onChange={e => setEditDeliveryDatetime(e.target.value)} className={inputCls} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Valor total (R$)</label>
+                    <input type="number" min="0" step="0.01" value={editTotalPrice} onChange={e => setEditTotalPrice(e.target.value)} placeholder="0,00" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Forma de pagamento</label>
+                    <select value={editPaymentMethod} onChange={e => setEditPaymentMethod(e.target.value as PaymentMethod)} className={inputCls}>
+                      {PAYMENT_METHOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Observações</label>
+                  <textarea value={editObservations} onChange={e => setEditObservations(e.target.value)} rows={3} placeholder="Detalhes do pedido…" className={`${inputCls} resize-none`} />
+                </div>
+
+                {editError && <p className="text-xs text-rose-400">{editError}</p>}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handleSave}
+                    disabled={editSaving}
+                    className="flex-1 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-semibold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {editSaving ? 'Salvando…' : 'Salvar alterações'}
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    disabled={editSaving}
+                    className="h-10 px-4 rounded-xl border border-white/15 text-gray-300 hover:bg-white/5 text-sm transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="card p-3 flex flex-col gap-1">
@@ -303,6 +490,72 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
                 <p className="text-sm text-gray-200 leading-relaxed">"{order.lastMessage}"</p>
               </div>
 
+              <div className="card p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-amber-400" />
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wide">Pagamento</span>
+                  </div>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    fullPaid
+                      ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-300'
+                      : depositPaid
+                        ? 'bg-amber-500/15 border-amber-400/30 text-amber-300'
+                        : 'bg-rose-500/15 border-rose-400/30 text-rose-300'
+                  }`}>
+                    {fullPaid ? 'Pago' : depositPaid ? 'Sinal pago' : 'Pendente'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-2">
+                    <div className="text-[10px] text-gray-400 uppercase">Total</div>
+                    <div className="text-sm font-bold text-white">{fmtBRL(payment.totalAmount)}</div>
+                  </div>
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-2">
+                    <div className="text-[10px] text-gray-400 uppercase">Pago</div>
+                    <div className="text-sm font-bold text-emerald-300">{fmtBRL(payment.paidAmount)}</div>
+                  </div>
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-2">
+                    <div className="text-[10px] text-gray-400 uppercase">Falta</div>
+                    <div className="text-sm font-bold text-rose-300">{fmtBRL(payment.dueAmount)}</div>
+                  </div>
+                </div>
+
+                {paymentError && (
+                  <p className="text-xs text-rose-400">{paymentError}</p>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleMarkPayment('deposit')}
+                    disabled={paymentLoading !== null || depositPaid}
+                    className="flex-1 min-w-[140px] h-9 rounded-lg text-xs font-semibold transition-colors bg-amber-500/20 border border-amber-400/30 text-amber-200 hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={`Marcar sinal de ${payment.depositPercent || 50}% (${fmtBRL(depositAmount)}) como pago`}
+                  >
+                    {paymentLoading === 'deposit' ? 'Salvando…' : depositPaid ? `Sinal pago · ${fmtBRL(depositAmount)}` : `Marcar sinal pago · ${fmtBRL(depositAmount)}`}
+                  </button>
+                  <button
+                    onClick={() => handleMarkPayment('full')}
+                    disabled={paymentLoading !== null || fullPaid}
+                    className="flex-1 min-w-[140px] h-9 rounded-lg text-xs font-semibold transition-colors bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {paymentLoading === 'full' ? 'Salvando…' : fullPaid ? `Pago total · ${fmtBRL(payment.totalAmount)}` : `Marcar total pago · ${fmtBRL(payment.totalAmount)}`}
+                  </button>
+                  {(depositPaid || fullPaid) && (
+                    <button
+                      onClick={() => handleMarkPayment('reset')}
+                      disabled={paymentLoading !== null}
+                      className="h-9 px-3 rounded-lg text-xs font-semibold transition-colors border border-white/15 text-gray-300 hover:bg-white/5 disabled:opacity-40 inline-flex items-center gap-1.5"
+                      title="Marcar novamente como pendente"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      {paymentLoading === 'reset' ? 'Salvando…' : 'Reverter'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {order.observations && (
                 <div className="card p-3 space-y-2">
                   <div className="text-[11px] text-gray-400 uppercase tracking-wide">Observações</div>
@@ -310,6 +563,7 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
                 </div>
               )}
             </>
+            )
           ) : (
             <>
               <div className="card p-3">

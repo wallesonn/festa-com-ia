@@ -174,17 +174,20 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
         AND created_at <  CURRENT_DATE - INTERVAL '7 days'
     ),
     r_month AS (
-      SELECT COALESCE(SUM(p.paid_amount),0)::numeric AS total
-      FROM payments p
-      WHERE p.professional_id = ${professionalId}
-        AND COALESCE(p.full_paid_at, p.deposit_paid_at) >= date_trunc('month', CURRENT_DATE)
+      SELECT COALESCE(SUM(o.total_price),0)::numeric AS total
+      FROM orders o
+      WHERE o.professional_id = ${professionalId}
+        AND o.painel_status = 'entregue'
+        AND o.delivery_datetime >= date_trunc('month', CURRENT_DATE)
+        AND o.delivery_datetime <  date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
     ),
     r_prev AS (
-      SELECT COALESCE(SUM(p.paid_amount),0)::numeric AS total
-      FROM payments p
-      WHERE p.professional_id = ${professionalId}
-        AND COALESCE(p.full_paid_at, p.deposit_paid_at) >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
-        AND COALESCE(p.full_paid_at, p.deposit_paid_at) <  date_trunc('month', CURRENT_DATE)
+      SELECT COALESCE(SUM(o.total_price),0)::numeric AS total
+      FROM orders o
+      WHERE o.professional_id = ${professionalId}
+        AND o.painel_status = 'entregue'
+        AND o.delivery_datetime >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
+        AND o.delivery_datetime <  date_trunc('month', CURRENT_DATE)
     ),
     painel AS (
       SELECT
@@ -220,15 +223,17 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
     months AS (
       SELECT
         to_char(date_trunc('month', d), 'YYYY-MM') AS month,
-        COALESCE(SUM(p.paid_amount),0)::numeric AS total
+        COALESCE(SUM(o.total_price),0)::numeric AS total
       FROM generate_series(
         date_trunc('month', CURRENT_DATE) - INTERVAL '5 months',
         date_trunc('month', CURRENT_DATE),
         INTERVAL '1 month'
       ) d
-      LEFT JOIN payments p
-        ON p.professional_id = ${professionalId}
-       AND date_trunc('month', COALESCE(p.full_paid_at, p.deposit_paid_at)) = date_trunc('month', d)
+      LEFT JOIN orders o
+        ON o.professional_id = ${professionalId}
+       AND o.painel_status = 'entregue'
+       AND o.delivery_datetime IS NOT NULL
+       AND date_trunc('month', o.delivery_datetime) = date_trunc('month', d)
       GROUP BY 1
       ORDER BY 1 ASC
     ),
@@ -311,6 +316,93 @@ export async function getRecentConversations(professionalId: string, limit = 20)
     WHERE conv.professional_id = ${professionalId}
       AND conv.archived_at IS NULL
     ORDER BY conv.last_message_at DESC NULLS LAST
+    LIMIT ${limit}
+  `
+}
+
+export type ActivityKind =
+  | 'order_created'
+  | 'order_finalized'
+  | 'message_inbound'
+  | 'message_outbound'
+  | 'payment'
+
+export type ActivityItem = {
+  kind: ActivityKind
+  at: string
+  client_name: string | null
+  title: string
+  amount: number | null
+}
+
+export async function getRecentActivity(professionalId: string, hours = 2, limit = 30): Promise<ActivityItem[]> {
+  const sql = getSql()
+  return sql<ActivityItem[]>`
+    WITH events AS (
+      -- Pedidos criados
+      SELECT
+        'order_created'::text AS kind,
+        o.created_at          AS at,
+        c.name                AS client_name,
+        COALESCE(o.product_type,'pedido') || CASE WHEN o.people_count IS NOT NULL THEN ' · ' || o.people_count || 'p' ELSE '' END AS title,
+        NULL::numeric         AS amount
+      FROM orders o
+      JOIN clients c ON c.id = o.client_id
+      WHERE o.professional_id = ${professionalId}
+        AND o.created_at >= NOW() - (${hours}::int || ' hours')::interval
+
+      UNION ALL
+
+      -- Pedidos finalizados
+      SELECT
+        'order_finalized'::text AS kind,
+        o.updated_at            AS at,
+        c.name                  AS client_name,
+        COALESCE(o.product_type,'pedido') AS title,
+        NULL::numeric           AS amount
+      FROM orders o
+      JOIN clients c ON c.id = o.client_id
+      WHERE o.professional_id = ${professionalId}
+        AND o.status = 'finalizado'
+        AND o.updated_at >= NOW() - (${hours}::int || ' hours')::interval
+
+      UNION ALL
+
+      -- Mensagens (inbound = do cliente; outbound = do atendente)
+      SELECT
+        CASE WHEN m.direction = 'outbound' THEN 'message_outbound' ELSE 'message_inbound' END::text AS kind,
+        m.sent_at                                           AS at,
+        c.name                                              AS client_name,
+        LEFT(COALESCE(m.text,''), 80)                       AS title,
+        NULL::numeric                                       AS amount
+      FROM messages m
+      JOIN conversations conv ON conv.id = m.conversation_id
+      JOIN clients c           ON c.id = conv.client_id
+      WHERE m.professional_id = ${professionalId}
+        AND m.sent_at >= NOW() - (${hours}::int || ' hours')::interval
+
+      UNION ALL
+
+      -- Pagamentos (quando sinal ou total foi pago)
+      SELECT
+        'payment'::text AS kind,
+        COALESCE(p.full_paid_at, p.deposit_paid_at) AS at,
+        c.name                                      AS client_name,
+        CASE
+          WHEN p.full_paid_at IS NOT NULL THEN 'pagamento total'
+          ELSE 'sinal pago'
+        END                                         AS title,
+        p.paid_amount                               AS amount
+      FROM payments p
+      JOIN orders o  ON o.id = p.order_id
+      JOIN clients c ON c.id = o.client_id
+      WHERE p.professional_id = ${professionalId}
+        AND COALESCE(p.full_paid_at, p.deposit_paid_at) >= NOW() - (${hours}::int || ' hours')::interval
+    )
+    SELECT kind, at, client_name, title, amount
+    FROM events
+    WHERE at IS NOT NULL
+    ORDER BY at DESC
     LIMIT ${limit}
   `
 }

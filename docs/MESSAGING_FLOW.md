@@ -190,11 +190,11 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
 |-------|--------|---------------|
 | `display_name` | Supabase / Postgres | nome de exibição do profissional |
 | `business_name` | Supabase / Postgres | nome do negócio |
-| `service_rules` | Supabase / Postgres | regras de atendimento, limites e prazos |
+| `service_rules` | Supabase / Postgres | regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
 | `products_produced` | Supabase | grupos de produtos que o profissional produz |
 | `product_subgroups` | Supabase | subgrupos de produtos disponíveis |
 | `product_variations` | Supabase | variações por grupo de produto |
-| `conversation_samples` | Supabase | exemplos de conversas do profissional |
+| `conversation_samples` | Supabase | exemplos de conversas do profissional para orientar o tom e a forma de resposta |
 
 **Como o prompt deve ser montado:**
 
@@ -203,9 +203,9 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
 3. Buscar as **10 últimas mensagens trocadas** na conversa.
 4. Montar o prompt de sistema com:
    - identidade do negócio
-   - regras de atendimento (`service_rules`)
+   - regras operacionais do negócio (`service_rules`)
    - portfólio/produtos
-   - exemplos de conversa
+   - exemplos de conversa (`conversation_samples`)
    - histórico recente da conversa
 5. Enviar esse contexto para a IA gerar as **3 sugestões de resposta**.
 

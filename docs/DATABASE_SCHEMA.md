@@ -48,7 +48,7 @@
 | `product_variations` | `jsonb` | mapa de variações por grupo de produto |
 | `onboarding_completed` | `boolean` | concluiu primeiro acesso |
 | `slug` | `text` | nullable, útil para URL |
-| `service_rules` | `text` | nullable |
+| `service_rules` | `text` | nullable; regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
 | `status` | `text` | active / paused / archived |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
@@ -82,7 +82,7 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `display_name` | `text` | nome exibido no painel |
 | `business_name` | `text` | nome do negócio |
 | `slug` | `text` | nullable, útil para subdomínio/URL |
-| `service_rules` | `text` | regras de atendimento, prazos e limites |
+| `service_rules` | `text` | regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
 | `status` | `text` | enum: active, paused, archived |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |

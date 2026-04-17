@@ -141,7 +141,7 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
     o_inprogress AS (
       SELECT COUNT(*)::int AS c FROM orders
       WHERE professional_id = ${professionalId}
-        AND status IN ('em_andamento','nao_confirmado')
+        AND painel_status IN ('preparando','pronto')
     ),
     o_today AS (
       SELECT COUNT(*)::int AS c FROM orders
@@ -152,13 +152,13 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
     o_fin_month AS (
       SELECT COUNT(*)::int AS c FROM orders
       WHERE professional_id = ${professionalId}
-        AND status = 'finalizado'
+        AND painel_status = 'entregue'
         AND updated_at >= date_trunc('month', CURRENT_DATE)
     ),
     o_fin_prev AS (
       SELECT COUNT(*)::int AS c FROM orders
       WHERE professional_id = ${professionalId}
-        AND status = 'finalizado'
+        AND painel_status = 'entregue'
         AND updated_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month'
         AND updated_at <  date_trunc('month', CURRENT_DATE)
     ),
@@ -196,7 +196,7 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
         COUNT(*) FILTER (WHERE painel_status = 'preparando')::int  AS preparando,
         COUNT(*) FILTER (WHERE painel_status = 'pronto')::int      AS pronto,
         COUNT(*) FILTER (WHERE painel_status = 'entregue')::int    AS entregue,
-        COUNT(*) FILTER (WHERE status <> 'cancelado' AND painel_status NOT IN ('entregue','cancelado'))::int AS ativo
+        COUNT(*) FILTER (WHERE painel_status NOT IN ('entregue','cancelado'))::int AS ativo
       FROM orders WHERE professional_id = ${professionalId}
     ),
     week_days AS (

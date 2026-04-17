@@ -98,11 +98,11 @@ function painelCountsFromOrders(orders: Order[]) {
 }
 
 function totalActiveFromOrders(orders: Order[]) {
-  return orders.filter((order) => order.status !== 'cancelado' && order.painelStatus !== 'entregue' && order.painelStatus !== 'cancelado').length
+  return orders.filter((order) => order.painelStatus !== 'entregue' && order.painelStatus !== 'cancelado').length
 }
 
 function inProgressFromOrders(orders: Order[]) {
-  return orders.filter((order) => order.status === 'em_andamento' || order.status === 'nao_confirmado').length
+  return orders.filter((order) => order.painelStatus === 'preparando' || order.painelStatus === 'pronto').length
 }
 
 function ordersDeliveringTodayFromOrders(orders: Order[]) {
@@ -116,7 +116,7 @@ function ordersDeliveringTodayFromOrders(orders: Order[]) {
 
 function finishedMonthFromOrders(orders: Order[]) {
   const now = new Date()
-  return orders.filter((order) => order.status === 'finalizado' && sameLocalMonth(new Date(order.updatedAt), now)).length
+  return orders.filter((order) => order.painelStatus === 'entregue' && sameLocalMonth(new Date(order.updatedAt), now)).length
 }
 
 async function loadDashboard(): Promise<{
@@ -189,7 +189,7 @@ export default async function DashboardPage() {
   // Próximas entregas (reaproveita orders mapeados)
   const now = new Date()
   const upcoming = orders
-    .filter(o => o.status !== 'cancelado' && o.painelStatus !== 'entregue' && o.painelStatus !== 'cancelado')
+    .filter(o => o.painelStatus !== 'entregue' && o.painelStatus !== 'cancelado')
     .filter(o => new Date(o.deliveryDatetime) > now)
     .sort((a, b) => new Date(a.deliveryDatetime).getTime() - new Date(b.deliveryDatetime).getTime())
     .slice(0, 5)

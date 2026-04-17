@@ -1,6 +1,6 @@
 # Fluxo Operacional — Festa com IA
 
-> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp → n8n → Postgres local → Painel da aplicação**, considerando o uso de IA para sugerir respostas, a revisão humana e a persistência do histórico.
+> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp (Uazapi) → n8n → Postgres local → Painel da aplicação**, considerando o uso de IA para sugerir respostas, a revisão humana e a persistência do histórico.
 >
 > O Supabase fica restrito a **Auth** e aos dados de **`festa-com-ia-professionals`**; não participa da persistência operacional do atendimento.
 
@@ -22,7 +22,8 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 
 ## Princípios do fluxo
 
-- **WhatsApp é o único canal de entrada no MVP**.
+- **WhatsApp via Uazapi é o único canal de entrada no MVP**.
+- **A documentação oficial de chamadas, webhooks, envio de mensagens e etiquetas da Uazapi fica em `docs.uazapi.com`**.
 - **A IA não responde sozinha**.
 - **A IA sempre gera 3 sugestões** para apoio ao atendente.
 - **O atendente edita a resposta antes de enviar**.

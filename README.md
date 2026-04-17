@@ -40,7 +40,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 ## Roadmap
 1. ✅ Frontend MVP (Painel, Dashboard, Pedidos, Clientes)
 2. ⬜ Backend (API REST + WebSockets)
-3. ⬜ Integração WhatsApp (WPPConnect / Meta Cloud API)
+3. ⬜ Integração WhatsApp via Uazapi (referência oficial: docs.uazapi.com)
 4. ⬜ IA assistiva (sugestões de resposta, estimativas)
 5. ⬜ Autenticação e multi-tenant
 6. ⬜ Deploy em VPS (Portainer + Traefik)

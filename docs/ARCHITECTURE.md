@@ -11,7 +11,7 @@ Componentes atuais e previstos:
 - Postgres local para toda a operação do negócio
 - Redis para cache/fila auxiliar
 - n8n para orquestração de mensagens, automações e envio ao WhatsApp
-- Integração WhatsApp (provedor a definir)
+- Integração WhatsApp via Uazapi
 - Módulo de IA (sugestões, automações e respostas assistidas)
 - Observabilidade (logs, métricas, tracing)
 
@@ -73,7 +73,7 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
   - Recepção de mensagens, persistência em banco, reabertura de conversa e disparo de mensagens via n8n
 
 ## Integrações Externas
-- WhatsApp: provedor a definir (ex.: WPPConnect, Meta Cloud API, Twilio)
+- WhatsApp: Uazapi
 - n8n: orquestração de webhooks, IA e envio de respostas
 - Pagamentos: a definir (opcional, roadmap)
 - E-mail/SMS: a definir (opcional)
@@ -118,7 +118,6 @@ Observação: o esquema físico final do projeto está consolidado nos arquivos 
 - Dashboard operacional já implementado em `app/page.tsx`
 
 ## Decisões em Aberto
-- Provedor de WhatsApp
 - Provedor de IA (API externa vs. modelo local)
 - Estratégia de RLS/políticas do Supabase para `festa-com-ia-professionals`
 

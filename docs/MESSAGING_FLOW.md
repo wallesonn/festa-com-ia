@@ -1,6 +1,6 @@
 # Fluxo de Mensagens — Festa com IA
 
-> Implementação do fluxo real de mensagens WhatsApp integrado ao Painel via n8n e Postgres.
+> Implementação do fluxo real de mensagens WhatsApp via Uazapi integrado ao Painel por meio de n8n e Postgres.
 
 ---
 
@@ -160,18 +160,20 @@ WHERE id = '<messageId recebido no payload>';
 
 O n8n executa **dois workflows**:
 
-**Workflow 1 — Inbound** (WhatsApp → Postgres)
-- Recebe mensagem do cliente via provider WhatsApp
+> A documentação oficial da Uazapi para chamadas, webhooks, envio de mensagens, etiquetas e demais recursos operacionais fica em `docs.uazapi.com`.
+
+**Workflow 1 — Inbound** (WhatsApp/Uazapi → Postgres)
+- Recebe mensagem do cliente via Uazapi
 - Resolve `conversation_id` pelo telefone do cliente (busca no Postgres)
 - Busca as 10 últimas mensagens trocadas e usa o histórico como contexto
 - Chama IA para gerar 3 sugestões de resposta
 - Grava mensagem + sugestões em `messages` e atualiza `conversations`
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
-**Workflow 2 — Outbound** (App → WhatsApp → Postgres)
+**Workflow 2 — Outbound** (App → WhatsApp/Uazapi → Postgres)
 - Recebe `POST /webhook/send-message` do app (a mensagem já foi gravada com `pending_send`)
 - Busca o telefone do cliente via `conversation_id` no Postgres
-- Envia a mensagem pelo provider WhatsApp
+- Envia a mensagem pelo provider Uazapi
 - Atualiza `messages.status` para `sent` (ou `failed`) conforme resultado
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 

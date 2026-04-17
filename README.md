@@ -27,6 +27,8 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Botões Avançar etapa e Cancelar
 - **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local e layout em cards glassmorphism
 - **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local e às tags por grupo do profissional
+  - Pedidos `entregue` ou `cancelado` há mais de 3 dias ficam fora das listas principais do painel e de pedidos
+  - Exportação em `.xlsx` dos pedidos arquivados diretamente pela tela de Pedidos
   - Criação de pedidos já inicia com status de painel em `agendado`
   - Exclusão de pedidos direto pela tela de detalhes
   - Modal de detalhes exibe o status atual do painel

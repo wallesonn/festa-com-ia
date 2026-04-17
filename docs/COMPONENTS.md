@@ -40,6 +40,8 @@ Componente principal da tela de Pedidos. Carrega a listagem do Postgres local, a
 
 **Funcionalidades:**
 - Lista pedidos reais carregados pelo servidor
+- Mantém visíveis apenas pedidos ativos; pedidos `entregue` ou `cancelado` com mais de 3 dias são tratados como arquivados
+- Botão de exportação baixa um `.xlsx` somente com os pedidos arquivados
 - Modal de cadastro cria pedidos no banco com `painel_status = agendado`
 - Modal de detalhes mostra o status atual do painel, histórico e informações do pedido
 - Exclusão de pedidos direto no modal de detalhes

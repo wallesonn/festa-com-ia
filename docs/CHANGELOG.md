@@ -12,6 +12,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Conversas recentes no dashboard** (`components/dashboard/RecentConversations.tsx`, `lib/db/queries.ts → getRecentConversations`): bloco com abas **Não respondidas** e **Respondidas**, classificação pela direção da última mensagem (`outbound`/`attendant` → respondida), contador de não lidas e timestamp relativo
 - **Foto de perfil no header** (`components/layout/Header.tsx`, `components/layout/AppShell.tsx`): AppShell busca `photo_path` do profissional, gera URL pública do bucket `festa-com-ia` e passa ao `Header`, que renderiza `<img>` com fallback para `AvatarDefault`
 - **Evento `profile-photo-updated`** (`app/perfil/page.tsx`): disparado após salvar o perfil para que o header atualize a foto sem reload
+- **Arquivamento visual de pedidos** (`app/painel/page.tsx`, `app/pedidos/page.tsx`, `lib/db/queries.ts`): as telas principais passaram a ocultar pedidos `entregue` ou `cancelado` com mais de 3 dias, mantendo o histórico acessível na consulta de arquivados
+- **Exportação de arquivados em `.xlsx`** (`app/api/orders/export/route.ts`, `components/pedidos/PedidosView.tsx`): adicionada uma rota de exportação e um botão para baixar somente os pedidos arquivados
 
 ### Corrigido
 - Erro "new row violates row-level security policy" ao salvar o perfil: a tabela `festa-com-ia-professionals` estava com RLS habilitado sem policies. Reativado com policies `SELECT/INSERT/UPDATE` restritas ao próprio usuário (`auth_user_id = auth.uid()`)

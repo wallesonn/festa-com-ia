@@ -6,7 +6,7 @@ import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType, PainelStatus, Del
 import { supabase } from '@/lib/supabase/client'
 import { addBrowserOrder, removeBrowserOrder, updateBrowserOrder, useBrowserOrders } from '@/lib/browser/orders-store'
 import { fmtDatetime } from '@/lib/utils'
-import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2, Wallet, RotateCcw, Pencil, Save } from 'lucide-react'
+import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2, Wallet, RotateCcw, Pencil, Save, Download } from 'lucide-react'
 
 const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: string[]; obs: string }> = {
   Bolo: {
@@ -1045,9 +1045,19 @@ export function PedidosView({ initialOrders, professionalId }: PedidosViewProps)
               </div>
               <h1 className="text-3xl font-semibold text-white sm:text-4xl">Pedidos</h1>
             </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-400">
-              {orders.length} pedido{orders.length !== 1 ? 's' : ''}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-400">
+                {orders.length} pedido{orders.length !== 1 ? 's' : ''}
+              </span>
+              <a
+                href="/api/orders/export"
+                download
+                className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Exportar arquivados
+              </a>
+            </div>
           </div>
         </div>
       </div>

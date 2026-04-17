@@ -61,6 +61,100 @@ export async function getOrdersWithPayments(professionalId: string): Promise<DbO
   `
 }
 
+// Pedidos ativos = tudo EXCETO os arquivados (entregue/cancelado há mais de 3 dias)
+export async function getActiveOrders(professionalId: string): Promise<DbOrderRow[]> {
+  const sql = getSql()
+  return sql<DbOrderRow[]>`
+    SELECT
+      o.id, o.client_id, o.conversation_id, o.product_type, o.product_subtype,
+      o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
+      o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
+      o.last_message, o.last_message_at, o.created_at, o.updated_at,
+      c.name  AS client_name,
+      c.phone AS client_phone,
+      p.id             AS payment_id,
+      p.method         AS payment_method,
+      p.status         AS payment_status,
+      p.total_amount   AS payment_total_amount,
+      p.paid_amount    AS payment_paid_amount,
+      p.due_amount     AS payment_due_amount,
+      p.deposit_percent    AS payment_deposit_percent,
+      p.deposit_paid_at    AS payment_deposit_paid_at,
+      p.full_paid_at       AS payment_full_paid_at,
+      COALESCE(
+        (SELECT json_agg(
+          json_build_object('id', m.id, 'sender', m.sender, 'text', m.text, 'at', m.sent_at, 'suggestions', NULL)
+          ORDER BY m.sent_at ASC
+        ) FROM (
+          SELECT id, sender, text, sent_at FROM messages
+          WHERE conversation_id = o.conversation_id
+          ORDER BY sent_at DESC LIMIT 10
+        ) m),
+        '[]'::json
+      ) AS messages_json
+    FROM orders o
+    JOIN clients c ON c.id = o.client_id
+    LEFT JOIN payments p ON p.order_id = o.id
+    WHERE o.professional_id = ${professionalId}
+      AND NOT (
+        o.painel_status IN ('entregue','cancelado')
+        AND COALESCE(o.delivery_datetime, o.updated_at) < CURRENT_DATE - INTERVAL '3 days'
+      )
+    ORDER BY o.updated_at DESC
+  `
+}
+
+export type ArchivedOrderRow = {
+  id: string
+  client_name: string
+  client_phone: string
+  product_type: string
+  product_subtype: string
+  delivery_datetime: string | null
+  delivery_type: string
+  people_count: number
+  total_price: number
+  painel_status: string
+  payment_method: string | null
+  payment_status: string | null
+  paid_amount: number | null
+  created_at: string
+  updated_at: string
+  observations: string | null
+  internal_notes: string | null
+}
+
+export async function getArchivedOrders(professionalId: string): Promise<ArchivedOrderRow[]> {
+  const sql = getSql()
+  return sql<ArchivedOrderRow[]>`
+    SELECT
+      o.id,
+      c.name             AS client_name,
+      c.phone            AS client_phone,
+      o.product_type,
+      o.product_subtype,
+      o.delivery_datetime,
+      o.delivery_type,
+      o.people_count,
+      o.total_price,
+      o.painel_status,
+      o.observations,
+      o.internal_notes,
+      o.created_at,
+      o.updated_at,
+      p.method           AS payment_method,
+      p.status           AS payment_status,
+      p.paid_amount
+    FROM orders o
+    JOIN clients c ON c.id = o.client_id
+    LEFT JOIN payments p ON p.order_id = o.id
+    WHERE o.professional_id = ${professionalId}
+      AND o.painel_status IN ('entregue','cancelado')
+      AND COALESCE(o.delivery_datetime, o.updated_at) < CURRENT_DATE - INTERVAL '3 days'
+    ORDER BY COALESCE(o.delivery_datetime, o.updated_at) DESC
+  `
+}
+
 export async function getConversationsByProfessional(professionalId: string) {
   const sql = getSql()
   return sql<Array<Tables<'conversations'> & { client_name: string; client_phone: string }>>`

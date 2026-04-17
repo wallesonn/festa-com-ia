@@ -1,5 +1,5 @@
 import { PedidosView } from '@/components/pedidos/PedidosView'
-import { getFirstProfessional, getOrdersWithPayments } from '@/lib/db/queries'
+import { getFirstProfessional, getActiveOrders } from '@/lib/db/queries'
 import { dbRowToOrder } from '@/lib/db/mappers'
 import type { Order } from '@/lib/types'
 
@@ -11,7 +11,7 @@ export default async function PedidosPage() {
   try {
     const professional = await getFirstProfessional()
     professionalId = professional?.id ?? ''
-    const rows = professional ? await getOrdersWithPayments(professional.id) : []
+    const rows = professional ? await getActiveOrders(professional.id) : []
     orders = rows.map(dbRowToOrder)
   } catch {
     orders = []

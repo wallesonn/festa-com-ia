@@ -1,21 +1,19 @@
 import { SimpleBarChart } from '@/components/charts/SimpleBarChart'
+import { DashboardAutoRefresh } from '@/components/dashboard/DashboardAutoRefresh'
 import { ActivityTicker } from '@/components/dashboard/ActivityTicker'
-import { RecentConversations, type RecentConversationItem } from '@/components/dashboard/RecentConversations'
 import {
   getDashboardStats,
   getFirstProfessional,
   getOrdersWithPayments,
   getRecentActivity,
-  getRecentConversations,
   type ActivityItem,
   type DashboardStats,
-  type RecentConversationRow,
 } from '@/lib/db/queries'
 import { dbRowToOrder } from '@/lib/db/mappers'
 import type { Order } from '@/lib/types'
 import { urgencyLevel } from '@/lib/utils'
 import {
-  MessageCircle, ShoppingBag, CheckCircle, Users,
+  MessageCircle, ShoppingBag, CheckCircle,
   TrendingUp, TrendingDown, Clock, Star, Package,
 } from 'lucide-react'
 
@@ -43,48 +41,124 @@ function formatCurrencyShort(v: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v || 0)
 }
 
-function monthLabel(ym: string): string {
-  const [, m] = ym.split('-')
-  const idx = Math.max(0, Math.min(11, parseInt(m, 10) - 1))
-  return MONTH_LABEL_PT[idx] ?? ym
+function monthKeyFromDate(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function monthLabelFromDate(date: Date): string {
+  return MONTH_LABEL_PT[date.getUTCMonth()] ?? ''
+}
+
+function sameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
+}
+
+function sameLocalMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+}
+
+function weekValuesFromOrders(orders: Order[]): number[] {
+  const values = [0, 0, 0, 0, 0, 0, 0]
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  const currentDay = now.getDay() || 7
+  startOfWeek.setDate(now.getDate() - currentDay + 1)
+  startOfWeek.setHours(0, 0, 0, 0)
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setDate(startOfWeek.getDate() + 7)
+
+  for (const order of orders) {
+    const createdAt = new Date(order.createdAt)
+    if (Number.isNaN(createdAt.getTime()) || createdAt < startOfWeek || createdAt >= endOfWeek) continue
+    const dow = (createdAt.getDay() + 6) % 7
+    values[dow] += 1
+  }
+
+  return values
+}
+
+function topProductsFromOrders(orders: Order[]): Array<{ name: string; orders: number }> {
+  const counts = new Map<string, number>()
+  for (const order of orders) {
+    counts.set(order.productType, (counts.get(order.productType) ?? 0) + 1)
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, orders]) => ({ name, orders }))
+}
+
+function painelCountsFromOrders(orders: Order[]) {
+  const keys = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue'] as const
+  return keys.map((key) => ({ key, value: orders.filter((order) => order.painelStatus === key).length }))
+}
+
+function totalActiveFromOrders(orders: Order[]) {
+  return orders.filter((order) => order.status !== 'cancelado' && order.painelStatus !== 'entregue' && order.painelStatus !== 'cancelado').length
+}
+
+function inProgressFromOrders(orders: Order[]) {
+  return orders.filter((order) => order.status === 'em_andamento' || order.status === 'nao_confirmado').length
+}
+
+function ordersDeliveringTodayFromOrders(orders: Order[]) {
+  const now = new Date()
+  return orders.filter((order) => {
+    if (!order.deliveryDatetime) return false
+    const deliveryDate = new Date(order.deliveryDatetime)
+    return !Number.isNaN(deliveryDate.getTime()) && sameLocalDay(deliveryDate, now) && order.painelStatus !== 'entregue' && order.painelStatus !== 'cancelado'
+  }).length
+}
+
+function finishedMonthFromOrders(orders: Order[]) {
+  const now = new Date()
+  return orders.filter((order) => order.status === 'finalizado' && sameLocalMonth(new Date(order.updatedAt), now)).length
 }
 
 async function loadDashboard(): Promise<{
   stats: DashboardStats | null
   orders: Order[]
-  conversations: RecentConversationRow[]
   activity: ActivityItem[]
 }> {
   try {
     const professional = await getFirstProfessional()
-    if (!professional) return { stats: null, orders: [], conversations: [], activity: [] }
-    const [stats, rows, conversations, activity] = await Promise.all([
+    if (!professional) return { stats: null, orders: [], activity: [] }
+    const [statsResult, rowsResult, activityResult] = await Promise.allSettled([
       getDashboardStats(professional.id),
       getOrdersWithPayments(professional.id),
-      getRecentConversations(professional.id, 30),
       getRecentActivity(professional.id, 2, 30),
     ])
-    return { stats, orders: rows.map(dbRowToOrder), conversations, activity }
+    if (statsResult.status === 'rejected') console.error('[dashboard] getDashboardStats failed', statsResult.reason)
+    if (rowsResult.status === 'rejected') console.error('[dashboard] getOrdersWithPayments failed', rowsResult.reason)
+    if (activityResult.status === 'rejected') console.error('[dashboard] getRecentActivity failed', activityResult.reason)
+
+    const stats = statsResult.status === 'fulfilled' ? statsResult.value : null
+    const rows = rowsResult.status === 'fulfilled' ? rowsResult.value : []
+    const activity = activityResult.status === 'fulfilled' ? activityResult.value : []
+
+    return { stats, orders: rows.map(dbRowToOrder), activity }
   } catch {
-    return { stats: null, orders: [], conversations: [], activity: [] }
+    return { stats: null, orders: [], activity: [] }
   }
 }
 
 export default async function DashboardPage() {
-  const { stats, orders, conversations, activity } = await loadDashboard()
+  const { stats, orders, activity } = await loadDashboard()
 
   // KPIs
   const messagesToday = stats?.messages_today ?? 0
   const messagesDelta = stats ? pctDelta(stats.messages_today, stats.messages_yesterday) : null
-  const inProgress = stats?.orders_in_progress ?? 0
-  const deliveringToday = stats?.orders_delivering_today ?? 0
-  const finishedMonth = stats?.orders_finished_month ?? 0
+  const inProgress = stats?.orders_in_progress ?? inProgressFromOrders(orders)
+  const deliveringToday = stats?.orders_delivering_today ?? ordersDeliveringTodayFromOrders(orders)
+  const finishedMonth = stats?.orders_finished_month ?? finishedMonthFromOrders(orders)
   const finishedDelta = stats ? pctDelta(stats.orders_finished_month, stats.orders_finished_prev_month) : null
-  const newClients = stats?.new_clients_week ?? 0
-  const newClientsDelta = stats ? pctDelta(stats.new_clients_week, stats.new_clients_prev_week) : null
 
   // Status dos pedidos
-  const painelCountsRaw = stats
+  const painelCountsRaw = stats && (stats.painel_atendimento || stats.painel_agendado || stats.painel_preparando || stats.painel_pronto || stats.painel_entregue)
     ? [
         { key: 'atendimento', value: stats.painel_atendimento },
         { key: 'agendado', value: stats.painel_agendado },
@@ -92,7 +166,7 @@ export default async function DashboardPage() {
         { key: 'pronto', value: stats.painel_pronto },
         { key: 'entregue', value: stats.painel_entregue },
       ]
-    : []
+    : painelCountsFromOrders(orders)
   const painelMax = Math.max(...painelCountsRaw.map(c => c.value), 1)
   const orderStatusData = painelCountsRaw.map(c => ({
     label: c.key.charAt(0).toUpperCase() + c.key.slice(1),
@@ -100,10 +174,10 @@ export default async function DashboardPage() {
     color: PAINEL_COLORS[c.key],
     pct: Math.round((c.value / painelMax) * 100),
   }))
-  const totalActive = stats?.total_active ?? 0
+  const totalActive = stats?.total_active ?? totalActiveFromOrders(orders)
 
   // Top produtos
-  const topRaw = stats?.top_products ?? []
+  const topRaw = stats?.top_products?.length ? stats.top_products : topProductsFromOrders(orders)
   const topMax = topRaw[0]?.orders ?? 1
   const topProducts = topRaw.map((p, i) => ({
     name: p.name,
@@ -134,30 +208,38 @@ export default async function DashboardPage() {
     })
 
   // Gráficos
-  const weekValues = stats?.weekday_counts ?? [0, 0, 0, 0, 0, 0, 0]
-  const monthly = stats?.monthly_revenue ?? []
-  const monthsLabels = monthly.map(m => monthLabel(m.month))
-  const monthsValues = monthly.map(m => Number(m.total) || 0)
-  const revenueMonth = Number(stats?.revenue_month ?? 0)
-  const revenuePrev = Number(stats?.revenue_prev_month ?? 0)
-  const revenueDelta = pctDelta(revenueMonth, revenuePrev)
-
-  // Conversas
-  const convItems: RecentConversationItem[] = conversations.map(c => ({
-    id: c.id,
-    clientName: c.client_name,
-    clientPhone: c.client_phone,
-    lastMessage: c.last_message ?? '',
-    lastMessageAt: c.last_message_at,
-    responded:
-      c.last_direction === 'outbound' ||
-      c.last_sender === 'attendant' ||
-      (c.last_direction === null && c.unread_count === 0),
-    unreadCount: c.unread_count ?? 0,
+  const weekValues = stats?.weekday_counts?.some(v => v > 0) ? stats.weekday_counts : weekValuesFromOrders(orders)
+  const nowUtc = new Date()
+  const monthBuckets = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth() - 5 + index, 1))
+    return {
+      key: monthKeyFromDate(date),
+      label: monthLabelFromDate(date),
+    }
+  })
+  const revenueByMonth = new Map<string, number>()
+  for (const order of orders) {
+    if (order.painelStatus !== 'entregue' || !order.deliveryDatetime) continue
+    const deliveryDate = new Date(order.deliveryDatetime)
+    if (Number.isNaN(deliveryDate.getTime())) continue
+    const key = monthKeyFromDate(deliveryDate)
+    revenueByMonth.set(key, (revenueByMonth.get(key) ?? 0) + (Number(order.totalPrice) || 0))
+  }
+  const monthly = monthBuckets.map(bucket => ({
+    month: bucket.key,
+    total: revenueByMonth.get(bucket.key) ?? 0,
   }))
+  const monthsLabels = monthBuckets.map(bucket => bucket.label)
+  const monthsValues = monthly.map(m => Number(m.total) || 0)
+  const currentMonthKey = monthKeyFromDate(nowUtc)
+  const previousMonthKey = monthKeyFromDate(new Date(Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth() - 1, 1)))
+  const revenueMonth = revenueByMonth.get(currentMonthKey) ?? 0
+  const revenuePrev = revenueByMonth.get(previousMonthKey) ?? 0
+  const revenueDelta = pctDelta(revenueMonth, revenuePrev)
 
   return (
     <div className="w-full space-y-6">
+      <DashboardAutoRefresh />
 
       {/* Header */}
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
@@ -175,7 +257,7 @@ export default async function DashboardPage() {
       <ActivityTicker initialItems={activity} />
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <KpiCard
           label="Mensagens hoje"
           value={messagesToday}
@@ -200,14 +282,6 @@ export default async function DashboardPage() {
           iconBg="border-emerald-500/20 bg-emerald-500/15"
           delta={finishedDelta}
           deltaSuffix="vs mês anterior"
-        />
-        <KpiCard
-          label="Novos clientes (7d)"
-          value={newClients}
-          icon={<Users className="h-4 w-4 text-pink-400" />}
-          iconBg="border-pink-500/20 bg-pink-500/15"
-          delta={newClientsDelta}
-          deltaSuffix="vs semana anterior"
         />
       </div>
 
@@ -287,35 +361,29 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Conversas recentes + Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-1">
-          <RecentConversations items={convItems} />
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 font-semibold text-white">Pedidos por dia (semana atual)</div>
+          <SimpleBarChart labels={['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']} values={weekValues} />
         </div>
 
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-            <div className="mb-4 font-semibold text-white">Pedidos por dia (semana atual)</div>
-            <SimpleBarChart labels={['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']} values={weekValues} />
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
-            <div className="mb-4 font-semibold text-white">Receita entregue por mês (últimos 6 meses)</div>
-            <SimpleBarChart labels={monthsLabels.length ? monthsLabels : ['—']} values={monthsValues.length ? monthsValues : [0]} />
-            <div className="mt-4 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="text-xs text-gray-400">Este mês</div>
-                <div className="text-sm font-bold text-emerald-400">{formatCurrencyShort(revenueMonth)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400">Mês anterior</div>
-                <div className="text-sm font-bold text-gray-300">{formatCurrencyShort(revenuePrev)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400">Crescimento</div>
-                <div className={`text-sm font-bold ${revenueDelta !== null && revenueDelta < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {revenueDelta === null ? '—' : `${revenueDelta > 0 ? '+' : ''}${revenueDelta}%`}
-                </div>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+          <div className="mb-4 font-semibold text-white">Receita entregue por mês (últimos 6 meses)</div>
+          <SimpleBarChart labels={monthsLabels.length ? monthsLabels : ['—']} values={monthsValues.length ? monthsValues : [0]} />
+          <div className="mt-4 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-xs text-gray-400">Este mês</div>
+              <div className="text-sm font-bold text-emerald-400">{formatCurrencyShort(revenueMonth)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Mês anterior</div>
+              <div className="text-sm font-bold text-gray-300">{formatCurrencyShort(revenuePrev)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Crescimento</div>
+              <div className={`text-sm font-bold ${revenueDelta !== null && revenueDelta < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {revenueDelta === null ? '—' : `${revenueDelta > 0 ? '+' : ''}${revenueDelta}%`}
               </div>
             </div>
           </div>

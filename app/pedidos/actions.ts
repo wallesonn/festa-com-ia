@@ -1,10 +1,17 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { getSql } from '@/lib/db/client'
 import { getFirstProfessional } from '@/lib/db/queries'
 import { dbRowToOrder } from '@/lib/db/mappers'
 import type { DbOrderRow } from '@/lib/db/mappers'
 import type { Order } from '@/lib/types'
+
+function refreshOrderPages() {
+  revalidatePath('/')
+  revalidatePath('/painel')
+  revalidatePath('/pedidos')
+}
 
 export type CreateOrderInput = {
   clientName: string
@@ -38,6 +45,7 @@ export async function updateOrderPainelStatus(orderId: string, painelStatus: str
     } else {
       await sql`UPDATE orders SET painel_status = ${painelStatus}, updated_at = now() WHERE id = ${orderId}`
     }
+    refreshOrderPages()
     return { success: true }
   } catch (err) {
     console.error('[updateOrderPainelStatus]', err)
@@ -112,6 +120,7 @@ export async function markPayment(orderId: string, kind: MarkPaymentKind): Promi
     }
 
     await sql`UPDATE orders SET updated_at = now() WHERE id = ${orderId}`
+    refreshOrderPages()
 
     const rows = await sql<DbOrderRow[]>`
       SELECT
@@ -137,6 +146,8 @@ export async function markPayment(orderId: string, kind: MarkPaymentKind): Promi
       WHERE o.id = ${orderId}
     `
 
+    refreshOrderPages()
+
     if (rows.length === 0) {
       return { success: false, error: 'Pedido não encontrado após atualização.' }
     }
@@ -152,6 +163,7 @@ export async function deleteOrder(orderId: string): Promise<DeleteOrderResult> {
   try {
     const sql = getSql()
     await sql`DELETE FROM orders WHERE id = ${orderId}`
+    refreshOrderPages()
     return { success: true }
   } catch (err) {
     console.error('[deleteOrder]', err)
@@ -322,6 +334,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     if (rows.length === 0) {
       return { success: false, error: 'Erro ao recuperar pedido criado' }
     }
+
+    refreshOrderPages()
 
     return { success: true, order: dbRowToOrder(rows[0]) }
   } catch (err) {

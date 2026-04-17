@@ -106,6 +106,10 @@ function persistSnapshot() {
 function notifySubscribers(shouldPersist = true) {
   if (shouldPersist) {
     persistSnapshot()
+
+    if (canUseBrowserStorage()) {
+      window.dispatchEvent(new Event('festa-com-ia:browser-orders-updated'))
+    }
   }
 
   listeners.forEach((listener) => listener())

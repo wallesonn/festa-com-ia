@@ -1,6 +1,6 @@
 # Fluxo Operacional — Festa com IA
 
-> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp (Uazapi) → n8n → Postgres local → Painel da aplicação**, considerando o uso de IA para sugerir respostas, a revisão humana e a persistência do histórico.
+> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp (Uazapi) → n8n → Postgres local → Painel da aplicação**, considerando o uso do DeepSeek para sugerir respostas, a revisão humana e a persistência do histórico.
 >
 > O Supabase fica restrito a **Auth** e aos dados de **`festa-com-ia-professionals`**; não participa da persistência operacional do atendimento.
 
@@ -13,7 +13,7 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 - recepção de mensagens
 - criação e reabertura de conversas
 - criação de pedido rascunho
-- geração de 3 sugestões de resposta por IA
+- geração de 3 sugestões de resposta via DeepSeek
 - edição e envio manual pelo atendente
 - persistência em Postgres
 - tratamento de falhas e reenvio manual
@@ -24,8 +24,8 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 
 - **WhatsApp via Uazapi é o único canal de entrada no MVP**.
 - **A documentação oficial de chamadas, webhooks, envio de mensagens e etiquetas da Uazapi fica em `docs.uazapi.com`**.
-- **A IA não responde sozinha**.
-- **A IA sempre gera 3 sugestões** para apoio ao atendente.
+- **O DeepSeek não responde sozinho**.
+- **O DeepSeek sempre gera 3 sugestões** para apoio ao atendente.
 - **O atendente edita a resposta antes de enviar**.
 - **O envio ao cliente é feito pelo n8n**.
 - **O n8n grava direto no Postgres**.
@@ -46,7 +46,7 @@ flowchart LR
   F --> G[Cria novo pedido rascunho]
   E --> G
   G --> H[Busca contexto no Postgres]
-  H --> I[Agente de IA gera 3 sugestões]
+  H --> I[DeepSeek gera 3 sugestões]
   I --> J[Aplicação exibe mensagem + histórico + sugestões]
   J --> K[Atendente edita a resposta]
   K --> L[Atendente clica Enviar]
@@ -96,7 +96,7 @@ Esse rascunho serve para:
 - guardar dados iniciais do atendimento
 - alimentar o painel com contexto comercial
 
-### 5. Contexto para IA
+### 5. Contexto para o DeepSeek
 
 A IA deve usar estas fontes de contexto:
 
@@ -107,9 +107,9 @@ A IA deve usar estas fontes de contexto:
 - taxonomia padrão do produto via `product_taxonomy_reference`
 - catálogo/preços vindo do Postgres local ou de regras de negócio do MVP
 
-### 6. Resposta da IA
+### 6. Resposta do DeepSeek
 
-A IA não envia nada diretamente ao cliente.
+O DeepSeek não envia nada diretamente ao cliente.
 
 Ela apenas gera **3 opções de resposta** para o atendente.
 
@@ -198,7 +198,7 @@ Responsável por:
 
 - receber a mensagem
 - consultar e gravar dados no Postgres local
-- chamar o agente de IA
+- chamar o modelo DeepSeek
 - enviar a resposta final ao WhatsApp
 - registrar falhas de envio
 

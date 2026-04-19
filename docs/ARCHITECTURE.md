@@ -12,7 +12,7 @@ Componentes atuais e previstos:
 - Redis para cache/fila auxiliar
 - n8n para orquestração de mensagens, automações e envio ao WhatsApp
 - Integração WhatsApp via Uazapi
-- Módulo de IA (sugestões, automações e respostas assistidas)
+- Módulo de IA DeepSeek (sugestões, automações e respostas assistidas)
 - Observabilidade (logs, métricas, tracing)
 
 Estado atual da aplicação web:
@@ -38,7 +38,7 @@ Fluxo básico de dados:
 
 [Cliente WhatsApp] → [n8n Webhook] → [Postgres local]
                            ↓
-                     [Módulo IA]
+                     [DeepSeek IA]
                            ↓
                 [Painel da Aplicação]
                            ↓
@@ -67,7 +67,7 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
   - Etapas, checklists, custos e status
 - Comunicação (WhatsApp)
   - Conversas em tempo real, histórico, automações e handoff humano
-- IA Assistiva
+- IA Assistiva (DeepSeek)
   - Sugestões de respostas, estimativas de custo/tempo e geração de textos
 - Orquestração Operacional
   - Recepção de mensagens, persistência em banco, reabertura de conversa e disparo de mensagens via n8n
@@ -118,7 +118,7 @@ Observação: o esquema físico final do projeto está consolidado nos arquivos 
 - Dashboard operacional já implementado em `app/page.tsx`
 
 ## Decisões em Aberto
-- Provedor de IA (API externa vs. modelo local)
+- Provedor de IA: DeepSeek (via API externa ou local)
 - Estratégia de RLS/políticas do Supabase para `festa-com-ia-professionals`
 
 ## Próximos Passos

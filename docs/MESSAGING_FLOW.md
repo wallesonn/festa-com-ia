@@ -12,7 +12,7 @@ WhatsApp
    ▼
   n8n  ──────────────────────────────────────────────────────────────────┐
    │  • recebe mensagem inbound                                          │
-   │  • gera 3 sugestões de resposta                                     │
+   │  • gera 3 sugestões de resposta via DeepSeek                         │
    │  • grava em messages (inbound + suggestions)                        │
    │  • atualiza conversations (last_message, unread_count)              │
    ▼                                                                     │
@@ -87,7 +87,7 @@ Sem alteração de schema. Campos relevantes:
 
 O n8n deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`:
 
-Antes de chamar a IA para gerar sugestões de resposta, o n8n deve buscar as **10 últimas mensagens trocadas** na conversa e usar esse histórico como contexto para a geração das respostas.
+Antes de chamar o **DeepSeek** para gerar sugestões de resposta, o n8n deve buscar as **10 últimas mensagens trocadas** na conversa e usar esse histórico como contexto para a geração das respostas.
 
 ```sql
 -- 1. Inserir mensagem recebida
@@ -100,7 +100,7 @@ INSERT INTO messages (
 )
 RETURNING id;
 
--- 2. Atualizar sugestões geradas (após processamento da IA)
+-- 2. Atualizar sugestões geradas (após processamento via DeepSeek)
 UPDATE messages
 SET suggestions = '["Sugestão 1", "Sugestão 2", "Sugestão 3"]'::jsonb
 WHERE id = '<id da mensagem>';
@@ -166,7 +166,7 @@ O n8n executa **dois workflows**:
 - Recebe mensagem do cliente via Uazapi
 - Resolve `conversation_id` pelo telefone do cliente (busca no Postgres)
 - Busca as 10 últimas mensagens trocadas e usa o histórico como contexto
-- Chama IA para gerar 3 sugestões de resposta
+- Chama o modelo **DeepSeek** para gerar 3 sugestões de resposta
 - Grava mensagem + sugestões em `messages` e atualiza `conversations`
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
@@ -177,7 +177,7 @@ O n8n executa **dois workflows**:
 - Atualiza `messages.status` para `sent` (ou `failed`) conforme resultado
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
-### Prompt de sistema da IA
+### Prompt de sistema (DeepSeek)
 
 A geração das respostas deve usar um **prompt de sistema** montado com os dados do profissional e com o contexto recente da conversa.
 
@@ -209,7 +209,7 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
    - portfólio/produtos
    - exemplos de conversa (`conversation_samples`)
    - histórico recente da conversa
-5. Enviar esse contexto para a IA gerar as **3 sugestões de resposta**.
+5. Enviar esse contexto para o **DeepSeek** gerar as **3 sugestões de resposta**.
 
 > Observação: hoje o fluxo já documenta os campos do profissional, mas a montagem exata do prompt de sistema deve ser implementada no workflow do n8n ou na camada que chamar a IA.
 

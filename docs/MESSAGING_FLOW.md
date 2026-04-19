@@ -85,7 +85,37 @@ Sem alteração de schema. Campos relevantes:
 
 ### Mensagem recebida do WhatsApp (inbound)
 
-O n8n deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`:
+**Payload real recebido pelo Webhook do n8n (padrão Uazapi / Baileys):**
+
+```json
+[
+  {
+    "headers": { ... },
+    "body": {
+      "BaseUrl": "https://free.uazapi.com",
+      "EventType": "messages",
+      "chatSource": "updated",
+      "instanceName": "Nome da Instancia",
+      "message": {
+        "chatid": "559888592006@s.whatsapp.net",
+        "content": "texto da mensagem",
+        "fromMe": false,
+        "id": "559884367532:3B0E30BEA0CE711A19B5",
+        "isGroup": false,
+        "messageTimestamp": 1776602377000,
+        "messageType": "Conversation",
+        "messageid": "3B0E30BEA0CE711A19B5",
+        "senderName": "Nome do Cliente",
+        "sender_pn": "559888592006@s.whatsapp.net",
+        "text": "texto da mensagem",
+        "type": "text"
+      }
+    }
+  }
+]
+```
+
+O n8n normaliza esse payload e deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`:
 
 Antes de chamar o **DeepSeek** para gerar sugestões de resposta, o n8n deve buscar as **10 últimas mensagens trocadas** na conversa e usar esse histórico como contexto para a geração das respostas.
 

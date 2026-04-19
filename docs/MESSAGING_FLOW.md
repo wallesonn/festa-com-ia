@@ -85,35 +85,88 @@ Sem alteração de schema. Campos relevantes:
 
 ### Mensagem recebida do WhatsApp (inbound)
 
-**Payload real recebido pelo Webhook do n8n (padrão Uazapi / Baileys):**
+**Payload anonimizado recebido pelo Webhook do n8n (padrão Uazapi / Baileys):**
 
 ```json
 [
   {
-    "headers": { ... },
+    "headers": {
+      "host": "n8n.exemplo.com",
+      "user-agent": "uazapiGO-Webhook/1.0",
+      "content-length": "2540",
+      "content-type": "application/json",
+      "x-forwarded-for": "203.0.113.10",
+      "x-forwarded-host": "n8n.exemplo.com",
+      "x-forwarded-port": "443",
+      "x-forwarded-proto": "https",
+      "x-real-ip": "203.0.113.10"
+    },
+    "params": {},
+    "query": {},
     "body": {
-      "BaseUrl": "https://free.uazapi.com",
+      "BaseUrl": "https://sandbox.uazapi.com",
       "EventType": "messages",
       "chatSource": "updated",
-      "instanceName": "Nome da Instancia",
+      "instanceName": "docaria-central",
+      "owner": "5511987654321",
+      "token": "00000000-0000-0000-0000-000000000000",
+      "chat": {
+        "id": "r600a6729e76e00",
+        "name": "Maria Silva",
+        "owner": "5511987654321",
+        "phone": "+55 11 98765-4321",
+        "wa_chatid": "5511999999999@s.whatsapp.net",
+        "wa_contactName": "Maria Silva",
+        "wa_lastMsgTimestamp": 1776606626000,
+        "wa_lastMessageTextVote": "oi tudo bem com voce??",
+        "wa_lastMessageType": "Conversation",
+        "wa_unreadCount": 1,
+        "wa_isBlocked": false,
+        "wa_isGroup": false,
+        "wa_label": []
+      },
       "message": {
-        "chatid": "559888592006@s.whatsapp.net",
-        "content": "texto da mensagem",
+        "buttonOrListid": "",
+        "chatid": "5511999999999@s.whatsapp.net",
+        "chatlid": "104677127540837@lid",
+        "content": "oi tudo bem com voce??",
+        "convertOptions": "",
+        "edited": "",
         "fromMe": false,
-        "id": "559884367532:3B0E30BEA0CE711A19B5",
+        "groupName": "",
+        "id": "5511987654321:3B42E035F80004272DE0",
         "isGroup": false,
+        "mediaType": "",
         "messageTimestamp": 1776602377000,
         "messageType": "Conversation",
-        "messageid": "3B0E30BEA0CE711A19B5",
-        "senderName": "Nome do Cliente",
-        "sender_pn": "559888592006@s.whatsapp.net",
-        "text": "texto da mensagem",
-        "type": "text"
+        "messageid": "3B42E035F80004272DE0",
+        "owner": "5511987654321",
+        "pinned": false,
+        "quoted": "",
+        "reaction": "",
+        "sender": "104677127540837@lid",
+        "senderName": "Maria Silva",
+        "sender_lid": "104677127540837@lid",
+        "sender_pn": "5511999999999@s.whatsapp.net",
+        "source": "unknown",
+        "status": "",
+        "text": "oi tudo bem com voce??",
+        "track_id": "",
+        "track_source": "",
+        "type": "text",
+        "vote": "",
+        "wasSentByApi": false
       }
     }
   }
 ]
 ```
+
+**Campo para identificar a linha/conta receptora e associar ao profissional:** use `body.owner` como chave principal.
+
+No fluxo atual, esse valor é comparado com `professionals.slug` para encontrar o profissional correto. O campo `body.chat.owner` pode ser usado como reforço estrutural do payload, mas a regra de associação do workflow deve considerar `body.owner` como referência principal.
+
+Já `body.message.sender_pn` continua sendo o número do cliente que enviou a mensagem.
 
 O n8n normaliza esse payload e deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`:
 

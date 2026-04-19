@@ -76,6 +76,7 @@ Acesse [http://localhost:3000](http://localhost:3000).
 
 ## Documentação
 - [Arquitetura](./docs/ARCHITECTURE.md)
+- [Deploy na VPS](./docs/DEPLOYMENT.md)
 - [Fluxo Operacional](./docs/OPERATIONAL_FLOW.md)
 - [Páginas](./docs/PAGES.md)
 - [Componentes](./docs/COMPONENTS.md)

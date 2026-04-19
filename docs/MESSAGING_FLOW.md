@@ -345,22 +345,9 @@ volumes:
 
 ---
 
-### Variáveis adicionais no Portainer
+### Variáveis de deploy / Portainer
 
-Adicione ao `portainer.env.example` (e ao Portainer):
-
-```
-# Domínio público do n8n (roteado pelo Traefik)
-N8N_DOMAIN=n8n.festacomia.pro
-
-# Chave de criptografia do n8n — gere com: openssl rand -hex 32
-N8N_ENCRYPTION_KEY=<chave-aleatória-32-bytes>
-
-# N8N_WEBHOOK_URL já configurada acima, usando o container name na rede Docker:
-N8N_WEBHOOK_URL=http://n8n:5678/webhook/send-message
-```
-
-> **`N8N_WEBHOOK_URL`** usa `http://n8n:5678` (rede interna Docker) — sem Traefik, comunicação direta entre containers.
+A lista completa de variáveis do Portainer, ordem de subida do stack e exemplos prontos para copiar foram centralizados em [Deploy na VPS](./DEPLOYMENT.md).
 
 ---
 

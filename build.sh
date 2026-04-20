@@ -9,22 +9,23 @@ fi
 
 VERSION=$1
 
-if [ -f .env ]; then
+if [ -f .env.local ]; then
   set -a
-  source .env
-  set +a
-elif [ -f .env.build ]; then
-  set -a
-  source .env.build
+  source .env.local
   set +a
 else
-  echo "❌ Arquivo .env não encontrado."
-  echo "   Copie .env.example para .env e preencha os valores."
+  echo "❌ Arquivo .env.local não encontrado."
+  echo "   Copie env.local.example para .env.local e preencha os valores."
   exit 1
 fi
 
 if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${NEXT_PUBLIC_SITE_URL:-}" ]; then
-  echo "❌ NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e NEXT_PUBLIC_SITE_URL são obrigatórios no .env"
+  echo "❌ NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e NEXT_PUBLIC_SITE_URL são obrigatórios no .env.local"
+  exit 1
+fi
+
+if [ -z "${DOCKER_IMAGE:-}" ]; then
+  echo "❌ DOCKER_IMAGE é obrigatória no .env.local para publicar a imagem."
   exit 1
 fi
 

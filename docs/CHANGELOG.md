@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-20
+
+### Adicionado
+- **Exclusão total de conta** (`app/perfil/page.tsx`, `app/api/account/delete/route.ts`): o profissional pode solicitar a remoção da conta diretamente na tela de perfil, com confirmação explícita e limpeza do cadastro no Supabase, do usuário no Auth e dos dados operacionais no Postgres local
+
+### Alterado
+- **WhatsApp do perfil padronizado para Brasil** (`app/perfil/page.tsx`): o onboarding passou a usar país fixo `+55`, seleção de DDD e normalização do número local para salvar apenas dígitos no formato consistente esperado pela integração
+- **Deploy/runtime** (`festa-com-ia-dockercompose/docker-compose.yml`, `env.local.example`, `portainer.env.example`): o backend agora exige `SUPABASE_SERVICE_ROLE_KEY` para concluir a exclusão total da conta
+
 ## [Unreleased] — 2026-04-16
 
 ### Adicionado

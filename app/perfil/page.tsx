@@ -85,6 +85,147 @@ const DEFAULT_RULES_BUILDER: RulesBuilderState = {
   customNotes: '',
 }
 
+const BRAZIL_COUNTRY_CODE = '55' as const
+
+const BRAZIL_DDD_OPTIONS = [
+  { value: '11', label: '11 - SP' },
+  { value: '12', label: '12 - SP' },
+  { value: '13', label: '13 - SP' },
+  { value: '14', label: '14 - SP' },
+  { value: '15', label: '15 - SP' },
+  { value: '16', label: '16 - SP' },
+  { value: '17', label: '17 - SP' },
+  { value: '18', label: '18 - SP' },
+  { value: '19', label: '19 - SP' },
+  { value: '21', label: '21 - RJ' },
+  { value: '22', label: '22 - RJ' },
+  { value: '24', label: '24 - RJ' },
+  { value: '27', label: '27 - ES' },
+  { value: '28', label: '28 - ES' },
+  { value: '31', label: '31 - MG' },
+  { value: '32', label: '32 - MG' },
+  { value: '33', label: '33 - MG' },
+  { value: '34', label: '34 - MG' },
+  { value: '35', label: '35 - MG' },
+  { value: '37', label: '37 - MG' },
+  { value: '38', label: '38 - MG' },
+  { value: '41', label: '41 - PR' },
+  { value: '42', label: '42 - PR' },
+  { value: '43', label: '43 - PR' },
+  { value: '44', label: '44 - PR' },
+  { value: '45', label: '45 - PR' },
+  { value: '46', label: '46 - PR' },
+  { value: '47', label: '47 - SC' },
+  { value: '48', label: '48 - SC' },
+  { value: '49', label: '49 - SC' },
+  { value: '51', label: '51 - RS' },
+  { value: '53', label: '53 - RS' },
+  { value: '54', label: '54 - RS' },
+  { value: '55', label: '55 - RS' },
+  { value: '61', label: '61 - DF' },
+  { value: '62', label: '62 - GO' },
+  { value: '63', label: '63 - TO' },
+  { value: '64', label: '64 - GO' },
+  { value: '65', label: '65 - MT' },
+  { value: '66', label: '66 - MT' },
+  { value: '67', label: '67 - MS' },
+  { value: '68', label: '68 - AC' },
+  { value: '69', label: '69 - RO' },
+  { value: '71', label: '71 - BA' },
+  { value: '73', label: '73 - BA' },
+  { value: '74', label: '74 - BA' },
+  { value: '75', label: '75 - BA' },
+  { value: '77', label: '77 - BA' },
+  { value: '79', label: '79 - SE' },
+  { value: '81', label: '81 - PE' },
+  { value: '82', label: '82 - AL' },
+  { value: '83', label: '83 - PB' },
+  { value: '84', label: '84 - RN' },
+  { value: '85', label: '85 - CE' },
+  { value: '86', label: '86 - PI' },
+  { value: '87', label: '87 - PE' },
+  { value: '88', label: '88 - CE' },
+  { value: '89', label: '89 - PI' },
+  { value: '91', label: '91 - PA' },
+  { value: '92', label: '92 - AM' },
+  { value: '93', label: '93 - PA' },
+  { value: '94', label: '94 - PA' },
+  { value: '95', label: '95 - RR' },
+  { value: '96', label: '96 - AP' },
+  { value: '97', label: '97 - AM' },
+  { value: '98', label: '98 - MA' },
+  { value: '99', label: '99 - MA' },
+] as const
+
+function sanitizeDigits(value: string) {
+  return value.replace(/\D/g, '')
+}
+
+function parseBrazilPhone(value: string | null | undefined) {
+  const digits = sanitizeDigits(value ?? '')
+
+  if (!digits) {
+    return {
+      countryCode: BRAZIL_COUNTRY_CODE,
+      ddd: '',
+      localNumber: '',
+    }
+  }
+
+  if (digits.startsWith(BRAZIL_COUNTRY_CODE) && digits.length >= 12) {
+    return {
+      countryCode: BRAZIL_COUNTRY_CODE,
+      ddd: digits.slice(2, 4),
+      localNumber: digits.slice(4),
+    }
+  }
+
+  if (digits.length >= 10) {
+    return {
+      countryCode: BRAZIL_COUNTRY_CODE,
+      ddd: digits.slice(0, 2),
+      localNumber: digits.slice(2),
+    }
+  }
+
+  return {
+    countryCode: BRAZIL_COUNTRY_CODE,
+    ddd: '',
+    localNumber: digits,
+  }
+}
+
+function normalizeBrazilLocalNumber(value: string) {
+  const digits = sanitizeDigits(value)
+
+  if (digits.length === 8) {
+    return `9${digits}`
+  }
+
+  return digits
+}
+
+function buildBrazilPhoneNumber(countryCode: string, ddd: string, localNumber: string) {
+  const sanitizedCountryCode = sanitizeDigits(countryCode)
+  const sanitizedDdd = sanitizeDigits(ddd)
+  const sanitizedLocalNumber = sanitizeDigits(localNumber)
+  const normalizedLocalNumber = normalizeBrazilLocalNumber(sanitizedLocalNumber)
+
+  if (sanitizedCountryCode !== BRAZIL_COUNTRY_CODE) {
+    throw new Error('O cadastro aceita apenas números do Brasil.')
+  }
+
+  if (sanitizedDdd.length !== 2) {
+    throw new Error('Selecione um DDD válido.')
+  }
+
+  if (normalizedLocalNumber.length !== 9) {
+    throw new Error('Informe um número com 8 ou 9 dígitos.')
+  }
+
+  return `${BRAZIL_COUNTRY_CODE}${sanitizedDdd}${normalizedLocalNumber}`
+}
+
 function joinPortugueseList(items: string[]) {
   if (items.length <= 1) return items[0] ?? ''
   if (items.length === 2) return `${items[0]} e ${items[1]}`
@@ -125,8 +266,10 @@ function buildServiceRulesText(builder: RulesBuilderState) {
 }
 
 type ProfileForm = {
+  phoneCountryCode: string
+  phoneDdd: string
+  phoneNumber: string
   businessName: string
-  phone: string
   productsProduced: string[]
   conversationSamples: string
   serviceRules: string
@@ -163,10 +306,14 @@ export default function PerfilPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
   const [rulesBuilder, setRulesBuilder] = useState<RulesBuilderState>(DEFAULT_RULES_BUILDER)
   const [form, setForm] = useState<ProfileForm>({
+    phoneCountryCode: BRAZIL_COUNTRY_CODE,
+    phoneDdd: '',
+    phoneNumber: '',
     businessName: '',
-    phone: '',
     productsProduced: [],
     conversationSamples: '',
     serviceRules: '',
@@ -229,6 +376,7 @@ export default function PerfilPage() {
       }
 
       const selectedProducts = parseProductsProduced(profile?.products_produced)
+      const parsedPhone = parseBrazilPhone(profile?.phone)
       const firstAccess =
         !profile ||
         !profile.onboarding_completed
@@ -238,8 +386,10 @@ export default function PerfilPage() {
       setEmail(profile?.email ?? user.email ?? '')
       setPhotoPath(profile?.photo_path ?? null)
       setForm({
+        phoneCountryCode: parsedPhone.countryCode,
+        phoneDdd: parsedPhone.ddd,
+        phoneNumber: parsedPhone.localNumber,
         businessName: profile?.business_name ?? '',
-        phone: profile?.phone ?? '',
         productsProduced: selectedProducts,
         conversationSamples: profile?.conversation_samples ?? '',
         serviceRules: profile?.service_rules ?? '',
@@ -273,6 +423,16 @@ export default function PerfilPage() {
       return
     }
 
+    let phone: string
+
+    try {
+      phone = buildBrazilPhoneNumber(form.phoneCountryCode, form.phoneDdd, form.phoneNumber)
+    } catch (phoneError) {
+      setError(phoneError instanceof Error ? phoneError.message : 'Não foi possível validar o WhatsApp.')
+      setSaving(false)
+      return
+    }
+
     let nextPhotoPath = photoPath
     let uploadedPhotoPath: string | null = null
 
@@ -302,7 +462,7 @@ export default function PerfilPage() {
       auth_user_id: userId,
       display_name: form.businessName.trim(),
       business_name: form.businessName.trim(),
-      phone: form.phone.trim() || null,
+      phone,
       email: email.trim() || null,
       photo_path: nextPhotoPath,
       products_produced: JSON.stringify(form.productsProduced),
@@ -371,12 +531,82 @@ export default function PerfilPage() {
     setSaving(false)
   }
 
+  function handlePhoneNumberChange(value: string) {
+    setForm((prev) => ({
+      ...prev,
+      phoneNumber: sanitizeDigits(value).slice(0, 9),
+    }))
+  }
+
+  function handlePhoneNumberBlur() {
+    setForm((prev) => {
+      const digits = sanitizeDigits(prev.phoneNumber)
+
+      if (digits.length === 8) {
+        return {
+          ...prev,
+          phoneNumber: `9${digits}`,
+        }
+      }
+
+      return {
+        ...prev,
+        phoneNumber: digits.slice(0, 9),
+      }
+    })
+  }
+
   function handleApplyStyleBuilder() {
     setForm((prev) => ({
       ...prev,
       serviceRules: buildServiceRulesText(rulesBuilder),
     }))
     setIsStyleModalOpen(false)
+  }
+
+  async function handleDeleteAccount() {
+    setFeedback(null)
+    setError(null)
+
+    if (deleteConfirmation.trim().toUpperCase() !== 'EXCLUIR') {
+      setError('Digite EXCLUIR para confirmar a remoção total dos seus dados.')
+      return
+    }
+
+    setDeletingAccount(true)
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+
+    if (sessionError || !accessToken) {
+      setError('Não foi possível validar sua sessão para excluir a conta.')
+      setDeletingAccount(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        setError(result?.error ?? 'Não foi possível excluir sua conta agora.')
+        setDeletingAccount(false)
+        return
+      }
+
+      await supabase.auth.signOut()
+      router.replace('/login')
+      router.refresh()
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Não foi possível excluir sua conta agora.')
+      setDeletingAccount(false)
+    }
   }
 
   if (loading) {
@@ -490,17 +720,63 @@ export default function PerfilPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="phone" className="text-sm font-medium text-gray-200">
-                  WhatsApp
-                </label>
-                <input
-                  id="phone"
-                  value={form.phone}
-                  onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
-                  placeholder="(11) 99999-0000"
-                  required
-                />
+                <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+                  <div className="space-y-2">
+                    <label htmlFor="phoneCountryCode" className="text-sm font-medium text-gray-200">
+                      País
+                    </label>
+                    <select
+                      id="phoneCountryCode"
+                      value={form.phoneCountryCode}
+                      disabled
+                      className="w-full cursor-not-allowed rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 outline-none transition placeholder:text-gray-500"
+                    >
+                      <option value={BRAZIL_COUNTRY_CODE}>Brasil (+55)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="phoneDdd" className="text-sm font-medium text-gray-200">
+                      DDD
+                    </label>
+                    <select
+                      id="phoneDdd"
+                      value={form.phoneDdd}
+                      onChange={(event) => setForm((prev) => ({ ...prev, phoneDdd: event.target.value }))}
+                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                      required
+                    >
+                      <option value="" disabled className="bg-slate-950">
+                        Selecione o DDD
+                      </option>
+                      {BRAZIL_DDD_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value} className="bg-slate-950">
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="phoneNumber" className="text-sm font-medium text-gray-200">
+                    Número do WhatsApp
+                  </label>
+                  <input
+                    id="phoneNumber"
+                    value={form.phoneNumber}
+                    onChange={(event) => handlePhoneNumberChange(event.target.value)}
+                    onBlur={handlePhoneNumberBlur}
+                    inputMode="numeric"
+                    maxLength={9}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                    placeholder="99999-0000"
+                    required
+                  />
+                  <p className="text-xs text-gray-400">
+                    Digite apenas 8 ou 9 dígitos. Se informar 8, o sistema adiciona o 9 automaticamente ao salvar.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -586,6 +862,39 @@ export default function PerfilPage() {
                 <p className="text-xs text-gray-400">
                   Essas regras podem orientar a IA no atendimento e evitar respostas fora da política do negócio.
                 </p>
+              </div>
+
+              <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">
+                <div className="space-y-2">
+                  <p className="font-medium text-white">Excluir conta e todos os dados</p>
+                  <p>
+                    Esta ação apaga sua conta e todos os seus dados. Não é possível desfazer.
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <label htmlFor="deleteConfirmation" className="text-sm font-medium text-rose-100">
+                    Digite EXCLUIR para confirmar
+                  </label>
+                  <input
+                    id="deleteConfirmation"
+                    value={deleteConfirmation}
+                    onChange={(event) => setDeleteConfirmation(event.target.value)}
+                    className="w-full rounded-2xl border border-rose-300/30 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-rose-100/50 focus:border-rose-300/60 focus:ring-2 focus:ring-rose-500/20"
+                    placeholder="EXCLUIR"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className="h-11 rounded-2xl border border-rose-300/30 bg-gradient-to-r from-rose-600 to-red-600 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(225,29,72,0.28)] transition hover:scale-[1.01]"
+                    disabled={deletingAccount || deleteConfirmation.trim().toUpperCase() !== 'EXCLUIR'}
+                  >
+                    {deletingAccount ? 'Excluindo conta...' : 'Excluir minha conta e meus dados'}
+                  </Button>
+                </div>
               </div>
 
               {feedback && (

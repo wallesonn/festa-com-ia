@@ -87,10 +87,11 @@ Página de cadastro da taxonomia comercial do profissional, com linhas, subgrupo
 Tela de onboarding e edição básica do profissional.
 
 **Funcionalidades:**
-- coleta nome da empresa e WhatsApp
+- coleta nome da empresa e WhatsApp com país fixo Brasil, DDD e sanitização do número
 - marca o onboarding como concluído
 - registra os grupos de produto produzidos
 - grava os dados em `festa-com-ia-professionals`
+- permite excluir a conta e todos os dados com confirmação explícita
 
 ---
 

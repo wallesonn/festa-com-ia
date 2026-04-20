@@ -61,6 +61,7 @@ POSTGRES_USER=festacomia
 POSTGRES_PASSWORD=<senha-forte>
 REDIS_PASSWORD=<senha-forte>
 N8N_WEBHOOK_URL=http://n8n:5678/webhook/send-message
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
 
 ### Opcionais
@@ -137,6 +138,7 @@ Confirme que o domínio configurado em `APP_DOMAIN` responde corretamente via Tr
 | `POSTGRES_PASSWORD` | senha do Postgres |
 | `REDIS_PASSWORD` | senha do Redis |
 | `N8N_WEBHOOK_URL` | URL interna do webhook do n8n para envio de mensagens |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave service role do Supabase usada no backend para exclusão total da conta |
 | `NEXT_PUBLIC_SITE_URL` | URL pública usada no build e em links absolutos |
 | `DOCKER_IMAGE` | nome da imagem publicada, útil em builds/redeploys |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase, usada no build |
@@ -156,6 +158,7 @@ POSTGRES_USER=festacomia
 POSTGRES_PASSWORD=sua_senha_forte
 REDIS_PASSWORD=sua_senha_forte
 N8N_WEBHOOK_URL=http://n8n:5678/webhook/send-message
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
 NEXT_PUBLIC_SITE_URL=https://festacomia.pro
 ```
 
@@ -204,6 +207,7 @@ Se o n8n estiver em outro stack, ajuste a URL do webhook conforme a topologia:
 - use senhas fortes e únicas para cada ambiente
 - prefira variáveis separadas por ambiente: local, staging e produção
 - mantenha `NEXT_PUBLIC_SUPABASE_ANON_KEY` apenas nos ambientes que realmente precisam rebuildar a imagem
+- nunca commite `SUPABASE_SERVICE_ROLE_KEY`; ela dá acesso administrativo ao Supabase Auth
 
 ---
 

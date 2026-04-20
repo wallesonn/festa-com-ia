@@ -33,7 +33,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Exclusão de pedidos direto pela tela de detalhes
   - Modal de detalhes exibe o status atual do painel
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
-- **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos e cadastro da taxonomia do negócio
+- **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos, WhatsApp padronizado para Brasil e exclusão total da conta com remoção dos dados
 - **Clientes** — listagem de clientes
 - **Configurações da Conta** (`/configuracoes`) redireciona para `/perfil`
 

@@ -12,6 +12,7 @@ pnpm-debug.log*
 # Environment
 .env
 .env.*
+!.env.example
 !.env.build.example
 .env.local
 .env.*.local
@@ -22,7 +23,6 @@ secrets/
 *.key
 *.pem
 /portainer.env
-/portainer.env.example
 
 # Node / JS
 node_modules/

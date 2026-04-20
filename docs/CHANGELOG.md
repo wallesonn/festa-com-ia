@@ -12,11 +12,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 - **WhatsApp do perfil padronizado para Brasil** (`app/perfil/page.tsx`): o onboarding passou a usar país fixo `+55`, seleção de DDD e normalização do número local para salvar apenas dígitos no formato consistente esperado pela integração
-- **Deploy/runtime** (`festa-com-ia-dockercompose/docker-compose.yml`, `env.local.example`, `portainer.env.example`): o backend agora exige `SUPABASE_SERVICE_ROLE_KEY` para concluir a exclusão total da conta
+- **Deploy/runtime** (`festa-com-ia-dockercompose/docker-compose.yml`, `env.local.example`, `docs/DEPLOYMENT.md`): o backend agora exige `SUPABASE_SERVICE_ROLE_KEY` para concluir a exclusão total da conta
+
+### Removido
+- **Template separado de Portainer** (`portainer.env.example`): o exemplo de variáveis do stack foi incorporado ao `docs/DEPLOYMENT.md` para concentrar a documentação de deploy em uma única fonte
 
 ## [Unreleased] — 2026-04-16
 
 ### Adicionado
+- Ajustado roteamento da home para redirecionar para `/painel`
 - **Dashboard com dados reais** (`app/page.tsx`, `lib/db/queries.ts`): nova função `getDashboardStats` (agregação única em SQL) fornece KPIs (`messages_today`, `orders_in_progress`, `orders_finished_month`, `new_clients_week`, receita mensal dos últimos 6 meses), contagens por `painel_status`, pedidos por dia da semana e top produtos — todos com deltas contra o período anterior
 - **Conversas recentes no dashboard** (`components/dashboard/RecentConversations.tsx`, `lib/db/queries.ts → getRecentConversations`): bloco com abas **Não respondidas** e **Respondidas**, classificação pela direção da última mensagem (`outbound`/`attendant` → respondida), contador de não lidas e timestamp relativo
 - **Foto de perfil no header** (`components/layout/Header.tsx`, `components/layout/AppShell.tsx`): AppShell busca `photo_path` do profissional, gera URL pública do bucket `festa-com-ia` e passa ao `Header`, que renderiza `<img>` com fallback para `AvatarDefault`

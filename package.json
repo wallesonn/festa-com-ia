@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx --env-file=.env.local scripts/seed.ts"
+    "seed": "tsx --env-file=.env scripts/seed.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -49,7 +49,7 @@ Antes de subir o stack, garanta que você já tenha:
 
 ## Variáveis de ambiente
 
-As variáveis abaixo são as principais usadas pelo stack no Portainer.
+As variáveis abaixo são as principais usadas pelo stack no Portainer. Você pode copiar os blocos deste documento diretamente para preencher o stack.
 
 ### Obrigatórias para runtime
 
@@ -74,6 +74,25 @@ DOCKER_IMAGE=seu-usuario/sua-imagem
 ### Somente se você for rebuildar a imagem
 
 ```env
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+```
+
+### Template completo para o Portainer
+
+Use este bloco como referência única para preencher o stack no Portainer. Se você não for rebuildar a imagem na VPS, pode omitir `DOCKER_IMAGE`, `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+```env
+APP_DOMAIN=festacomia.pro
+IMAGE_TAG=latest
+POSTGRES_DB=festacomia
+POSTGRES_USER=festacomia
+POSTGRES_PASSWORD=<senha-forte>
+REDIS_PASSWORD=<senha-forte>
+N8N_WEBHOOK_URL=http://n8n:5678/webhook/send-message
+NEXT_PUBLIC_SITE_URL=https://festacomia.pro
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+DOCKER_IMAGE=seu-usuario/sua-imagem
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 ```
@@ -214,7 +233,6 @@ Se o n8n estiver em outro stack, ajuste a URL do webhook conforme a topologia:
 ## Arquivos relacionados
 
 - `festa-com-ia-dockercompose/docker-compose.yml`
-- `portainer.env.example`
 - `.env.build.example`
 - `env.local.example`
 - `docs/MESSAGING_FLOW.md`

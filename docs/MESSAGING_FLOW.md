@@ -417,7 +417,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 | 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | ✅ Concluído | `lib/types.ts`, `lib/db/mappers.ts`, `components/painel/PainelCard.tsx` |
 | 5 | Envio: server action grava no Postgres + chama webhook n8n | ✅ Concluído | `app/painel/actions.ts` |
 | 6 | UI — envio: campo de resposta integrado com server action | ✅ Concluído | `components/painel/PainelCard.tsx`, `components/painel/PainelBoard.tsx` |
-| 7 | Config: `N8N_WEBHOOK_URL` no docker-compose e Portainer | ✅ Concluído | `festa-com-ia-dockercompose/docker-compose.yml`, `portainer.env.example`, `env.local.example` |
+| 7 | Config: `N8N_WEBHOOK_URL` no docker-compose e Portainer | ✅ Concluído | `festa-com-ia-dockercompose/docker-compose.yml`, `docs/DEPLOYMENT.md`, `env.local.example` |
 
 ---
 

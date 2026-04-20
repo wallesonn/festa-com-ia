@@ -9,7 +9,7 @@ export function getSql(): ReturnType<typeof postgres> {
   if (!globalThis._pgSql) {
     const connectionString = process.env.DATABASE_URL
     if (!connectionString) {
-      throw new Error('DATABASE_URL não definida. Configure no .env.local ou nas variáveis de ambiente.')
+      throw new Error('DATABASE_URL não definida. Configure no .env ou nas variáveis de ambiente.')
     }
     globalThis._pgSql = postgres(connectionString, {
       max: 10,

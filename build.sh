@@ -9,18 +9,22 @@ fi
 
 VERSION=$1
 
-if [ -f .env.build ]; then
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+elif [ -f .env.build ]; then
   set -a
   source .env.build
   set +a
 else
-  echo "❌ Arquivo .env.build não encontrado."
-  echo "   Copie .env.build.example para .env.build e preencha os valores."
+  echo "❌ Arquivo .env não encontrado."
+  echo "   Copie .env.example para .env e preencha os valores."
   exit 1
 fi
 
 if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || [ -z "${NEXT_PUBLIC_SITE_URL:-}" ]; then
-  echo "❌ NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e NEXT_PUBLIC_SITE_URL são obrigatórios no .env.build"
+  echo "❌ NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e NEXT_PUBLIC_SITE_URL são obrigatórios no .env"
   exit 1
 fi
 

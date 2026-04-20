@@ -21,6 +21,8 @@ secrets/
 *.secret
 *.key
 *.pem
+/portainer.env
+/portainer.env.example
 
 # Node / JS
 node_modules/

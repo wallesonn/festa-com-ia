@@ -8,6 +8,15 @@ import { PRODUCT_GROUPS } from '@/lib/types'
 
 const STORAGE_BUCKET = 'festa-com-ia'
 
+const PROFILE_FIELD_LIMITS = {
+  businessName: 80,
+  phoneNumber: 9,
+  conversationSamples: 10000,
+  serviceRules: 2500,
+  rulesCustomNotes: 500,
+  deleteConfirmation: 7,
+} as const
+
 type RulesBuilderState = {
   hours: 'horario_comercial' | 'manha' | 'tarde' | 'noite' | 'sob_consulta'
   delivery: 'sim' | 'nao' | 'depende' | 'somente_retirada'
@@ -161,6 +170,26 @@ function sanitizeDigits(value: string) {
   return value.replace(/\D/g, '')
 }
 
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function sanitizeSingleLineText(value: string, maxLength: number) {
+  return normalizeWhitespace(value.replace(/[\u0000-\u001F\u007F]/g, '')).slice(0, maxLength)
+}
+
+function sanitizeMultilineText(value: string, maxLength: number) {
+  return value
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, maxLength)
+}
+
 function parseBrazilPhone(value: string | null | undefined) {
   const digits = sanitizeDigits(value ?? '')
 
@@ -236,6 +265,7 @@ function joinPortugueseList(items: string[]) {
 function buildServiceRulesText(builder: RulesBuilderState) {
   const hoursLabel = RULES_HOURS_OPTIONS.find((option) => option.value === builder.hours)?.label ?? 'Horário comercial'
   const deliveryLabel = RULES_DELIVERY_OPTIONS.find((option) => option.value === builder.delivery)?.label ?? 'Depende'
+  const sanitizedCustomNotes = sanitizeMultilineText(builder.customNotes, PROFILE_FIELD_LIMITS.rulesCustomNotes)
 
   const products = [
     builder.cakes ? 'bolos e tortas' : null,
@@ -259,7 +289,7 @@ function buildServiceRulesText(builder: RulesBuilderState) {
     dietaryOptions.length
       ? `- Oferece ${joinPortugueseList(dietaryOptions)}.`
       : '- Restrições alimentares e versões especiais a confirmar conforme o item.',
-    builder.customNotes.trim() ? `- Observações extras: ${builder.customNotes.trim()}.` : null,
+    sanitizedCustomNotes ? `- Observações extras: ${sanitizedCustomNotes}.` : null,
   ]
 
   return lines.filter((line): line is string => Boolean(line)).join('\n')
@@ -325,6 +355,10 @@ export default function PerfilPage() {
     if (!photoPath) return ''
     return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(photoPath).data.publicUrl
   }, [photoPath])
+  const businessNameLength = form.businessName.length
+  const conversationSamplesLength = form.conversationSamples.length
+  const serviceRulesLength = form.serviceRules.length
+  const rulesCustomNotesLength = rulesBuilder.customNotes.length
 
   useEffect(() => {
     if (!photoFile) {
@@ -458,16 +492,36 @@ export default function PerfilPage() {
     }
 
     const now = new Date().toISOString()
+    const sanitizedBusinessName = sanitizeSingleLineText(form.businessName, PROFILE_FIELD_LIMITS.businessName)
+    const sanitizedConversationSamples = sanitizeMultilineText(
+      form.conversationSamples,
+      PROFILE_FIELD_LIMITS.conversationSamples,
+    )
+    const sanitizedServiceRules = sanitizeMultilineText(form.serviceRules, PROFILE_FIELD_LIMITS.serviceRules)
+
+    if (!sanitizedBusinessName) {
+      setError('Informe o nome da empresa.')
+      setSaving(false)
+      return
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      businessName: sanitizedBusinessName,
+      conversationSamples: sanitizedConversationSamples,
+      serviceRules: sanitizedServiceRules,
+    }))
+
     const payload = {
       auth_user_id: userId,
-      display_name: form.businessName.trim(),
-      business_name: form.businessName.trim(),
+      display_name: sanitizedBusinessName,
+      business_name: sanitizedBusinessName,
       phone,
       email: email.trim() || null,
       photo_path: nextPhotoPath,
       products_produced: JSON.stringify(form.productsProduced),
-      conversation_samples: form.conversationSamples.trim() || null,
-      service_rules: form.serviceRules.trim() || null,
+      conversation_samples: sanitizedConversationSamples || null,
+      service_rules: sanitizedServiceRules || null,
       onboarding_completed: true,
       status: 'active',
       updated_at: now,
@@ -534,7 +588,7 @@ export default function PerfilPage() {
   function handlePhoneNumberChange(value: string) {
     setForm((prev) => ({
       ...prev,
-      phoneNumber: sanitizeDigits(value).slice(0, 9),
+      phoneNumber: sanitizeDigits(value).slice(0, PROFILE_FIELD_LIMITS.phoneNumber),
     }))
   }
 
@@ -551,7 +605,7 @@ export default function PerfilPage() {
 
       return {
         ...prev,
-        phoneNumber: digits.slice(0, 9),
+        phoneNumber: digits.slice(0, PROFILE_FIELD_LIMITS.phoneNumber),
       }
     })
   }
@@ -712,11 +766,20 @@ export default function PerfilPage() {
                 <input
                   id="businessName"
                   value={form.businessName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, businessName: e.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      businessName: event.target.value.slice(0, PROFILE_FIELD_LIMITS.businessName),
+                    }))
+                  }
+                  maxLength={PROFILE_FIELD_LIMITS.businessName}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
                   placeholder="Doceria da Maria"
                   required
                 />
+                <p className="text-xs text-gray-400">
+                  Máximo de {PROFILE_FIELD_LIMITS.businessName} caracteres. {businessNameLength}/{PROFILE_FIELD_LIMITS.businessName}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -768,7 +831,7 @@ export default function PerfilPage() {
                     onChange={(event) => handlePhoneNumberChange(event.target.value)}
                     onBlur={handlePhoneNumberBlur}
                     inputMode="numeric"
-                    maxLength={9}
+                    maxLength={PROFILE_FIELD_LIMITS.phoneNumber}
                     className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
                     placeholder="99999-0000"
                     required
@@ -825,14 +888,21 @@ export default function PerfilPage() {
                   id="conversationSamples"
                   value={form.conversationSamples}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, conversationSamples: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      conversationSamples: event.target.value.slice(0, PROFILE_FIELD_LIMITS.conversationSamples),
+                    }))
                   }
+                  maxLength={PROFILE_FIELD_LIMITS.conversationSamples}
                   rows={5}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
                   placeholder="Cole aqui o texto completo de três ou mais conversas estilo WhatsApp"
                 />
                 <p className="text-xs text-gray-400">
                   Use este campo para colar o conteúdo real das conversas. Emojis, gírias e o ritmo de atendimento ajudam a IA a imitar seu jeito.
+                </p>
+                <p className="text-xs text-gray-500">
+                  {conversationSamplesLength}/{PROFILE_FIELD_LIMITS.conversationSamples} caracteres
                 </p>
               </div>
 
@@ -853,14 +923,21 @@ export default function PerfilPage() {
                   id="serviceRules"
                   value={form.serviceRules}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, serviceRules: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      serviceRules: event.target.value.slice(0, PROFILE_FIELD_LIMITS.serviceRules),
+                    }))
                   }
+                  maxLength={PROFILE_FIELD_LIMITS.serviceRules}
                   rows={4}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
                   placeholder="Clique em 'Montar regras' para gerar regras simples do negócio, ou edite manualmente aqui."
                 />
                 <p className="text-xs text-gray-400">
                   Essas regras podem orientar a IA no atendimento e evitar respostas fora da política do negócio.
+                </p>
+                <p className="text-xs text-gray-500">
+                  {serviceRulesLength}/{PROFILE_FIELD_LIMITS.serviceRules} caracteres
                 </p>
               </div>
 
@@ -879,7 +956,10 @@ export default function PerfilPage() {
                   <input
                     id="deleteConfirmation"
                     value={deleteConfirmation}
-                    onChange={(event) => setDeleteConfirmation(event.target.value)}
+                    onChange={(event) =>
+                      setDeleteConfirmation(event.target.value.slice(0, PROFILE_FIELD_LIMITS.deleteConfirmation))
+                    }
+                    maxLength={PROFILE_FIELD_LIMITS.deleteConfirmation}
                     className="w-full rounded-2xl border border-rose-300/30 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-rose-100/50 focus:border-rose-300/60 focus:ring-2 focus:ring-rose-500/20"
                     placeholder="EXCLUIR"
                   />
@@ -1038,14 +1118,21 @@ export default function PerfilPage() {
                 id="rulesCustomNotes"
                 value={rulesBuilder.customNotes}
                 onChange={(event) =>
-                  setRulesBuilder((prev) => ({ ...prev, customNotes: event.target.value }))
+                  setRulesBuilder((prev) => ({
+                    ...prev,
+                    customNotes: event.target.value.slice(0, PROFILE_FIELD_LIMITS.rulesCustomNotes),
+                  }))
                 }
+                maxLength={PROFILE_FIELD_LIMITS.rulesCustomNotes}
                 rows={4}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
                 placeholder="Ex.: atende apenas sob encomenda, prazo mínimo de 2 dias, entrega em bairros específicos..."
               />
               <p className="text-xs text-gray-400">
                 Use este campo para regras adicionais específicas do seu negócio.
+              </p>
+              <p className="text-xs text-gray-500">
+                {rulesCustomNotesLength}/{PROFILE_FIELD_LIMITS.rulesCustomNotes} caracteres
               </p>
             </div>
 

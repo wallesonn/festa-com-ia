@@ -11,8 +11,8 @@
 Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 
 - recepção de mensagens
-- criação e reabertura de conversas
-- criação de pedido rascunho
+- identificação de conversa ativa por cliente
+- criação manual de novo pedido quando surgir um novo atendimento na mesma conversa
 - geração de 3 sugestões de resposta via DeepSeek
 - edição e envio manual pelo atendente
 - persistência em Postgres
@@ -39,15 +39,15 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 ```mermaid
 flowchart LR
   A[Cliente envia mensagem no WhatsApp] --> B[n8n Webhook]
-  B --> C[Normaliza payload e identifica telefone]
+  B --> C[Normaliza payload e identifica cliente/profissional]
   C --> D{Existe conversa ativa?}
   D -- Sim --> E[Anexa mensagem à conversa ativa]
-  D -- Não --> F[Reabre a última conversa encerrada]
-  F --> G[Cria novo pedido rascunho]
+  D -- Não --> F[Cria nova conversa]
+  F --> G[Cria novo pedido em atendimento]
   E --> G
-  G --> H[Busca contexto no Postgres]
+  G --> H[Busca contexto completo no Postgres]
   H --> I[DeepSeek gera 3 sugestões]
-  I --> J[Aplicação exibe mensagem + histórico + sugestões]
+  I --> J[Aplicação exibe mensagem + histórico curto + sugestões]
   J --> K[Atendente edita a resposta]
   K --> L[Atendente clica Enviar]
   L --> M[n8n envia a mensagem ao WhatsApp]
@@ -74,51 +74,48 @@ O n8n deve:
 
 O sistema usa a regra:
 
-- procurar **conversa ativa** pelo telefone
-- se não existir, buscar a **última conversa encerrada** daquele telefone
-- se ainda assim não houver referência, criar uma conversa nova
+- procurar **conversa ativa** do cliente pelo telefone
+- se existir, anexar a nova mensagem a essa conversa
+- se não existir, criar uma **nova conversa** e um **novo pedido** em atendimento
+- se houver uma conversa anterior do mesmo cliente, usar esse histórico como base de contexto para a IA quando fizer sentido operacionalmente
 
-### 3. Reabertura da conversa
+### 3. Novo pedido na mesma conversa
 
-Se a mensagem vier para uma conversa encerrada:
+Toda conversa possui **um pedido associado**.
 
-- a conversa é **reaberta automaticamente**
-- um **novo pedido rascunho** é criado
-- o histórico anterior é mantido
+Se surgir um segundo pedido dentro da mesma conversa:
 
-### 4. Pedido rascunho
+- o profissional deve criar **manual e explicitamente** um novo pedido
+- o pedido anterior deve permanecer preservado
+- a conversa continua como trilha de comunicação do mesmo cliente
 
-Toda interação comercial relevante pode gerar um **pedido rascunho**.
-
-Esse rascunho serve para:
-
-- organizar a intenção do cliente
-- guardar dados iniciais do atendimento
-- alimentar o painel com contexto comercial
-
-### 5. Contexto para o DeepSeek
+### 4. Contexto para o DeepSeek
 
 A IA deve usar estas fontes de contexto:
 
-- histórico da conversa
+- histórico completo da conversa ativa
+- histórico da última conversa ativa, se a conversa atual for nova
+- exemplos de conversas do profissional
+- regras de atendimento do profissional
+- dados dos produtos do profissional
 - dados do cliente/pedido no Postgres
-- prompt manual do profissional salvo na aplicação
 - dados de autenticação e perfil do profissional via Supabase (`festa-com-ia-professionals`)
 - taxonomia padrão do produto via `product_taxonomy_reference`
-- catálogo/preços vindo do Postgres local ou de regras de negócio do MVP
 
-### 6. Resposta do DeepSeek
+O contexto deve ser enviado como prompt de sistema ou estrutura equivalente no fluxo do n8n.
+
+### 5. Resposta do DeepSeek
 
 O DeepSeek não envia nada diretamente ao cliente.
 
 Ela apenas gera **3 opções de resposta** para o atendente.
 
-### 7. Painel da aplicação
+### 6. Painel da aplicação
 
 O painel deve mostrar:
 
 - mensagem original do cliente
-- histórico da conversa
+- um pequeno histórico da conversa
 - 3 sugestões geradas pela IA
 - contexto comercial do pedido, incluindo grupo, subgrupo e variação quando existirem
 
@@ -128,7 +125,7 @@ O atendente então:
 - edita o texto
 - clica em **Enviar**
 
-### 8. Envio da resposta
+### 7. Envio da resposta
 
 Quando o atendente clica em **Enviar**:
 
@@ -136,7 +133,7 @@ Quando o atendente clica em **Enviar**:
 - a mensagem final é salva no Postgres
 - a resposta passa a fazer parte do histórico da conversa
 
-### 9. Falha no envio
+### 8. Falha no envio
 
 Se o envio falhar:
 
@@ -158,6 +155,8 @@ Se o envio falhar:
 ### Regras
 
 - a conversa fica ativa enquanto houver atendimento em andamento
+- cada conversa fica associada a um pedido principal
+- se houver um novo pedido no mesmo atendimento, o profissional cria outro pedido manualmente
 - a conversa é finalizada quando o pedido for:
   - **entregue**
   - **cancelado**
@@ -178,13 +177,9 @@ Se o envio falhar:
 
 ### Regras
 
-- a mensagem pode iniciar um **pedido rascunho**
-- a confirmação do pedido é feita **manualmente pelo atendente**
-- após a confirmação, o pedido entra em **Agendado**
-- depois segue para:
-  - `Preparando`
-  - `Pronto`
-  - `Entregue`
+- a primeira mensagem pode iniciar um **pedido em atendimento**
+- se o pedido precisar ser separado em outro atendimento, o profissional cria um novo pedido manualmente
+- após a confirmação, o pedido pode evoluir para estados posteriores conforme a operação
 - o pedido pode ser **Cancelado** em qualquer fase
 - o pagamento é tratado **mais perto do final do processo**
 
@@ -237,7 +232,7 @@ Para o MVP, a persistência deve seguir esta lógica:
 - registrar mensagens de entrada
 - registrar mensagens de saída
 - registrar conversas
-- registrar pedidos rascunho
+- registrar pedidos vinculados à conversa
 - registrar falhas de envio
 - arquivar conversas encerradas sem apagar
 

@@ -1,6 +1,6 @@
 # Fluxo de Mensagens — Festa com IA
 
-> Implementação do fluxo real de mensagens WhatsApp via Uazapi integrado ao Painel por meio de n8n e Postgres.
+> Fluxo operacional de mensagens WhatsApp via Uazapi integrado ao Painel por meio de n8n e Postgres, com IA orientada por histórico completo da conversa e contexto do profissional.
 
 ---
 
@@ -12,6 +12,7 @@ WhatsApp
    ▼
   n8n  ──────────────────────────────────────────────────────────────────┐
    │  • recebe mensagem inbound                                          │
+   │  • identifica conversa ativa e cria nova conversa quando necessário │
    │  • gera 3 sugestões de resposta via DeepSeek                         │
    │  • grava em messages (inbound + suggestions)                        │
    │  • atualiza conversations (last_message, unread_count)              │
@@ -20,7 +21,7 @@ Postgres (local, mesmo VPS)                                             │
    │                                                                     │
    ▼  polling 15–30s                                                     │
 Aplicação Next.js (Painel)                                              │
-   │  • exibe as 10 últimas mensagens no card                           │
+   │  • exibe um histórico curto da conversa no card                     │
    │  • exibe sugestões da última mensagem do cliente                   │
    │  • campo de resposta → POST webhook n8n ──────────────────────────┘
                                 │
@@ -162,15 +163,15 @@ Sem alteração de schema. Campos relevantes:
 ]
 ```
 
-**Campo para identificar a linha/conta receptora e associar ao profissional:** use `body.owner` como chave principal.
+**Campo para identificar a linha/conta receptora e associar ao profissional:** use `body.owner` como referência principal do profissional.
 
-No fluxo atual, esse valor é comparado com `professionals.slug` para encontrar o profissional correto. O campo `body.chat.owner` pode ser usado como reforço estrutural do payload, mas a regra de associação do workflow deve considerar `body.owner` como referência principal.
+No modelo-alvo atual, `body.owner` continua sendo o número do WhatsApp do profissional/conta receptora, mas o cadastro do profissional fica somente no Supabase. O Postgres local deve permanecer restrito às tabelas operacionais; a migração do n8n para esse modelo será feita na próxima etapa.
 
 Já `body.message.sender_pn` continua sendo o número do cliente que enviou a mensagem.
 
-O n8n normaliza esse payload e deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`:
+O n8n normaliza esse payload e deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`.
 
-Antes de chamar o **DeepSeek** para gerar sugestões de resposta, o n8n deve buscar as **10 últimas mensagens trocadas** na conversa e usar esse histórico como contexto para a geração das respostas.
+Antes de chamar o **DeepSeek** para gerar sugestões de resposta, o n8n deve buscar o **histórico completo da conversa ativa**. Quando a conversa for recém-criada, o workflow pode aproveitar o histórico da última conversa ativa do mesmo cliente como referência de contexto, sem misturar pedidos distintos.
 
 ```sql
 -- 1. Inserir mensagem recebida
@@ -248,7 +249,7 @@ O n8n executa **dois workflows**:
 **Workflow 1 — Inbound** (WhatsApp/Uazapi → Postgres)
 - Recebe mensagem do cliente via Uazapi
 - Resolve `conversation_id` pelo telefone do cliente (busca no Postgres)
-- Busca as 10 últimas mensagens trocadas e usa o histórico como contexto
+- Busca o histórico completo da conversa e usa esse contexto, além de exemplos do profissional, regras e dados de produtos
 - Chama o modelo **DeepSeek** para gerar 3 sugestões de resposta
 - Grava mensagem + sugestões em `messages` e atualiza `conversations`
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
@@ -266,16 +267,16 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
 
 **Fontes de dados do profissional:**
 
-- **Supabase**: tabela `public."festa-com-ia-professionals"`
-- **Postgres local**: tabela `professionals`
+- **Supabase**: tabela `public."festa-com-ia-professionals"` como fonte de verdade do perfil do profissional
+- **Postgres local**: apenas tabelas operacionais da conversa e do pedido
 
 **Campos do profissional disponíveis para o prompt:**
 
 | Campo | Origem | Uso no prompt |
 |-------|--------|---------------|
-| `display_name` | Supabase / Postgres | nome de exibição do profissional |
-| `business_name` | Supabase / Postgres | nome do negócio |
-| `service_rules` | Supabase / Postgres | regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
+| `display_name` | Supabase | nome de exibição do profissional |
+| `business_name` | Supabase | nome do negócio |
+| `service_rules` | Supabase | regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
 | `products_produced` | Supabase | grupos de produtos que o profissional produz |
 | `product_subgroups` | Supabase | subgrupos de produtos disponíveis |
 | `product_variations` | Supabase | variações por grupo de produto |
@@ -285,7 +286,7 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
 
 1. Identificar o profissional da conversa.
 2. Carregar os dados do profissional acima.
-3. Buscar as **10 últimas mensagens trocadas** na conversa.
+3. Buscar o **histórico completo da conversa** e, quando necessário, a última conversa ativa anterior do mesmo cliente.
 4. Montar o prompt de sistema com:
    - identidade do negócio
    - regras operacionais do negócio (`service_rules`)
@@ -294,7 +295,7 @@ A geração das respostas deve usar um **prompt de sistema** montado com os dado
    - histórico recente da conversa
 5. Enviar esse contexto para o **DeepSeek** gerar as **3 sugestões de resposta**.
 
-> Observação: hoje o fluxo já documenta os campos do profissional, mas a montagem exata do prompt de sistema deve ser implementada no workflow do n8n ou na camada que chamar a IA.
+> Observação: o prompt deve priorizar o histórico da conversa atual, acrescido de exemplos de conversa do profissional, regras de atendimento e dados de produtos vindos do Supabase. O recorte exibido no painel pode ser menor do que o contexto enviado para a IA.
 
 ---
 
@@ -384,7 +385,7 @@ interface ChatMessage {
 ### Query de leitura (`lib/db/queries.ts`)
 
 ```typescript
-// Busca as últimas N mensagens de uma conversa (padrão: 10)
+// Busca o histórico da conversa para exibição no painel e contextos específicos
 getLastMessagesByConversation(conversationId: string, limit = 10): Promise<DbMessageRow[]>
 
 // Tipo de retorno
@@ -403,7 +404,7 @@ type DbMessageRow = {
 
 ### Carregamento via pedidos (`getOrdersWithPayments`)
 
-Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da conversa associada, incluindo `suggestions`, no campo `Order.messages`.
+Os pedidos carregados para o Painel devem trazer um **resumo curto da conversa associada**, incluindo `suggestions`, no campo `Order.messages`, enquanto o prompt da IA pode consultar o histórico completo na camada operacional.
 
 ---
 
@@ -433,6 +434,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 ## Notas de implementação
 
 - O polling será feito apenas para o card atualmente expandido/aberto no Painel, evitando requisições desnecessárias.
+- O card deve exibir apenas um recorte curto do histórico, suficiente para contexto visual rápido do profissional.
 - As sugestões exibidas na UI serão sempre as da **última mensagem do cliente** na conversa.
 - O campo de envio do `PainelCard` continuará visualmente no mesmo lugar — apenas a lógica de envio mudará de mock para real.
 - A coluna `suggestions` é `jsonb` no Postgres; o postgres.js a retorna como `string[]` quando o n8n gravar um array JSON de strings.
@@ -444,7 +446,7 @@ Os pedidos carregados para o Painel já trazem as **últimas 10 mensagens** da c
 ### Server action (`app/painel/actions.ts`)
 
 ```typescript
-// Busca as últimas 10 mensagens de uma conversa e retorna em ordem cronológica (ASC)
+// Busca um recorte de mensagens de uma conversa e retorna em ordem cronológica (ASC)
 fetchConversationMessages(conversationId: string): Promise<ChatMessage[]>
 ```
 

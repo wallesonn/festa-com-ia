@@ -786,10 +786,15 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          phone: string | null
           service_rules: string | null
           slug: string | null
           status: string
           updated_at: string
+          products_produced: string | null
+          product_subgroups: string[]
+          product_variations: string[]
+          conversation_samples: string | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -797,10 +802,15 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          phone?: string | null
           service_rules?: string | null
           slug?: string | null
           status?: string
           updated_at?: string
+          products_produced?: string | null
+          product_subgroups?: string[]
+          product_variations?: string[]
+          conversation_samples?: string | null
         }
         Update: {
           auth_user_id?: string | null
@@ -808,10 +818,15 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          phone?: string | null
           service_rules?: string | null
           slug?: string | null
           status?: string
           updated_at?: string
+          products_produced?: string | null
+          product_subgroups?: string[]
+          product_variations?: string[]
+          conversation_samples?: string | null
         }
         Relationships: []
       }

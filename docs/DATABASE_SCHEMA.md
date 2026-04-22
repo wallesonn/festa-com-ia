@@ -99,6 +99,8 @@ Policies em `storage.objects`:
 As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 
 ### `professionals`
+> Observação: nesta nova decisão de arquitetura, o cadastro completo do profissional fica somente no Supabase. A tabela local `professionals` permanece para vínculo operacional/compatibilidade e não deve ser tratada como fonte de verdade do perfil.
+
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | `uuid` PK | |

@@ -5,13 +5,14 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - Fase: MVP Frontend com integração ao Postgres local — em desenvolvimento ativo
 - Stack: Next.js 14 (App Router), TypeScript, TailwindCSS
 - Dados: arquitetura híbrida
-  - Supabase para Auth e cadastro do profissional (`festa-com-ia-professionals`)
-  - Postgres local para toda a operação do sistema
+  - Supabase para Auth e **fonte de verdade do cadastro do profissional** (`festa-com-ia-professionals`)
+  - Postgres local para todas as tabelas operacionais do sistema
 
 ## Deploy e Banco de Dados
 - O container da aplicação aplica automaticamente o schema final local do Postgres ao subir no VPS
 - Se o banco estiver vazio, a stack cria um profissional ativo padrão para permitir o primeiro pedido sem intervenção manual
 - O schema final de Supabase fica separado e não entra no boot do banco operacional local
+- Os dados de perfil do profissional permanecem somente no Supabase; o Postgres local fica restrito às entidades operacionais
 - O schema operacional final do Postgres local fica em `supabase/schema/local_postgres_final.sql`
 - O schema final de Supabase fica em `supabase/schema/supabase_final.sql` e cobre Auth, perfil do profissional e Storage
 

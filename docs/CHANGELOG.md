@@ -7,6 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased] — 2026-04-20
 
+### Alterado
+- **Arquitetura de dados do profissional**: o cadastro e o contexto do profissional passam a ser tratados como dados exclusivos do Supabase (`festa-com-ia-professionals`), enquanto o Postgres local permanece responsável apenas pelas tabelas operacionais. A migração do n8n para esse modelo fica para a próxima etapa.
+
 ### Adicionado
 - **Exclusão total de conta** (`app/perfil/page.tsx`, `app/api/account/delete/route.ts`): o profissional pode solicitar a remoção da conta diretamente na tela de perfil, com confirmação explícita e limpeza do cadastro no Supabase, do usuário no Auth e dos dados operacionais no Postgres local
 

@@ -560,6 +560,36 @@ export default function PerfilPage() {
       setProfessionalId(inserted.id)
     }
 
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+
+    if (sessionError || !accessToken) {
+      if (uploadedPhotoPath) {
+        await supabase.storage.from(STORAGE_BUCKET).remove([uploadedPhotoPath])
+      }
+      setError('Não foi possível validar sua sessão para sincronizar o perfil local.')
+      setSaving(false)
+      return
+    }
+
+    const syncResponse = await fetch('/api/account/sync-professional', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    const syncResult = await syncResponse.json().catch(() => null)
+
+    if (!syncResponse.ok) {
+      if (uploadedPhotoPath) {
+        await supabase.storage.from(STORAGE_BUCKET).remove([uploadedPhotoPath])
+      }
+      setError(syncResult?.error ?? 'Não foi possível sincronizar o perfil com o Postgres local.')
+      setSaving(false)
+      return
+    }
+
     if (photoFile && photoPath && photoPath !== nextPhotoPath) {
       await supabase.storage.from(STORAGE_BUCKET).remove([photoPath])
     }

@@ -8,8 +8,13 @@ create table professionals (
   auth_user_id uuid,
   display_name text not null,
   business_name text not null,
+  phone text,
   slug text,
   service_rules text,
+  products_produced text,
+  product_subgroups text[] not null default '{}'::text[],
+  product_variations text[] not null default '{}'::text[],
+  conversation_samples text,
   status text not null default 'active',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

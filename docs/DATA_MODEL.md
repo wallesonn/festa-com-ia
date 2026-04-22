@@ -6,7 +6,7 @@
 >
 > A arquitetura atual está separada em duas camadas:
 >
-> - **Supabase**: auth e `festa-com-ia-professionals` (onboarding, perfil e taxonomia do profissional)
+> - **Supabase**: auth e `festa-com-ia-professionals` como fonte de verdade do onboarding, perfil e taxonomia do profissional
 > - **Postgres local**: todas as tabelas operacionais do negócio e a referência global de taxonomia
 
 ---
@@ -52,7 +52,7 @@ Conversa independente (legado, não usado no Painel atual).
 | `status` | `ConversationStatus` | Status da conversa |
 
 ### `festa-com-ia-professionals`
-Cadastro do profissional no Supabase, usado por login, onboarding e taxonomia comercial.
+Cadastro do profissional no Supabase, usado por login, onboarding e taxonomia comercial. Este é o local oficial para telefone, regras de atendimento e contexto do profissional.
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|

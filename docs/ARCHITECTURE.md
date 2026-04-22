@@ -7,10 +7,10 @@ Descrever a arquitetura de alto nível da plataforma para profissionais que prod
 Componentes atuais e previstos:
 
 - Frontend Web (Painel do Profissional)
-- Supabase Auth + `festa-com-ia-professionals`
-- Postgres local para toda a operação do negócio
+- Supabase Auth + `festa-com-ia-professionals` como fonte de verdade do cadastro do profissional
+- Postgres local para toda a operação do negócio, incluindo clientes, conversas, mensagens e pedidos
 - Redis para cache/fila auxiliar
-- n8n para orquestração de mensagens, automações e envio ao WhatsApp
+- n8n para orquestração de mensagens, automações, IA e envio ao WhatsApp
 - Integração WhatsApp via Uazapi
 - Módulo de IA DeepSeek (sugestões, automações e respostas assistidas)
 - Observabilidade (logs, métricas, tracing)
@@ -40,7 +40,7 @@ Fluxo básico de dados:
                            ↓
                      [DeepSeek IA]
                            ↓
-                [Painel da Aplicação]
+                [Postgres local / Painel]
                            ↓
                         [n8n]
                            ↓
@@ -55,6 +55,8 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
 
 `Postgres local` → `queries.ts` → `server components` → `client components`
 
+Na visão-alvo do produto, o n8n resolve a conversa ativa do cliente, mantém o pedido associado à conversa e envia para a IA o histórico completo daquela conversa, além de exemplos de conversa, regras de atendimento e dados de produtos do profissional. No painel, o profissional vê apenas um recorte curto do histórico junto com as sugestões de resposta.
+
 ## Domínios e Módulos
 - Painel do Profissional
   - Gestão de clientes, pedidos, orçamentos e agenda
@@ -66,11 +68,11 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
 - Produção
   - Etapas, checklists, custos e status
 - Comunicação (WhatsApp)
-  - Conversas em tempo real, histórico, automações e handoff humano
+  - Conversas em tempo real, histórico completo para IA, automações e handoff humano
 - IA Assistiva (DeepSeek)
-  - Sugestões de respostas, estimativas de custo/tempo e geração de textos
+  - Sugestões de respostas, estimativas de custo/tempo e geração de textos com contexto do profissional
 - Orquestração Operacional
-  - Recepção de mensagens, persistência em banco, reabertura de conversa e disparo de mensagens via n8n
+  - Recepção de mensagens, identificação de conversa ativa, criação manual de novo pedido quando necessário, persistência em banco e disparo de mensagens via n8n
 
 ## Integrações Externas
 - WhatsApp: Uazapi
@@ -84,11 +86,20 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
 - Cliente
 - Conversa
 - Mensagem
-- Orçamento/Pedido
+- Pedido
 - Item de Catálogo
 - Produção (etapas, insumos, custos)
 
+Relações principais:
+
+- `profissionais` (operacional) → `clientes` em `1:n`
+- `clientes` → `conversas` em `1:n`
+- `conversas` → `pedido` em `1:1` enquanto o atendimento estiver ativo
+- novo pedido dentro da mesma conversa é criado manualmente pelo profissional
+
 Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres local, enquanto o Supabase fica restrito à autenticação e aos dados do usuário/profissional.
+
+Observação adicional: o cadastro do profissional, incluindo telefone e contexto comercial, fica somente no Supabase. O Postgres local não deve ser usado como fonte de verdade do perfil do profissional.
 
 Observação: o esquema físico final do projeto está consolidado nos arquivos `supabase/schema/local_postgres_final.sql` e `supabase/schema/supabase_final.sql`.
 
@@ -120,6 +131,7 @@ Observação: o esquema físico final do projeto está consolidado nos arquivos 
 ## Decisões em Aberto
 - Provedor de IA: DeepSeek (via API externa ou local)
 - Estratégia de RLS/políticas do Supabase para `festa-com-ia-professionals`
+- Profundidade do recorte exibido no painel versus o histórico completo usado no prompt da IA
 
 ## Próximos Passos
 - Refinar requisitos do MVP e casos de uso principais

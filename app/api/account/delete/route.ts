@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profile, error: profileError } = await userClient
       .from('festa-com-ia-professionals')
-      .select('id, photo_path')
+      .select('id, phone, photo_path')
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
@@ -89,10 +89,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não foi possível localizar o perfil do profissional.' }, { status: 500 })
     }
 
-    await sql`
-      DELETE FROM professionals
-      WHERE auth_user_id = ${user.id}
-    `
+    if (profile?.phone) {
+      await sql`
+        DELETE FROM professionals
+        WHERE phone = ${profile.phone}
+      `
+    }
 
     if (profile?.photo_path) {
       await adminClient.storage.from(storageBucket).remove([profile.photo_path])

@@ -99,19 +99,17 @@ Policies em `storage.objects`:
 As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 
 ### `professionals`
-> Observação: nesta nova decisão de arquitetura, o cadastro completo do profissional fica somente no Supabase. A tabela local `professionals` permanece para vínculo operacional/compatibilidade e não deve ser tratada como fonte de verdade do perfil.
+> O cadastro completo do profissional fica **exclusivamente no Supabase** (`festa-com-ia-professionals`). A tabela local existe apenas para ancorar as FKs das tabelas operacionais (`clients`, `conversations`, `orders`, `messages`, etc.). O elo entre Supabase e Postgres local é o **`phone`** (único).
 
 | Coluna | Tipo | Notas |
 |--------|------|-------|
-| `id` | `uuid` PK | |
-| `auth_user_id` | `uuid` | nullable, futuro vínculo com `auth.users.id` |
-| `display_name` | `text` | nome exibido no painel |
-| `business_name` | `text` | nome do negócio |
-| `slug` | `text` | nullable, útil para subdomínio/URL |
-| `service_rules` | `text` | regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
-| `status` | `text` | enum: active, paused, archived |
-| `created_at` | `timestamptz` | |
-| `updated_at` | `timestamptz` | |
+| `id` | `uuid` PK | gerado localmente |
+| `phone` | `text` NOT NULL UNIQUE | único elo de ligação com `festa-com-ia-professionals.phone` do Supabase |
+| `business_name` | `text` NOT NULL | réplica mínima do nome do negócio para exibição offline |
+| `created_at` | `timestamptz` | default `now()` |
+| `updated_at` | `timestamptz` | default `now()` |
+
+**Como é populada:** via `POST /api/account/sync-professional`, que faz upsert por `phone` e é disparado ao salvar o perfil em `/perfil`. Nenhum profissional padrão é inserido no boot do container.
 
 ### `clients`
 | Coluna | Tipo | Notas |

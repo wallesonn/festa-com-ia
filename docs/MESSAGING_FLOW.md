@@ -246,12 +246,17 @@ O n8n executa **dois workflows**:
 
 > A documentação oficial da Uazapi para chamadas, webhooks, envio de mensagens, etiquetas e demais recursos operacionais fica em `docs.uazapi.com`.
 
-**Workflow 1 — Inbound** (WhatsApp/Uazapi → Postgres)
-- Recebe mensagem do cliente via Uazapi
-- Resolve `conversation_id` pelo telefone do cliente (busca no Postgres)
-- Busca o histórico completo da conversa e usa esse contexto, além de exemplos do profissional, regras e dados de produtos
-- Chama o modelo **DeepSeek** para gerar 3 sugestões de resposta
-- Grava mensagem + sugestões em `messages` e atualiza `conversations`
+**Workflow 1 — Inbound** (WhatsApp/Uazapi → Supabase + Postgres local)
+- Recebe mensagem do cliente via webhook Uazapi
+- **Filtra** eventos inválidos (`fromMe`, `isGroup`, `EventType ≠ messages`) → caminho `Ignorar Mensagem`
+- **Normaliza** o payload: telefone do cliente, nome, mensagem, e o `owner` (telefone do profissional). Quando o `owner` vem com 12 dígitos (sem o 9 do móvel), o 9 é inserido automaticamente após o DDD.
+- **`Buscar Profissional Supabase`** (Supabase native node) — lê o perfil completo em `festa-com-ia-professionals` usando o `owner` normalizado. É a **única fonte de verdade** do profissional.
+- **`Resolver Profissional Local`** (Postgres local) — `SELECT id FROM professionals WHERE phone = $1` usando o phone do Supabase. Retorna o `professionals.id` local necessário para as FKs das tabelas operacionais.
+- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `id` local.
+- **`Inserir Mensagem no Banco`** (Postgres local) — grava a mensagem recebida em `messages`.
+- **`Buscar Histórico da Conversa Atual`** e **`Buscar Histórico da Conversa Anterior`** (Postgres local) — compõem o contexto para a IA.
+- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil vindo do Supabase + histórico do Postgres local e gera 3 sugestões curtas.
+- **`Salvar Sugestões no Banco`** e **`Atualizar Conversa`** (Postgres local) — persistem as sugestões e atualizam metadados (`last_message`, `last_message_at`, `unread_count`).
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
 **Workflow 2 — Outbound** (App → WhatsApp/Uazapi → Postgres)

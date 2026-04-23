@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-23
+
+### Alterado
+- **Simplificação da tabela local `professionals`** (`supabase/schema/local_postgres_final.sql`): a tabela local foi reduzida às colunas mínimas necessárias para as FKs operacionais — `id`, `phone` (único, NOT NULL), `business_name`, `created_at`, `updated_at`. Todo o cadastro/contexto do profissional continua exclusivamente no Supabase (`festa-com-ia-professionals`).
+- **`phone` vira o único elo de ligação** entre Supabase e Postgres local — `auth_user_id` deixou de ser persistido localmente
+- **`app/api/account/sync-professional/route.ts`**: o sync agora faz upsert por `phone` e grava apenas `phone` + `business_name` no Postgres local
+- **`scripts/migrate-and-start.sh`**: removidos o `ALTER TABLE` que re-adicionava as colunas antigas (`products_produced`, `product_subgroups`, `product_variations`, `conversation_samples`) e o INSERT do "Profissional Principal" padrão — profissionais locais passam a ser criados apenas via sync disparado em `/perfil`
+
+### n8n — workflow `Festa: WhatsApp Inbound → AI Agent (DeepSeek) → Postgres`
+- **Removido** o node desconectado `Buscar Profissional Local` (Postgres consultando Supabase), que não executava e poluía o fluxo
+- **`Buscar Profissional Supabase`** (Supabase native node) passa a ser o único leitor do perfil do profissional — fonte de verdade
+- **Adicionado `Resolver Profissional Local`** (Postgres local): `SELECT id FROM professionals WHERE phone = $1`, necessário para satisfazer as FKs das tabelas operacionais
+- **`Garantir Cliente+Conversa+Pedido`** agora usa o `id` vindo do `Resolver Profissional Local` como `professional_id`
+- **Prompt do `Agente DeepSeek`** agora referencia `Buscar Profissional Supabase` em todos os campos de contexto (antes apontava para o node desconectado)
+- **Filtro de entrada** no webhook mantém a regra `fromMe = false`, `EventType = messages`, `isGroup = false`
+- **Normalização do `owner`**: quando o telefone vier com 12 dígitos (sem o 9 no móvel), o fluxo insere automaticamente o 9 após o DDD antes de consultar o Supabase
+
+### Removido
+- Colunas antigas da tabela local `professionals`: `auth_user_id`, `display_name`, `slug`, `service_rules`, `status`, `products_produced`, `product_subgroups`, `product_variations`, `conversation_samples`, `email`, `photo_path`, `onboarding_completed`
+
 ## [Unreleased] — 2026-04-20
 
 ### Alterado

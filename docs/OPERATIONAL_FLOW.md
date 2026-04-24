@@ -256,7 +256,7 @@ Na prática, estas tabelas vivem no **Postgres local**. No Supabase permanecem a
 
 Na implementação atual, o cadastro do profissional e a taxonomia personalizada vivem em `festa-com-ia-professionals`, enquanto a referência global de grupos/subgrupos/variações fica em `product_taxonomy_reference` no Postgres local.
 
-As sugestões da IA podem permanecer apenas no fluxo operacional, sem tabela própria no MVP.
+As sugestões da IA são persistidas diretamente na tabela `messages` (coluna `suggestions`), permitindo que o Painel as recupere via histórico.
 
 ---
 

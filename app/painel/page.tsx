@@ -11,9 +11,12 @@ export default async function PainelPage() {
   try {
     const professional = await getFirstProfessional()
     professionalId = professional?.id ?? ''
+    console.log('[painel] professional resolved:', { id: professionalId, found: !!professional })
     const rows = professional ? await getActiveOrders(professional.id) : []
+    console.log('[painel] active orders rows:', rows.length)
     orders = rows.map(dbRowToOrder)
-  } catch {
+  } catch (err) {
+    console.error('[painel] failed to load orders:', err)
     orders = []
   }
 

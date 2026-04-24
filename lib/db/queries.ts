@@ -6,18 +6,7 @@ export async function getFirstProfessional() {
   const sql = getSql()
   const rows = await sql<Tables<'professionals'>[]>`
     SELECT * FROM professionals
-    WHERE status = 'active'
     ORDER BY created_at ASC
-    LIMIT 1
-  `
-  return rows[0] ?? null
-}
-
-export async function getProfessionalByAuthUserId(authUserId: string) {
-  const sql = getSql()
-  const rows = await sql<Tables<'professionals'>[]>`
-    SELECT * FROM professionals
-    WHERE auth_user_id = ${authUserId}
     LIMIT 1
   `
   return rows[0] ?? null

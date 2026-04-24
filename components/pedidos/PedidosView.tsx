@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createOrder, deleteOrder, markPayment, updateOrder } from '@/app/pedidos/actions'
 import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType, PainelStatus, DeliveryType, PaymentMethod } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
-import { addBrowserOrder, removeBrowserOrder, updateBrowserOrder, useBrowserOrders } from '@/lib/browser/orders-store'
+import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
 import { fmtDatetime } from '@/lib/utils'
 import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2, Wallet, RotateCcw, Pencil, Save, Download } from 'lucide-react'
 
@@ -242,7 +242,17 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'transferência',    label: 'Transferência' },
 ]
 
-function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; onClose: () => void; onOrderDeleted: (id: string) => void }) {
+function OrderDetailModal({
+  order,
+  onClose,
+  onOrderDeleted,
+  onOrderUpdated,
+}: {
+  order: Order
+  onClose: () => void
+  onOrderDeleted: (id: string) => void
+  onOrderUpdated: (order: Order) => void
+}) {
   const recipe = RECIPE_MAP[order.productType] ?? RECIPE_MAP['Bolo']
   const status = PAINEL_STATUS_CONFIG[order.painelStatus] ?? STATUS_CONFIG[order.status]
   const [tab, setTab] = useState<'info' | 'receita'>('info')
@@ -295,7 +305,7 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
     })
     setEditSaving(false)
     if (result.success) {
-      updateBrowserOrder(result.order)
+      onOrderUpdated(result.order)
       setIsEditing(false)
     } else {
       setEditError(result.error)
@@ -318,7 +328,7 @@ function OrderDetailModal({ order, onClose, onOrderDeleted }: { order: Order; on
     const result = await markPayment(order.id, kind)
     setPaymentLoading(null)
     if (result.success) {
-      updateBrowserOrder(result.order)
+      onOrderUpdated(result.order)
     } else {
       setPaymentError(result.error)
     }
@@ -930,11 +940,10 @@ function RegisterModal({
 
 interface PedidosViewProps {
   initialOrders: Order[]
-  professionalId: string
 }
 
-export function PedidosView({ initialOrders, professionalId }: PedidosViewProps) {
-  const { orders } = useBrowserOrders(initialOrders, professionalId)
+export function PedidosView({ initialOrders }: PedidosViewProps) {
+  const [orders, setOrders] = useState<Order[]>(() => initialOrders)
   const [selected, setSelected] = useState<Order | null>(null)
   const [showRegister, setShowRegister] = useState(false)
   const [search, setSearch] = useState('')
@@ -945,6 +954,12 @@ export function PedidosView({ initialOrders, professionalId }: PedidosViewProps)
     subgroups: {},
     variations: {},
   })
+
+  useOrdersRealtimeRefresh(Boolean(selected || showRegister))
+
+  useEffect(() => {
+    setOrders(initialOrders)
+  }, [initialOrders])
 
   useEffect(() => {
     if (!selected) return
@@ -990,6 +1005,18 @@ export function PedidosView({ initialOrders, professionalId }: PedidosViewProps)
     }
   }, [])
 
+  function replaceOrderInList(nextOrder: Order) {
+    setOrders((current) => current.map((item) => (item.id === nextOrder.id ? nextOrder : item)))
+  }
+
+  function prependOrder(nextOrder: Order) {
+    setOrders((current) => [nextOrder, ...current.filter((item) => item.id !== nextOrder.id)])
+  }
+
+  function removeOrderFromList(orderId: string) {
+    setOrders((current) => current.filter((item) => item.id !== orderId))
+  }
+
   const activeSubtypes = filterType !== 'todos'
     ? PRODUCT_SUBTYPES[filterType as ProductType]
     : []
@@ -1020,8 +1047,9 @@ export function PedidosView({ initialOrders, professionalId }: PedidosViewProps)
         <OrderDetailModal
           order={selected}
           onClose={() => setSelected(null)}
+          onOrderUpdated={(nextOrder) => replaceOrderInList(nextOrder)}
           onOrderDeleted={id => {
-            removeBrowserOrder(id)
+            removeOrderFromList(id)
             setSelected(null)
           }}
         />
@@ -1030,7 +1058,9 @@ export function PedidosView({ initialOrders, professionalId }: PedidosViewProps)
         <RegisterModal
           onClose={() => setShowRegister(false)}
           tags={professionalTags}
-          onOrderCreated={order => addBrowserOrder(order)}
+          onOrderCreated={order => {
+            prependOrder(order)
+          }}
         />
       )}
 

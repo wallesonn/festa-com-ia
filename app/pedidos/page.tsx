@@ -7,16 +7,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function PedidosPage() {
   let orders: Order[]
-  let professionalId = ''
   try {
     const professional = await getFirstProfessional()
-    professionalId = professional?.id ?? ''
     const rows = professional ? await getActiveOrders(professional.id) : []
     orders = rows.map(dbRowToOrder)
   } catch {
     orders = []
   }
 
-  return <PedidosView initialOrders={orders} professionalId={professionalId} />
+  return <PedidosView initialOrders={orders} />
 }
 

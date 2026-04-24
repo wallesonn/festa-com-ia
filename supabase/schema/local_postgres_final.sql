@@ -302,3 +302,53 @@ create index if not exists idx_orders_conversation_id on orders(conversation_id)
 create index if not exists idx_orders_painel_status on orders(painel_status);
 create index if not exists idx_notifications_professional_id on notifications(professional_id);
 create index if not exists idx_notifications_read on notifications(read);
+
+create or replace function notify_realtime_operational_change()
+returns trigger
+language plpgsql
+as $$
+declare
+  payload json;
+begin
+  payload := json_build_object(
+    'table', tg_table_name,
+    'operation', tg_op,
+    'record_id', coalesce(new.id::text, old.id::text),
+    'professional_id', coalesce(new.professional_id::text, old.professional_id::text),
+    'changed_at', now()
+  );
+
+  perform pg_notify('festa_realtime_operational', payload::text);
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_orders_realtime_change on orders;
+create trigger trg_orders_realtime_change
+after insert or update or delete on orders
+for each row execute function notify_realtime_operational_change();
+
+drop trigger if exists trg_payments_realtime_change on payments;
+create trigger trg_payments_realtime_change
+after insert or update or delete on payments
+for each row execute function notify_realtime_operational_change();
+
+drop trigger if exists trg_messages_realtime_change on messages;
+create trigger trg_messages_realtime_change
+after insert or update or delete on messages
+for each row execute function notify_realtime_operational_change();
+
+drop trigger if exists trg_clients_realtime_change on clients;
+create trigger trg_clients_realtime_change
+after insert or update or delete on clients
+for each row execute function notify_realtime_operational_change();
+
+drop trigger if exists trg_conversations_realtime_change on conversations;
+create trigger trg_conversations_realtime_change
+after insert or update or delete on conversations
+for each row execute function notify_realtime_operational_change();

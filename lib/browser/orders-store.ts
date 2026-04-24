@@ -59,6 +59,25 @@ function cloneOrders(orders: Order[]) {
   }))
 }
 
+function applyPendingStatusUpdatesToOrders(orders: Order[], pendingStatusUpdates: PendingStatusUpdate[]) {
+  const nextOrders = cloneOrders(orders)
+
+  for (const action of pendingStatusUpdates) {
+    const orderIndex = nextOrders.findIndex((order) => order.id === action.orderId)
+    if (orderIndex < 0) continue
+
+    const currentOrder = nextOrders[orderIndex]
+    nextOrders[orderIndex] = {
+      ...currentOrder,
+      painelStatus: action.painelStatus,
+      ...(action.deliveryDatetime ? { deliveryDatetime: action.deliveryDatetime, eventDate: action.deliveryDatetime } : {}),
+      updatedAt: new Date().toISOString(),
+    }
+  }
+
+  return nextOrders
+}
+
 function getSnapshot() {
   return {
     professionalId: state.professionalId,
@@ -187,23 +206,16 @@ function handleStorageEvent(event: StorageEvent) {
 export function bootstrapBrowserOrders(professionalId: string, initialOrders: Order[]) {
   if (!professionalId) return
 
-  if (state.hydrated && state.professionalId === professionalId) {
-    ensureSyncInfrastructure()
-    return
-  }
+  if (state.professionalId !== professionalId) {
+    state.professionalId = professionalId
 
-  state.professionalId = professionalId
-
-  const stored = readStoredSnapshot(professionalId)
-  if (stored) {
-    state.orders = cloneOrders(stored.orders)
-    state.pendingStatusUpdates = Array.isArray(stored.pendingStatusUpdates)
+    const stored = readStoredSnapshot(professionalId)
+    state.pendingStatusUpdates = Array.isArray(stored?.pendingStatusUpdates)
       ? stored.pendingStatusUpdates.map((action) => ({ ...action }))
       : []
-  } else {
-    state.orders = cloneOrders(initialOrders)
-    state.pendingStatusUpdates = []
   }
+
+  state.orders = applyPendingStatusUpdatesToOrders(initialOrders, state.pendingStatusUpdates)
 
   state.hydrated = true
   notifySubscribers()

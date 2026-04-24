@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { arrayMove } from '@dnd-kit/sortable'
 import {
   DndContext,
   DragEndEvent,
@@ -14,11 +15,12 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core'
+import { updateOrderPainelStatus } from '@/app/pedidos/actions'
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus } from '@/lib/types'
 import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
-import { previewOrderStatusLocal, queueOrderScheduleSync, queueOrderStatusSync, reorderOrderLocal, useBrowserOrders } from '@/lib/browser/orders-store'
+import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
 
 const COLUMNS: { key: PainelStatus; title: string }[] = [
   { key: 'atendimento', title: 'Atendimento' },
@@ -36,11 +38,9 @@ interface PainelBoardProps {
   professionalId: string
 }
 
-const AUTO_REFRESH_INTERVAL_MS = 20_000
-
 export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps) {
   const router = useRouter()
-  const { orders } = useBrowserOrders(initialOrders, professionalId)
+  const [orders, setOrders] = useState<Order[]>(() => initialOrders)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [schedulingId, setSchedulingId] = useState<string | null>(null)
   const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
@@ -48,6 +48,13 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
+  const dragSnapshotRef = useRef<Order[] | null>(null)
+
+  useOrdersRealtimeRefresh(Boolean(activeId || schedulingId))
+
+  useEffect(() => {
+    setOrders(initialOrders)
+  }, [initialOrders])
 
   function scrollKanban(direction: 'left' | 'right') {
     scrollRef.current?.scrollBy({ left: direction === 'right' ? 300 : -300, behavior: 'smooth' })
@@ -61,14 +68,49 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const activeOrder = activeId ? orders.find(o => o.id === activeId) : null
   const schedulingOrder = schedulingId ? orders.find((order) => order.id === schedulingId) : null
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-      if (activeId || schedulingId) return
+  function patchOrderInList(orderId: string, patch: Partial<Order>) {
+    setOrders((current) => current.map((item) => (
+      item.id === orderId
+        ? { ...item, ...patch, updatedAt: new Date().toISOString() }
+        : item
+    )))
+  }
+
+  function reorderOrderInList(orderId: string, overId: string) {
+    setOrders((current) => {
+      const active = current.find((order) => order.id === orderId)
+      const over = current.find((order) => order.id === overId)
+
+      if (!active || !over || active.painelStatus !== over.painelStatus || orderId === overId) {
+        return current
+      }
+
+      const sameColumnOrders = current.filter((order) => order.painelStatus === active.painelStatus)
+      const otherOrders = current.filter((order) => order.painelStatus !== active.painelStatus)
+      const oldIndex = sameColumnOrders.findIndex((order) => order.id === orderId)
+      const newIndex = sameColumnOrders.findIndex((order) => order.id === overId)
+
+      if (oldIndex < 0 || newIndex < 0) return current
+
+      return [...otherOrders, ...arrayMove(sameColumnOrders, oldIndex, newIndex)]
+    })
+  }
+
+  function restoreDragSnapshot() {
+    if (!dragSnapshotRef.current) return
+    setOrders(dragSnapshotRef.current)
+    dragSnapshotRef.current = null
+  }
+
+  async function applyPainelChange(orderId: string, painelStatus: PainelStatus, deliveryDatetime?: string) {
+    const result = await updateOrderPainelStatus(orderId, painelStatus, deliveryDatetime)
+    if (result.success) {
       router.refresh()
-    }, AUTO_REFRESH_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [router, activeId, schedulingId])
+      return true
+    }
+
+    return false
+  }
 
   function toDatetimeLocalValue(date: Date) {
     const pad = (value: number) => String(value).padStart(2, '0')
@@ -110,7 +152,14 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       return
     }
 
-    queueOrderScheduleSync(schedulingOrder.id, schedulingTargetStatus, new Date(scheduleValue).toISOString())
+    const deliveryDatetime = new Date(scheduleValue).toISOString()
+    patchOrderInList(schedulingOrder.id, {
+      painelStatus: schedulingTargetStatus,
+      deliveryDatetime,
+      eventDate: deliveryDatetime,
+    })
+
+    void applyPainelChange(schedulingOrder.id, schedulingTargetStatus, deliveryDatetime)
     setSchedulingId(null)
     setSchedulingTargetStatus('agendado')
     setScheduleValue('')
@@ -129,17 +178,20 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     if (!order) return
     const idx = STATUS_ORDER.indexOf(order.painelStatus)
     const next = STATUS_ORDER[Math.min(idx + 1, STATUS_ORDER.indexOf('entregue'))]
-    queueOrderStatusSync(id, next)
+    patchOrderInList(id, { painelStatus: next })
+    void applyPainelChange(id, next)
   }
 
   function handleCancel(id: string) {
-    queueOrderStatusSync(id, 'cancelado')
+    patchOrderInList(id, { painelStatus: 'cancelado' })
+    void applyPainelChange(id, 'cancelado')
   }
 
   function handleDragStart({ active }: DragStartEvent) {
     setActiveId(active.id as string)
     const order = orders.find(o => o.id === active.id)
     if (order) {
+      dragSnapshotRef.current = JSON.parse(JSON.stringify(orders)) as Order[]
       dragStateRef.current = { id: active.id as string, fromStatus: order.painelStatus, toStatus: order.painelStatus }
     }
   }
@@ -152,7 +204,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     if (overColumnKey) {
       if (overColumnKey !== drag.toStatus) {
         drag.toStatus = overColumnKey
-        previewOrderStatusLocal(active.id as string, overColumnKey)
+        patchOrderInList(active.id as string, { painelStatus: overColumnKey })
       }
       return
     }
@@ -163,7 +215,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
 
     if (activeOrder.painelStatus !== overOrder.painelStatus) {
       drag.toStatus = overOrder.painelStatus
-      previewOrderStatusLocal(active.id as string, overOrder.painelStatus)
+      patchOrderInList(active.id as string, { painelStatus: overOrder.painelStatus })
     }
   }
 
@@ -174,22 +226,29 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
 
     if (!over) {
       if (drag) {
-        previewOrderStatusLocal(drag.id, drag.fromStatus)
+        restoreDragSnapshot()
       }
       return
     }
 
     if (drag && drag.fromStatus === 'atendimento' && drag.toStatus !== drag.fromStatus) {
-      previewOrderStatusLocal(drag.id, drag.fromStatus)
+      restoreDragSnapshot()
       handleOpenSchedule(drag.id, drag.toStatus)
       return
     }
 
     if (drag && drag.toStatus !== drag.fromStatus) {
-      queueOrderStatusSync(drag.id, drag.toStatus)
+      const previous = dragSnapshotRef.current
+      void applyPainelChange(drag.id, drag.toStatus).then((success) => {
+        if (!success && previous) {
+          setOrders(previous)
+        }
+      })
+    } else {
+      reorderOrderInList(active.id as string, over.id as string)
     }
 
-    reorderOrderLocal(active.id as string, over.id as string)
+    dragSnapshotRef.current = null
   }
 
   return (

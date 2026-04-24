@@ -1,6 +1,7 @@
 "use client"
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -35,7 +36,10 @@ interface PainelBoardProps {
   professionalId: string
 }
 
+const AUTO_REFRESH_INTERVAL_MS = 20_000
+
 export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps) {
+  const router = useRouter()
   const { orders } = useBrowserOrders(initialOrders, professionalId)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [schedulingId, setSchedulingId] = useState<string | null>(null)
@@ -56,6 +60,15 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
 
   const activeOrder = activeId ? orders.find(o => o.id === activeId) : null
   const schedulingOrder = schedulingId ? orders.find((order) => order.id === schedulingId) : null
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      if (activeId || schedulingId) return
+      router.refresh()
+    }, AUTO_REFRESH_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [router, activeId, schedulingId])
 
   function toDatetimeLocalValue(date: Date) {
     const pad = (value: number) => String(value).padStart(2, '0')

@@ -117,6 +117,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; iconName: st
   nao_confirmado: { label: 'Não confirmado', color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'package' },
 }
 
+const CATEGORY_CONFIG: Record<string, { label: string; emoji: string }> = {
+  Bolo: { label: 'Bolos', emoji: '🎂' },
+  Doces: { label: 'Doces', emoji: '🧁' },
+  Salgados: { label: 'Salgados', emoji: '🥐' },
+  'Refeição': { label: 'Refeição', emoji: '🍽' },
+}
+
 const PAINEL_STATUS_CONFIG: Record<string, { label: string; color: string; iconName: string }> = {
   atendimento: { label: 'Atendimento', color: 'text-gray-300 bg-white/5 border-white/10', iconName: 'alert' },
   agendado:    { label: 'Agendado',    color: 'text-blue-400 bg-blue-400/10 border-blue-400/30', iconName: 'package' },
@@ -1028,18 +1035,27 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
 
   const filtered = orders.filter(o => {
     const matchSearch = o.clientName.toLowerCase().includes(search.toLowerCase()) || o.productType.toLowerCase().includes(search.toLowerCase()) || o.productSubtype.toLowerCase().includes(search.toLowerCase())
-    const matchType = filterType === 'todos' || o.productType === filterType
+    
+    let matchType = true
+    if (filterType === 'todos') {
+      matchType = true
+    } else if (filterType === 'adefinir') {
+      matchType = !o.productType || (o.productType as string) === '' || (o.productType as string).toLowerCase() === 'a definir'
+    } else {
+      matchType = o.productType === filterType
+    }
+
     const matchSubtype = filterSubtype === 'todos' || o.productSubtype === filterSubtype
     return matchSearch && matchType && matchSubtype
   })
 
   const counts: Record<string, number> = {
     todos: orders.length,
-    Bolo: orders.filter(o => o.productType === 'Bolo').length,
-    Doces: orders.filter(o => o.productType === 'Doces').length,
-    Salgados: orders.filter(o => o.productType === 'Salgados').length,
-    'Refeição': orders.filter(o => o.productType === 'Refeição').length,
+    adefinir: orders.filter(o => !o.productType || (o.productType as string) === '' || (o.productType as string).toLowerCase() === 'a definir').length,
   }
+  PRODUCT_GROUPS.forEach(g => {
+    counts[g] = orders.filter(o => o.productType === g).length
+  })
 
   return (
     <div className="w-full space-y-6">
@@ -1095,29 +1111,57 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
       {/* Filters + Search */}
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl px-5 py-4 space-y-3">
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {([
-            ['todos',    'Todos',    '🎊'],
-            ['Bolo',     'Bolos',    '🎂'],
-            ['Doces',    'Doces',    '🧁'],
-            ['Salgados', 'Salgados', '🥐'],
-            ['Refeição', 'Refeição', '🍽'],
-          ] as const).map(([key, label, emoji]) => (
-            <button
-              key={key}
-              onClick={() => handleTypeChange(key)}
-              className={`shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
-                filterType === key
-                  ? 'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200'
-                  : 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
-              }`}
-            >
-              <span>{emoji}</span>
-              {label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterType === key ? 'bg-fuchsia-500/30' : 'bg-white/10'}`}>
-                {counts[key]}
-              </span>
-            </button>
-          ))}
+          <button
+            onClick={() => handleTypeChange('todos')}
+            className={`shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
+              filterType === 'todos'
+                ? 'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200'
+                : 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
+            }`}
+          >
+            <span>🎊</span>
+            Todos
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterType === 'todos' ? 'bg-fuchsia-500/30' : 'bg-white/10'}`}>
+              {counts['todos']}
+            </span>
+          </button>
+
+          <button
+            onClick={() => handleTypeChange('adefinir')}
+            className={`shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
+              filterType === 'adefinir'
+                ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                : 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
+            }`}
+          >
+            <span>❓</span>
+            A definir
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterType === 'adefinir' ? 'bg-amber-500/30' : 'bg-white/10'}`}>
+              {counts['adefinir']}
+            </span>
+          </button>
+
+          {professionalTags.groups.map((key) => {
+            const config = CATEGORY_CONFIG[key]
+            if (!config) return null
+            return (
+              <button
+                key={key}
+                onClick={() => handleTypeChange(key)}
+                className={`shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
+                  filterType === key
+                    ? 'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200'
+                    : 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
+                }`}
+              >
+                <span>{config.emoji}</span>
+                {config.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterType === key ? 'bg-fuchsia-500/30' : 'bg-white/10'}`}>
+                  {counts[key]}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {activeSubtypes.length > 0 && (

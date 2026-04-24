@@ -18,7 +18,7 @@ import {
 import { updateOrderPainelStatus } from '@/app/pedidos/actions'
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
-import { Order, PainelStatus } from '@/lib/types'
+import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } from '@/lib/types'
 import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
 
@@ -45,6 +45,11 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const [schedulingId, setSchedulingId] = useState<string | null>(null)
   const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
   const [scheduleValue, setScheduleValue] = useState('')
+  const [productType, setProductType] = useState<ProductType>('Bolo')
+  const [productSubtype, setProductSubtype] = useState('')
+  const [peopleCount, setPeopleCount] = useState<number>(0)
+  const [totalPrice, setTotalPrice] = useState<number>(0)
+  const [observations, setObservations] = useState('')
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
@@ -129,23 +134,29 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     const current = order.deliveryDatetime ? new Date(order.deliveryDatetime) : new Date()
     if (!Number.isNaN(current.getTime())) {
       if (!order.deliveryDatetime) {
-        current.setHours(current.getHours() + 1)
+        current.setHours(current.getHours() + 24)
         current.setMinutes(0, 0, 0)
       }
       setScheduleValue(toDatetimeLocalValue(current))
     } else {
       const fallback = new Date()
-      fallback.setHours(fallback.getHours() + 1)
+      fallback.setHours(fallback.getHours() + 24)
       fallback.setMinutes(0, 0, 0)
       setScheduleValue(toDatetimeLocalValue(fallback))
     }
 
     setSchedulingId(id)
     setSchedulingTargetStatus(targetStatus)
+    setScheduleValue(toDatetimeLocalValue(current))
+    setProductType((order.productType as ProductType) || 'Bolo')
+    setProductSubtype(order.productSubtype || PRODUCT_SUBTYPES[(order.productType as ProductType) || 'Bolo'][0])
+    setPeopleCount(order.peopleCount || 0)
+    setTotalPrice(order.totalPrice || 0)
+    setObservations(order.observations || '')
     setScheduleError(null)
   }
 
-  function handleConfirmSchedule() {
+  async function handleConfirmSchedule() {
     if (!schedulingOrder) return
     if (!scheduleValue) {
       setScheduleError('Escolha uma data e hora para agendar.')
@@ -153,13 +164,42 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     }
 
     const deliveryDatetime = new Date(scheduleValue).toISOString()
+    
+    // Atualiza localmente para feedback imediato
     patchOrderInList(schedulingOrder.id, {
       painelStatus: schedulingTargetStatus,
       deliveryDatetime,
       eventDate: deliveryDatetime,
+      productType,
+      productSubtype,
+      peopleCount,
+      totalPrice,
+      observations,
     })
 
-    void applyPainelChange(schedulingOrder.id, schedulingTargetStatus, deliveryDatetime)
+    // Importar a action de updateOrder (vou assumir que ela está disponível via props ou import direto se necessário, 
+    // mas aqui vou adaptar o applyPainelChange para usar a lógica completa se possível ou chamar direto)
+    const { updateOrder } = await import('@/app/pedidos/actions')
+    
+    const result = await updateOrder(schedulingOrder.id, {
+      productType,
+      productSubtype,
+      peopleCount,
+      deliveryDatetime: deliveryDatetime,
+      deliveryType: schedulingOrder.deliveryType || 'entrega',
+      observations,
+      totalPrice,
+      paymentMethod: schedulingOrder.payment?.method || 'pix',
+      painelStatus: schedulingTargetStatus
+    })
+
+    if (result.success) {
+      router.refresh()
+    } else {
+      setScheduleError(result.error || 'Erro ao salvar informações.')
+      return
+    }
+
     setSchedulingId(null)
     setSchedulingTargetStatus('agendado')
     setScheduleValue('')
@@ -359,36 +399,104 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
               </button>
             </div>
 
-            <div className="space-y-4 px-5 py-5">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center gap-2 text-sm text-gray-300">
-                  <Calendar className="h-4 w-4 text-amber-400" />
-                  Defina a data e hora da entrega/retirada
+            <div className="max-h-[60vh] overflow-y-auto px-5 py-5 space-y-4">
+              <div className="space-y-4">
+                {/* Data e Hora */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                    <Calendar className="h-4 w-4 text-amber-400" />
+                    Data e Hora da Entrega
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleValue}
+                    onChange={(e) => setScheduleValue(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
                 </div>
-                <p className="mt-2 text-xs text-gray-400">
-                  Ao confirmar, o pedido irá para <span className="font-semibold text-white">{schedulingTargetStatus === 'agendado' ? 'Agendado' : schedulingTargetStatus === 'preparando' ? 'Preparando' : schedulingTargetStatus === 'pronto' ? 'Pronto' : schedulingTargetStatus === 'entregue' ? 'Entregue' : 'Cancelado'}</span>.
-                </p>
-                <input
-                  type="datetime-local"
-                  value={scheduleValue}
-                  onChange={(e) => setScheduleValue(e.target.value)}
-                  className="mt-3 h-11 w-full rounded-xl border border-white/15 bg-black/40 px-3 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-                {scheduleError && <p className="mt-2 text-xs text-rose-300">{scheduleError}</p>}
+
+                {/* Produto e Subtipo */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-400 px-1">Categoria</label>
+                    <select
+                      value={productType}
+                      onChange={(e) => {
+                        const newType = e.target.value as ProductType
+                        setProductType(newType)
+                        setProductSubtype(PRODUCT_SUBTYPES[newType][0])
+                      }}
+                      className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
+                    >
+                      {PRODUCT_GROUPS.map(group => (
+                        <option key={group} value={group} className="bg-[#111] text-white">{group}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-400 px-1">Linha/Sabor</label>
+                    <select
+                      value={productSubtype}
+                      onChange={(e) => setProductSubtype(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
+                    >
+                      {PRODUCT_SUBTYPES[productType].map(sub => (
+                        <option key={sub} value={sub} className="bg-[#111] text-white">{sub}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Pessoas e Valor */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-400 px-1">Qtd Pessoas</label>
+                    <input
+                      type="number"
+                      value={peopleCount || ''}
+                      onChange={(e) => setPeopleCount(Number(e.target.value))}
+                      className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-400 px-1">Valor Total (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={totalPrice || ''}
+                      onChange={(e) => setTotalPrice(Number(e.target.value))}
+                      className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Observações */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-400 px-1">Observações do Pedido</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Algum detalhe adicional..."
+                    value={observations}
+                    onChange={(e) => setObservations(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
+                  />
+                </div>
               </div>
 
-              <div className="flex gap-3">
+              {scheduleError && <p className="text-xs text-rose-300 px-1 font-medium">{scheduleError}</p>}
+
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleCloseSchedule}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10"
+                  className="flex-1 h-12 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-gray-200 hover:bg-white/10 transition-colors"
                 >
-                  Cancelar
+                  Voltar
                 </button>
                 <button
                   onClick={handleConfirmSchedule}
-                  className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-black hover:bg-amber-300"
+                  className="flex-1 h-12 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-sm font-bold text-black hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-900/20 transition-all active:scale-[0.98]"
                 >
-                  Confirmar agendamento
+                  Salvar e Agendar
                 </button>
               </div>
             </div>

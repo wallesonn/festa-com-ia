@@ -3,6 +3,8 @@
 > Este documento descreve o caminho da mensagem do cliente entre **WhatsApp (Uazapi) → n8n → Postgres local → Painel da aplicação**, considerando o uso do DeepSeek para sugerir respostas, a revisão humana e a persistência do histórico.
 >
 > O Supabase fica restrito a **Auth** e aos dados de **`festa-com-ia-professionals`**; não participa da persistência operacional do atendimento.
+>
+> A UI operacional também escuta o Postgres local em tempo real por `LISTEN/NOTIFY` + SSE, então mudanças vindas do n8n ou da própria aplicação aparecem sem polling.
 
 ---
 
@@ -124,6 +126,8 @@ O atendente então:
 - escolhe uma sugestão
 - edita o texto
 - clica em **Enviar**
+
+Quando o banco muda, o painel e a tela de pedidos recebem um evento realtime e revalida-se o servidor, mantendo os dados sincronizados com o Postgres local sem depender de cache do navegador.
 
 ### 7. Envio da resposta
 
@@ -260,6 +264,5 @@ As sugestões da IA podem permanecer apenas no fluxo operacional, sem tabela pr�
 
 - detalhar o esquema de eventos entre n8n e Postgres
 - definir os payloads de entrada e saída do webhook
-- criar a API/serviço do painel para leitura das conversas
 - implementar a persistência do pedido rascunho
 - integrar o envio final de mensagens via WhatsApp

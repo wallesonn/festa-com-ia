@@ -23,6 +23,8 @@ Visão geral do negócio com cards de métricas, letreiro de atividade e blocos 
 
 Kanban interativo unificado para gestão de pedidos em tempo real, carregado do Postgres local via `getOrdersWithPayments()`, com visual glassmorphism e bordas de urgência por card.
 
+O painel agora escuta notificações do Postgres local via SSE e refaz a leitura do servidor quando o banco muda, sem depender de polling ou cache do navegador.
+
 **Colunas (em ordem):**
 1. Atendimento
 2. Agendado
@@ -55,6 +57,8 @@ Kanban interativo unificado para gestão de pedidos em tempo real, carregado do 
 **Arquivo:** `app/pedidos/page.tsx`
 
 Lista de pedidos com filtros, subtipos, busca e modais de detalhes/cadastro, inicializada com dados reais do Postgres local.
+
+A tela também reage em tempo real às mudanças do Postgres local, para refletir rapidamente pedidos inseridos ou alterados por n8n e pela própria UI.
 
 **Funcionalidades:**
 - filtros por tipo de produto

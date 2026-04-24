@@ -7,6 +7,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - Dados: arquitetura híbrida
   - Supabase para Auth e **fonte de verdade do cadastro do profissional** (`festa-com-ia-professionals`)
   - Postgres local para todas as tabelas operacionais do sistema
+  - UI operacional com atualização em tempo real via notificações do Postgres
 
 ## Deploy e Banco de Dados
 - O container da aplicação aplica automaticamente o schema final local do Postgres ao subir no VPS
@@ -20,6 +21,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - **Login com Supabase Auth** em `/login` com email/senha
 - **Proteção de sessão** nas rotas internas da aplicação (redireciona para login quando não autenticado)
 - **Painel Kanban** interativo com 6 etapas (Atendimento → Entregue) consumindo pedidos reais do Postgres local, com visual glassmorphism e persistência das mudanças de status no banco
+  - Atualização em tempo real via `LISTEN/NOTIFY` do Postgres para refletir mudanças do n8n sem polling
   - Drag & drop entre colunas (mouse e toque mobile)
   - Scroll horizontal com botões e deslize de dedo
   - Cor de fundo dos cards por urgência de entrega
@@ -28,6 +30,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Botões Avançar etapa e Cancelar
 - **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local e layout em cards glassmorphism
 - **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local e às tags por grupo do profissional
+  - A tela reflete alterações do banco em tempo real, sem depender de cache do navegador
   - Pedidos `entregue` ou `cancelado` há mais de 3 dias ficam fora das listas principais do painel e de pedidos
   - Exportação em `.xlsx` dos pedidos arquivados diretamente pela tela de Pedidos
   - Criação de pedidos já inicia com status de painel em `agendado`

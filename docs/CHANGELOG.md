@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-24
+
+### Alterado
+- **Atualização em tempo real do painel e de pedidos**: alterações gravadas no Postgres local agora emitem notificações via `LISTEN/NOTIFY`, e a UI passa a reagir a esses eventos por SSE sem depender de polling ou cache do navegador.
+- **`app/pedidos` e `app/painel`**: as telas agora refletem mudanças vindas do n8n e das ações da própria UI assim que o banco é atualizado.
+
+### Adicionado
+- **`supabase/schema/local_postgres_final.sql`**: triggers e função de notificação para tabelas operacionais relevantes, publicando eventos de mudança em um canal realtime dedicado.
+
 ## [Unreleased] — 2026-04-23
 
 ### Alterado

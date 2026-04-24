@@ -24,6 +24,8 @@ Estado atual da aplicação web:
 - `lib/db/queries.ts` concentra as leituras operacionais para dashboard, painel e pedidos
 - `lib/db/mappers.ts` converte rows do banco para os tipos de domínio usados no frontend
 - `app/pedidos/actions.ts` concentra as mutations de pedidos, incluindo criação, exclusão e atualização de `painel_status`
+- `app/api/realtime/orders/route.ts` expõe uma stream SSE que escuta o canal `festa_realtime_operational` do Postgres e sinaliza a UI quando o banco muda
+- `components/painel/PainelBoard.tsx` e `components/pedidos/PedidosView.tsx` reagem a esses eventos e fazem refresh do servidor sem polling contínuo
 
 Fluxo básico de dados:
 
@@ -45,6 +47,8 @@ Fluxo básico de dados:
                         [n8n]
                            ↓
                  [WhatsApp / Cliente]
+
+[Postgres local] → [LISTEN/NOTIFY] → [SSE /api/realtime/orders] → [Painel e Pedidos]
 ```
 
 ## Fluxo Operacional
@@ -116,6 +120,7 @@ Observação: o esquema físico final do projeto está consolidado nos arquivos 
 ## Observações de Runtime
 - O cliente Postgres usa `keep_alive` e `idle_timeout` desativado para evitar cold start no ambiente local de desenvolvimento
 - Como o Next.js App Router separa Server Components e Server Actions em bundles distintos, o `globalThis` é usado para compartilhar a mesma conexão em todo o processo Node.js
+- A UI operacional usa um canal realtime baseado em `LISTEN/NOTIFY` + SSE para atualizar painel e pedidos quando o Postgres local muda
 
 ## Segurança
 - Autenticação e autorização via Supabase Auth

@@ -5,6 +5,7 @@ import { createOrder, deleteOrder, markPayment, updateOrder } from '@/app/pedido
 import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType, PainelStatus, DeliveryType, PaymentMethod } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
+import { useProfessional } from '@/lib/context/ProfessionalContext'
 import { fmtDatetime } from '@/lib/utils'
 import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2, Wallet, RotateCcw, Pencil, Save, Download } from 'lucide-react'
 
@@ -956,11 +957,9 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<string>('todos')
   const [filterSubtype, setFilterSubtype] = useState<string>('todos')
-  const [professionalTags, setProfessionalTags] = useState<ProfessionalProductTags>({
-    groups: PRODUCT_GROUPS,
-    subgroups: {},
-    variations: {},
-  })
+  
+  // Usamos o contexto global cacheado
+  const { tags: professionalTags } = useProfessional()
 
   useOrdersRealtimeRefresh(Boolean(selected || showRegister))
 
@@ -982,36 +981,6 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
     }
   }, [orders, selected])
 
-  useEffect(() => {
-    let active = true
-
-    async function loadProfessionalTags() {
-      const { data: authData } = await supabase.auth.getUser()
-      if (!active || !authData.user) return
-
-      const { data: profile } = await supabase
-        .from('festa-com-ia-professionals')
-        .select('products_produced,product_subgroups,product_variations')
-        .eq('auth_user_id', authData.user.id)
-        .maybeSingle()
-
-      if (!active) return
-
-      const selectedGroups = parseProductsProduced(profile?.products_produced)
-      setProfessionalTags({
-        groups: selectedGroups.length > 0 ? selectedGroups : PRODUCT_GROUPS,
-        subgroups: (profile?.product_subgroups as Record<string, string[]> | null) ?? {},
-        variations: (profile?.product_variations as Record<string, string[]> | null) ?? {},
-      })
-    }
-
-    void loadProfessionalTags()
-
-    return () => {
-      active = false
-    }
-  }, [])
-
   function replaceOrderInList(nextOrder: Order) {
     setOrders((current) => current.map((item) => (item.id === nextOrder.id ? nextOrder : item)))
   }
@@ -1025,7 +994,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
   }
 
   const activeSubtypes = filterType !== 'todos' && filterType !== 'adefinir'
-    ? (PRODUCT_SUBTYPES[filterType as ProductType] || [])
+    ? (professionalTags.subgroups[filterType] || PRODUCT_SUBTYPES[filterType as ProductType] || [])
     : []
 
   function handleTypeChange(type: string) {

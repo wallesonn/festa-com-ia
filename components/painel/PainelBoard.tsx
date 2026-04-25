@@ -21,6 +21,8 @@ import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } from '@/lib/types'
 import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
+import { supabase } from '@/lib/supabase/client'
+import { useProfessional } from '@/lib/context/ProfessionalContext'
 
 const COLUMNS: { key: PainelStatus; title: string }[] = [
   { key: 'atendimento', title: 'Atendimento' },
@@ -51,6 +53,9 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const [totalPrice, setTotalPrice] = useState<number>(0)
   const [observations, setObservations] = useState('')
   const [scheduleError, setScheduleError] = useState<string | null>(null)
+  
+  // Agora usamos o cache global do profissional
+  const { tags: professionalTags } = useProfessional()
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
   const dragSnapshotRef = useRef<Order[] | null>(null)
@@ -148,10 +153,13 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     setSchedulingId(id)
     setSchedulingTargetStatus(targetStatus)
     setScheduleValue(toDatetimeLocalValue(current))
-    const rawType = (order.productType as ProductType) || 'Bolo'
-    const safeType = PRODUCT_GROUPS.includes(rawType) ? rawType : 'Bolo'
+    const rawType = (order.productType as ProductType) || professionalTags.groups[0] || 'Bolo'
+    const safeType = professionalTags.groups.includes(rawType as ProductType) ? (rawType as ProductType) : (professionalTags.groups[0] || 'Bolo')
     setProductType(safeType)
-    setProductSubtype(order.productSubtype || PRODUCT_SUBTYPES[safeType]?.[0] || '')
+    
+    // Se o pedido já tem um subtipo, tenta manter. Se não, pega o primeiro da linha do profissional
+    const availableSubtypes = professionalTags.subgroups[safeType] || PRODUCT_SUBTYPES[safeType] || []
+    setProductSubtype(order.productSubtype || availableSubtypes[0] || '')
     setPeopleCount(order.peopleCount || 0)
     setTotalPrice(order.totalPrice || 0)
     setObservations(order.observations || '')
@@ -426,11 +434,12 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onChange={(e) => {
                         const newType = e.target.value as ProductType
                         setProductType(newType)
-                        setProductSubtype(PRODUCT_SUBTYPES[newType][0])
+                        const nextSubtypes = professionalTags.subgroups[newType] || PRODUCT_SUBTYPES[newType] || []
+                        setProductSubtype(nextSubtypes[0] || '')
                       }}
                       className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
                     >
-                      {PRODUCT_GROUPS.map(group => (
+                      {professionalTags.groups.map(group => (
                         <option key={group} value={group} className="bg-[#111] text-white">{group}</option>
                       ))}
                     </select>
@@ -442,7 +451,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onChange={(e) => setProductSubtype(e.target.value)}
                       className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
                     >
-                      {(PRODUCT_SUBTYPES[productType] || []).map(sub => (
+                      {(professionalTags.subgroups[productType] || PRODUCT_SUBTYPES[productType] || []).map(sub => (
                         <option key={sub} value={sub} className="bg-[#111] text-white">{sub}</option>
                       ))}
                     </select>

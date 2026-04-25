@@ -148,8 +148,10 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     setSchedulingId(id)
     setSchedulingTargetStatus(targetStatus)
     setScheduleValue(toDatetimeLocalValue(current))
-    setProductType((order.productType as ProductType) || 'Bolo')
-    setProductSubtype(order.productSubtype || PRODUCT_SUBTYPES[(order.productType as ProductType) || 'Bolo'][0])
+    const rawType = (order.productType as ProductType) || 'Bolo'
+    const safeType = PRODUCT_GROUPS.includes(rawType) ? rawType : 'Bolo'
+    setProductType(safeType)
+    setProductSubtype(order.productSubtype || PRODUCT_SUBTYPES[safeType]?.[0] || '')
     setPeopleCount(order.peopleCount || 0)
     setTotalPrice(order.totalPrice || 0)
     setObservations(order.observations || '')
@@ -440,7 +442,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onChange={(e) => setProductSubtype(e.target.value)}
                       className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
                     >
-                      {PRODUCT_SUBTYPES[productType].map(sub => (
+                      {(PRODUCT_SUBTYPES[productType] || []).map(sub => (
                         <option key={sub} value={sub} className="bg-[#111] text-white">{sub}</option>
                       ))}
                     </select>

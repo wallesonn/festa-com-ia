@@ -1024,8 +1024,8 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
     setOrders((current) => current.filter((item) => item.id !== orderId))
   }
 
-  const activeSubtypes = filterType !== 'todos'
-    ? PRODUCT_SUBTYPES[filterType as ProductType]
+  const activeSubtypes = filterType !== 'todos' && filterType !== 'adefinir'
+    ? (PRODUCT_SUBTYPES[filterType as ProductType] || [])
     : []
 
   function handleTypeChange(type: string) {

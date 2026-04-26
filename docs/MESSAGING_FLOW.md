@@ -255,7 +255,8 @@ O n8n executa **dois workflows**:
 - **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `id` local.
 - **`Inserir Mensagem no Banco`** (Postgres local) — grava a mensagem recebida em `messages`.
 - **`Buscar Histórico da Conversa Atual`** e **`Buscar Histórico da Conversa Anterior`** (Postgres local) — compõem o contexto para a IA.
-- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil vindo do Supabase + histórico do Postgres local e gera 3 sugestões curtas.
+- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil vindo do Supabase + histórico do Postgres local e gera 3 sugestões curtas. **Configuração Crítica:** O prompt deve conter um exemplo explícito do formato JSON esperado e instruções para não incluir texto adicional.
+- **`Parser: Array de Sugestões`** — Nó que extrai o array do output da IA. **Resiliência:** Configurado com política de **Retry** (3 tentativas com intervalo de 2 segundos) para mitigar falhas aleatórias de formatação do modelo.
 - **`Salvar Sugestões no Banco`** e **`Atualizar Conversa`** (Postgres local) — persistem as sugestões e atualizam metadados (`last_message`, `last_message_at`, `unread_count`).
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 

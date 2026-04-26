@@ -167,7 +167,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
               <button
                 key={i}
                 onClick={() => setReply(sug)}
-                className="text-left text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:bg-white/15 text-white/90 truncate transition-colors min-h-[36px]"
+                className="text-left text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:bg-white/15 text-white/90 whitespace-normal transition-colors min-h-[36px]"
               >
                 {sug}
               </button>

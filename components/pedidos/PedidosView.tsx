@@ -423,8 +423,17 @@ function OrderDetailModal({
                 </div>
 
                 <div>
-                  <label className={labelCls}>Subtipo / Sabor</label>
-                  <input type="text" value={editProductSubtype} onChange={e => setEditProductSubtype(e.target.value)} placeholder="Ex: Festa · Chocolate, Brigadeiro" className={inputCls} />
+                  <label className={labelCls}>Linha / Sabor</label>
+                  <select
+                    value={editProductSubtype}
+                    onChange={e => setEditProductSubtype(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">Selecione uma linha...</option>
+                    {(professionalTags.subgroups[editProductType] || PRODUCT_SUBTYPES[editProductType] || []).map(sub => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

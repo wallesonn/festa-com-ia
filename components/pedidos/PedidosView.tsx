@@ -252,11 +252,13 @@ const PAYMENT_METHOD_OPTIONS = [
 
 function OrderDetailModal({
   order,
+  tags,
   onClose,
   onOrderDeleted,
   onOrderUpdated,
 }: {
   order: Order
+  tags: ProfessionalProductTags
   onClose: () => void
   onOrderDeleted: (id: string) => void
   onOrderUpdated: (order: Order) => void
@@ -430,7 +432,7 @@ function OrderDetailModal({
                     className={inputCls}
                   >
                     <option value="">Selecione uma linha...</option>
-                    {(professionalTags.subgroups[editProductType] || PRODUCT_SUBTYPES[editProductType] || []).map(sub => (
+                    {(tags.subgroups[editProductType] || PRODUCT_SUBTYPES[editProductType] || []).map(sub => (
                       <option key={sub} value={sub}>{sub}</option>
                     ))}
                   </select>
@@ -1040,6 +1042,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
       {selected && (
         <OrderDetailModal
           order={selected}
+          tags={professionalTags}
           onClose={() => setSelected(null)}
           onOrderUpdated={(nextOrder) => replaceOrderInList(nextOrder)}
           onOrderDeleted={id => {

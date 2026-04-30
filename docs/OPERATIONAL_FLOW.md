@@ -5,6 +5,8 @@
 > O Supabase fica restrito a **Auth** e aos dados de **`festa-com-ia-professionals`**; não participa da persistência operacional do atendimento.
 >
 > A UI operacional também escuta o Postgres local em tempo real por `LISTEN/NOTIFY` + SSE, então mudanças vindas do n8n ou da própria aplicação aparecem sem polling.
+>
+> Status atual do n8n: o workflow **inbound** está ativo; o workflow **outbound** existe, mas está desativado no momento.
 
 ---
 
@@ -102,7 +104,6 @@ A IA deve usar estas fontes de contexto:
 - dados dos produtos do profissional
 - dados do cliente/pedido no Postgres
 - dados de autenticação e perfil do profissional via Supabase (`festa-com-ia-professionals`)
-- taxonomia padrão do produto via `product_taxonomy_reference`
 
 O contexto deve ser enviado como prompt de sistema ou estrutura equivalente no fluxo do n8n.
 

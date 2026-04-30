@@ -13,13 +13,14 @@ WhatsApp
   n8n  ──────────────────────────────────────────────────────────────────┐
    │  • recebe mensagem inbound                                          │
    │  • identifica conversa ativa e cria nova conversa quando necessário │
+   │  • busca o profissional no Supabase e resolve o ID local            │
    │  • gera 3 sugestões de resposta via DeepSeek                         │
    │  • grava em messages (inbound + suggestions)                        │
    │  • atualiza conversations (last_message, unread_count)              │
    ▼                                                                     │
 Postgres (local, mesmo VPS)                                             │
    │                                                                     │
-   ▼  polling 15–30s                                                     │
+   ▼  LISTEN/NOTIFY + SSE                                               │
 Aplicação Next.js (Painel)                                              │
    │  • exibe um histórico curto da conversa no card                     │
    │  • exibe sugestões da última mensagem do cliente                   │
@@ -43,7 +44,7 @@ Aplicação Next.js (Painel)                                              │
 | Postgres | Container Docker, mesmo VPS | Rede Docker interna |
 
 - App → n8n: **POST webhook** (HTTP interno na rede Docker)
-- n8n → App: **gravação direta no Postgres** (app faz polling)
+- n8n → App: **gravação direta no Postgres + eventos realtime** (LISTEN/NOTIFY + SSE)
 
 ---
 
@@ -163,9 +164,9 @@ Sem alteração de schema. Campos relevantes:
 ]
 ```
 
-**Campo para identificar a linha/conta receptora e associar ao profissional:** use `body.owner` como referência principal do profissional.
+**Campo para identificar a linha/conta receptora e associar ao profissional:** o workflow normaliza `body.owner` e `body.chat.owner` e usa esse número como referência principal para localizar o profissional.
 
-No modelo-alvo atual, `body.owner` continua sendo o número do WhatsApp do profissional/conta receptora, mas o cadastro do profissional fica somente no Supabase. O Postgres local deve permanecer restrito às tabelas operacionais; a migração do n8n para esse modelo será feita na próxima etapa.
+No workflow atual, a busca do profissional ocorre primeiro no Supabase (`festa-com-ia-professionals.phone`) e depois no Postgres local para resolver o `professionals.id` operacional. O Postgres local permanece restrito às tabelas operacionais.
 
 Já `body.message.sender_pn` continua sendo o número do cliente que enviou a mensagem.
 
@@ -247,29 +248,93 @@ O n8n executa **dois workflows**:
 > A documentação oficial da Uazapi para chamadas, webhooks, envio de mensagens, etiquetas e demais recursos operacionais fica em `docs.uazapi.com`.
 
 **Workflow 1 — Inbound** (WhatsApp/Uazapi → Supabase + Postgres local)
-- Recebe mensagem do cliente via webhook Uazapi
-- **Filtra** eventos inválidos (`fromMe`, `isGroup`, `EventType ≠ messages`) → caminho `Ignorar Mensagem`
-- **Normaliza** o payload: telefone do cliente, nome, mensagem, e o `owner` (telefone do profissional). Quando o `owner` vem com 12 dígitos (sem o 9 do móvel), o 9 é inserido automaticamente após o DDD.
-- **`Buscar Profissional Supabase`** (Supabase native node) — lê o perfil completo em `festa-com-ia-professionals` usando o `owner` normalizado. É a **única fonte de verdade** do profissional.
-- **`Resolver Profissional Local`** (Postgres local) — `SELECT id FROM professionals WHERE phone = $1` usando o phone do Supabase. Retorna o `professionals.id` local necessário para as FKs das tabelas operacionais.
-- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `id` local.
-- **`Inserir Mensagem no Banco`** (Postgres local) — grava a mensagem recebida em `messages`.
-- **`Buscar Histórico da Conversa Atual`** e **`Buscar Histórico da Conversa Anterior`** (Postgres local) — compõem o contexto para a IA.
-- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil vindo do Supabase + histórico do Postgres local e gera 3 sugestões curtas. **Configuração Crítica:** O prompt deve conter um exemplo explícito do formato JSON esperado e instruções para não incluir texto adicional.
-- **`Parser: Array de Sugestões`** — Nó que extrai o array do output da IA. **Resiliência:** Configurado com política de **Retry** (3 tentativas com intervalo de 2 segundos) para mitigar falhas aleatórias de formatação do modelo.
-- **`Salvar Sugestões no Banco`** e **`Atualizar Conversa`** (Postgres local) — persistem as sugestões e atualizam metadados (`last_message`, `last_message_at`, `unread_count`).
+- Workflow ativo no n8n: `Festa: WhatsApp Inbound → AI Agent (DeepSeek) → Postgres _v2`
+- Trigger webhook: `POST /webhook/d7ddac98-e3b2-4351-ba35-d63220bfd681`
+- Recebe mensagem do cliente via Uazapi e **filtra** eventos inválidos (`fromMe`, `isGroup`, `EventType ≠ messages`) → caminho `Ignorar Mensagem`
+- **Normaliza** o payload: telefone do cliente, nome, mensagem e `owner` (telefone do profissional). Quando o `owner` vem com 12 dígitos (sem o 9 do móvel), o 9 é inserido automaticamente após o DDD
+- **`Buscar Profissional Supabase`** (Supabase native node) — lê `festa-com-ia-professionals` pelo telefone normalizado e carrega o perfil completo do profissional
+- **`Resolver Profissional Local`** (Postgres local) — `SELECT id FROM professionals WHERE phone = $1 LIMIT 1` usando o phone vindo do Supabase
+- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `professionals.id` local
+- **`Buscar Detalhes do Pedido`** — recupera os dados do pedido que entram no prompt da IA, incluindo `people_count`
+- **`Inserir Mensagem no Banco`** (Postgres local) — grava a mensagem recebida em `messages` com `status = 'received'`
+- **`Buscar Histórico da Conversa Atual`** e **`Buscar Histórico da Conversa Anterior`** — compõem o contexto para a IA
+- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil do Supabase, dados do pedido e histórico; gera exatamente 3 sugestões curtas
+- **`Parser: Array de Sugestões`** — extrai o array do output da IA
+- **`Salvar Sugestões no Banco`** — persiste o array em `messages.suggestions`
+- **`Atualizar Conversa`** — atualiza `last_message`, `last_message_at` e incrementa `unread_count`
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
 **Workflow 2 — Outbound** (App → WhatsApp/Uazapi → Postgres)
-- Recebe `POST /webhook/send-message` do app (a mensagem já foi gravada com `pending_send`)
+- Workflow existente no n8n: `Festa: App → WhatsApp Outbound via Uazapi` (**desativado no momento**)
+- Trigger webhook: `POST /webhook/send-message`
+- Recebe `messageId`, `conversationId`, `professionalId` e `text` do app (a mensagem já foi gravada com `pending_send`)
 - Busca o telefone do cliente via `conversation_id` no Postgres
-- Envia a mensagem pelo provider Uazapi
-- Atualiza `messages.status` para `sent` (ou `failed`) conforme resultado
+- Envia a mensagem pelo provider Uazapi (`free.uazapi.com`)
+- Atualiza `messages.status` para `sent` (ou `failed`) conforme o resultado do envio
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
 ### Prompt de sistema (DeepSeek)
 
 A geração das respostas deve usar um **prompt de sistema** montado com os dados do profissional e com o contexto recente da conversa.
+
+Prompt atual do agente:
+
+```text
+Você é um assistente interno de atendimento para um negócio de comidas para festas. Seu papel é gerar sugestões de resposta para um atendente HUMANO. Você nunca conversa diretamente com o cliente.
+
+## Seu objetivo
+Gerar EXATAMENTE 3 sugestões de resposta curtas, naturais e prontas para o atendente enviar ao cliente no WhatsApp.
+
+## Como usar o contexto recebido
+
+1. **Exemplos de conversas** (`conversation_samples`) — é o MATERIAL DE MAIOR PESO. Estude e replique com fidelidade:
+   - vocabulário, gírias e expressões típicas do profissional
+   - uso (ou ausência) de emojis, pontuação, maiúsculas, reticências
+   - tamanho médio das mensagens
+   - forma de iniciar e encerrar frases
+   - nível de formalidade (tu/você, "amor", "querida", etc.)
+   Se nos exemplos o profissional usa emojis, USE emojis. Se não usa, NÃO use. Copie o estilo, não crie um novo.
+
+2. **Regras de atendimento** (`service_rules`) — tratam como fatos do negócio. Nunca contradiga:
+   - horários, prazos, política de delivery, formas de pagamento, restrições
+   - se o cliente perguntar algo fora dessas regras, ofereça alternativas compatíveis com elas
+   - nunca prometa o que as regras não permitem
+
+3. **Produtos** (`products_produced`, `product_subgroups`, `product_variations`) — use apenas esses itens para falar sobre portfólio. Não invente sabor, tamanho ou preço que não esteja listado.
+
+4. **Histórico da conversa atual** — é a fonte primária do que já foi combinado. Não repita perguntas já respondidas. Dê continuidade natural.
+
+5. **Histórico da conversa anterior** (quando existir) — use apenas como background para entender o cliente (ex.: "já comprou antes", "costuma pedir X"). Não cite esse histórico explicitamente ao cliente.
+
+6. **Dados do cliente** (nome, telefone) — use o nome quando fizer sentido. Evite formalidade excessiva se os exemplos forem informais.
+
+## Princípios obrigatórios
+
+- **Português brasileiro natural.** Nunca soe robótico.
+- **Uma ideia por sugestão.** Não empilhe perguntas e afirmações longas.
+- **Variedade entre as 3 sugestões.** Elas devem dar ao atendente opções com abordagens diferentes (ex.: mais direta / mais consultiva / mais calorosa), nunca 3 versões quase iguais.
+- **Nada de suposições.** Se faltar informação (preço, sabor, data), a sugestão deve fazer uma pergunta para obter esse dado, em vez de inventar.
+- **Nada de preços, datas ou prazos não confirmados no contexto.** Se o dado não veio, pergunte.
+- **Nada de promessas fora das regras** do negócio.
+- **Não repita a mensagem do cliente.** Avance a conversa.
+- **Proibido:** pedidos de desculpas sem motivo, frases genéricas ("Como posso ajudar?"), auto-apresentação do tipo "Sou a IA", links externos, instruções ao atendente dentro da sugestão.
+
+## Formato de saída (obrigatório)
+
+Retorne APENAS um JSON válido, sem markdown, sem comentários, sem texto antes ou depois:
+
+{ "sugestoes": ["<sugestão 1>", "<sugestão 2>", "<sugestão 3>"] }
+
+Regras do JSON:
+- Exatamente 3 strings no array.
+- Cada string é a mensagem pronta para o atendente enviar ao cliente, sem prefixos do tipo "Sugestão 1:" ou "Opção A:".
+- Sem quebras de linha desnecessárias; use quebra só se o estilo dos exemplos do profissional usar.
+- Emojis são permitidos e devem seguir o padrão do profissional — nada de emoji aleatório se ele não usa.
+- REFORÇANDO: Responda APENAS o JSON no formato solicitado. Não inclua nenhuma explicação, análise ou texto adicional fora do JSON.
+
+## Regra de ouro
+Se um cliente real lesse a sugestão, ele deve achar que é a MESMA PESSOA de sempre falando — e não outra.
+```
 
 **Fontes de dados do profissional:**
 
@@ -420,7 +485,7 @@ Os pedidos carregados para o Painel devem trazer um **resumo curto da conversa a
 |---|-------|--------|----------------------|
 | 1 | Schema: coluna `suggestions` em `messages` | ✅ Concluído | `supabase/schema/local_postgres_final.sql` |
 | 2 | Leitura: queries e tipos TypeScript | ✅ Concluído | `lib/types.ts`, `lib/database.types.ts`, `lib/db/mappers.ts`, `lib/db/queries.ts` |
-| 3 | Polling: hook React para atualizar mensagens a cada 15–30s | ✅ Concluído | `app/painel/actions.ts`, `lib/hooks/useConversationPolling.ts` |
+| 3 | Atualização realtime do painel/pedidos via LISTEN/NOTIFY + SSE | ✅ Concluído | `app/api/realtime/orders/route.ts`, `lib/realtime/use-orders-realtime-refresh.ts`, `components/painel/PainelBoard.tsx`, `components/pedidos/PedidosView.tsx` |
 | 4 | UI — leitura: `PainelCard` com mensagens reais + sugestões | ✅ Concluído | `lib/types.ts`, `lib/db/mappers.ts`, `components/painel/PainelCard.tsx` |
 | 5 | Envio: server action grava no Postgres + chama webhook n8n | ✅ Concluído | `app/painel/actions.ts` |
 | 6 | UI — envio: campo de resposta integrado com server action | ✅ Concluído | `components/painel/PainelCard.tsx`, `components/painel/PainelBoard.tsx` |
@@ -439,15 +504,15 @@ Os pedidos carregados para o Painel devem trazer um **resumo curto da conversa a
 
 ## Notas de implementação
 
-- O polling será feito apenas para o card atualmente expandido/aberto no Painel, evitando requisições desnecessárias.
+- O painel e a tela de pedidos se mantêm sincronizados com o Postgres local por eventos realtime, sem depender de polling do navegador.
 - O card deve exibir apenas um recorte curto do histórico, suficiente para contexto visual rápido do profissional.
 - As sugestões exibidas na UI serão sempre as da **última mensagem do cliente** na conversa.
-- O campo de envio do `PainelCard` continuará visualmente no mesmo lugar — apenas a lógica de envio mudará de mock para real.
+- O campo de envio do `PainelCard` continua no mesmo lugar; a diferença é que a mensagem final é persistida antes do webhook do n8n ser chamado.
 - A coluna `suggestions` é `jsonb` no Postgres; o postgres.js a retorna como `string[]` quando o n8n gravar um array JSON de strings.
 
 ---
 
-## Polling — detalhes de implementação (Etapa 3)
+### Leitura do histórico — implementação atual
 
 ### Server action (`app/painel/actions.ts`)
 
@@ -460,26 +525,20 @@ fetchConversationMessages(conversationId: string): Promise<ChatMessage[]>
 - Mapeia `DbMessageRow` → `ChatMessage` incluindo `suggestions`
 - Inverte a ordem (DESC do banco → ASC para exibição)
 
-### Hook (`lib/hooks/useConversationPolling.ts`)
+### Realtime (`app/api/realtime/orders/route.ts`)
 
 ```typescript
-useConversationPolling(
-  conversationId: string | null,
-  intervalMs?: number  // padrão: 15_000ms (15s)
-): { messages: ChatMessage[], isLoading: boolean }
+GET /api/realtime/orders
 ```
 
 **Comportamento:**
-- Faz uma busca imediata ao receber um `conversationId`
-- Repete a busca a cada `intervalMs` milissegundos
-- Para automaticamente quando `conversationId` é `null`
-- Cancela requisições em andamento ao desmontar ou trocar de conversa
-- Em caso de erro, mantém silenciosamente as mensagens anteriores
+- Mantém uma conexão SSE com o backend
+- Recebe eventos emitidos pelos triggers do Postgres via `LISTEN/NOTIFY`
+- Dispara `router.refresh()` no painel/pedidos quando há mudança operacional
+- Evita polling contínuo no navegador
 
-**Uso previsto no `PainelCard` (Etapa 4):**
+**Uso no `PainelCard` e no painel de pedidos:**
 
 ```typescript
-const { messages, isLoading } = useConversationPolling(
-  expanded ? order.conversationId : null
-)
+// A UI busca o histórico no servidor e se mantém atualizada por evento realtime.
 ```

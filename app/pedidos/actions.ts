@@ -45,6 +45,17 @@ export async function updateOrderPainelStatus(orderId: string, painelStatus: str
     } else {
       await sql`UPDATE orders SET painel_status = ${painelStatus}, updated_at = now() WHERE id = ${orderId}`
     }
+    if (painelStatus === 'entregue' || painelStatus === 'cancelado') {
+      await sql`
+        UPDATE conversations
+        SET status = 'finalizada', archived_at = COALESCE(archived_at, now())
+        WHERE id = (
+          SELECT conversation_id
+          FROM orders
+          WHERE id = ${orderId}
+        )
+      `
+    }
     refreshOrderPages()
     return { success: true }
   } catch (err) {

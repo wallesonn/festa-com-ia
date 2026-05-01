@@ -81,13 +81,17 @@ interface PainelColumnProps {
   id: string
   title: string
   count: number
+  hasUnreadMessages?: boolean
   itemIds: string[]
   children: React.ReactNode
 }
 
-export function PainelColumn({ id, title, count, itemIds, children }: PainelColumnProps) {
+export function PainelColumn({ id, title, count, hasUnreadMessages = false, itemIds, children }: PainelColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
   const colIcon = COLUMN_ICONS[id]
+  const countBadgeClassName = hasUnreadMessages
+    ? 'border-emerald-400/35 bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+    : 'border-white/10 bg-black/20 text-gray-400'
 
   return (
     <div className="w-[82vw] sm:w-[300px] shrink-0 flex flex-col">
@@ -100,7 +104,7 @@ export function PainelColumn({ id, title, count, itemIds, children }: PainelColu
           )}
           <span className="text-sm font-semibold text-gray-100">{title}</span>
         </div>
-        <span className="text-xs text-gray-400 rounded-full border border-white/10 bg-black/20 px-2.5 py-1">{count}</span>
+        <span className={`text-xs rounded-full border px-2.5 py-1 ${countBadgeClassName}`}>{count}</span>
       </div>
       <div
         ref={setNodeRef}

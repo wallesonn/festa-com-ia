@@ -35,6 +35,14 @@ const COLUMNS: { key: PainelStatus; title: string }[] = [
 
 const STATUS_ORDER: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
 
+function sortOrdersByUnreadPriority(orders: Order[]) {
+  return [...orders].sort((a, b) => {
+    const aUnread = a.unreadClientMessagesCount ?? 0
+    const bUnread = b.unreadClientMessagesCount ?? 0
+    return bUnread - aUnread
+  })
+}
+
 interface PainelBoardProps {
   initialOrders: Order[]
   professionalId: string
@@ -359,9 +367,17 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
             >
               <div className="flex gap-4 pb-4 w-max min-w-full">
                 {COLUMNS.map(col => {
-                  const items = orders.filter(o => o.painelStatus === col.key)
+                  const items = sortOrdersByUnreadPriority(orders.filter(o => o.painelStatus === col.key))
+                  const hasUnreadMessages = items.some((order) => (order.unreadClientMessagesCount ?? 0) > 0)
                   return (
-                    <PainelColumn key={col.key} id={col.key} title={col.title} count={items.length} itemIds={items.map(o => o.id)}>
+                    <PainelColumn
+                      key={col.key}
+                      id={col.key}
+                      title={col.title}
+                      count={items.length}
+                      hasUnreadMessages={hasUnreadMessages}
+                      itemIds={items.map(o => o.id)}
+                    >
                       {items.map(o => (
                         <PainelCard
                           key={o.id}

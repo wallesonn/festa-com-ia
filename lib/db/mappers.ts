@@ -35,6 +35,7 @@ export type DbOrderRow = {
   payment_deposit_paid_at: string | null
   payment_full_paid_at: string | null
   messages_json: Array<{ id: string; sender: string; text: string; at: string; suggestions?: string[] | null }> | null
+  unread_client_messages_count: number | null
 }
 
 export function dbRowToOrder(row: DbOrderRow): Order {
@@ -79,6 +80,7 @@ export function dbRowToOrder(row: DbOrderRow): Order {
     payment,
     lastMessage: row.last_message ?? '',
     lastMessageAt: row.last_message_at ?? row.updated_at,
+    unreadClientMessagesCount: row.unread_client_messages_count ?? 0,
     messages,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

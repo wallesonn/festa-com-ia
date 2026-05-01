@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import type { ChatMessage } from '@/lib/types'
 import { Order, PainelStatus } from '@/lib/types'
 import { urgencyBorderClass, urgencyPulseClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
 import { useConversationPolling } from '@/lib/hooks/useConversationPolling'
@@ -33,6 +34,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const displayMessages = liveMessages.length > 0 ? liveMessages : order.messages
   const lastClientMsg = [...displayMessages].reverse().find(m => m.sender === 'client')
   const suggestions = lastClientMsg?.suggestions ?? []
+  const unreadClientMessagesCount = order.unreadClientMessagesCount ?? countUnreadClientMessages(displayMessages)
 
   const [productLineRaw, ...productVariationParts] = order.productSubtype.split('·')
   const productLine = productLineRaw?.trim() || 'Sem linha'
@@ -78,6 +80,19 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
     opacity: isDragging ? 0.4 : 1,
   }
 
+  function countUnreadClientMessages(messages: ChatMessage[]) {
+    let lastAttendantIndex = -1
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i]?.sender === 'attendant') {
+        lastAttendantIndex = i
+        break
+      }
+    }
+
+    const unreadMessages = messages.slice(lastAttendantIndex + 1)
+    return unreadMessages.filter((message) => message.sender === 'client').length
+  }
+
   function handleSend() {
     const text = reply.trim()
     if (!text || isPending) return
@@ -121,7 +136,18 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
         </button>
         <AvatarDefault size={64} className="rounded-full shrink-0" />
         <div className="flex-1 min-w-0 pt-1">
-          <div className="font-semibold text-xl sm:text-2xl text-gray-100 leading-tight">{order.clientName}</div>
+          <div className="flex items-start gap-2">
+            <div className="font-semibold text-xl sm:text-2xl text-gray-100 leading-tight">{order.clientName}</div>
+            {unreadClientMessagesCount > 0 && (
+              <span
+                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white shadow-sm shadow-emerald-500/30"
+                title={`${unreadClientMessagesCount} mensagem(ns) do cliente sem resposta`}
+                aria-label={`${unreadClientMessagesCount} mensagem(ns) do cliente sem resposta`}
+              >
+                {unreadClientMessagesCount > 9 ? '9+' : unreadClientMessagesCount}
+              </span>
+            )}
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm sm:text-base leading-tight text-white/80">
             <span className="font-medium">{order.productType}</span>
             <span className="shrink-0 text-white/35">·</span>

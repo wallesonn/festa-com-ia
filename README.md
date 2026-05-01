@@ -32,10 +32,12 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local e às tags por grupo do profissional
   - A tela reflete alterações do banco em tempo real, sem depender de cache do navegador
   - Pedidos `entregue` ou `cancelado` há mais de 3 dias ficam fora das listas principais do painel e de pedidos
+  - Ao marcar um pedido como `entregue` ou `cancelado`, a conversa vinculada é finalizada/arquivada para que novas mensagens do cliente abram um novo atendimento
   - Exportação em `.xlsx` dos pedidos arquivados diretamente pela tela de Pedidos
   - Criação de pedidos já inicia com status de painel em `agendado`
   - Exclusão de pedidos direto pela tela de detalhes
   - Modal de detalhes exibe o status atual do painel
+- **Integração n8n/IA** — o workflow inbound gera sugestões com DeepSeek usando o histórico da conversa e o histórico completo de pedidos do cliente como contexto auxiliar
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
 - **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos, WhatsApp padronizado para Brasil e exclusão total da conta com remoção dos dados
 - **Clientes** — listagem de clientes

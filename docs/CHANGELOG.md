@@ -5,6 +5,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-05-01
+
+### Corrigido
+- **Finalização de conversa ao entregar/cancelar pedido**: a ação de atualizar o status do pedido passou a marcar a conversa vinculada como `finalizada` e a arquivá-la, evitando que novas mensagens caiam no pedido anterior.
+- **Fluxo inbound do n8n**: a documentação foi atualizada para reforçar que o workflow deve reutilizar apenas conversas e pedidos ainda ativos, sem reaproveitar pedidos `entregue` ou `cancelado`.
+- **Contexto auxiliar para a IA**: o workflow inbound do n8n passou a carregar o histórico completo de pedidos do cliente e incluí-lo no prompt do DeepSeek como contexto auxiliar.
+
 ## [Unreleased] — 2026-04-24
 
 ### Alterado

@@ -41,7 +41,25 @@ export async function getOrdersWithPayments(professionalId: string): Promise<DbO
           ORDER BY sent_at DESC LIMIT 10
         ) m),
         '[]'::json
-      ) AS messages_json
+      ) AS messages_json,
+      COALESCE(
+        (
+          SELECT COUNT(*)
+          FROM messages m
+          WHERE m.conversation_id = o.conversation_id
+            AND m.sender = 'client'
+            AND m.sent_at > COALESCE(
+              (
+                SELECT MAX(m2.sent_at)
+                FROM messages m2
+                WHERE m2.conversation_id = o.conversation_id
+                  AND m2.sender = 'attendant'
+              ),
+              'epoch'::timestamptz
+            )
+        ),
+        0
+      ) AS unread_client_messages_count
     FROM orders o
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id
@@ -80,7 +98,25 @@ export async function getActiveOrders(professionalId: string): Promise<DbOrderRo
           ORDER BY sent_at DESC LIMIT 10
         ) m),
         '[]'::json
-      ) AS messages_json
+      ) AS messages_json,
+      COALESCE(
+        (
+          SELECT COUNT(*)
+          FROM messages m
+          WHERE m.conversation_id = o.conversation_id
+            AND m.sender = 'client'
+            AND m.sent_at > COALESCE(
+              (
+                SELECT MAX(m2.sent_at)
+                FROM messages m2
+                WHERE m2.conversation_id = o.conversation_id
+                  AND m2.sender = 'attendant'
+              ),
+              'epoch'::timestamptz
+            )
+        ),
+        0
+      ) AS unread_client_messages_count
     FROM orders o
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id

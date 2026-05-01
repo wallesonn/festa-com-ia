@@ -80,6 +80,7 @@ Sem alteração de schema. Campos relevantes:
 | `unread_count` | `int` | atualizado pelo n8n a cada mensagem recebida |
 | `last_message` | `text` | texto da última mensagem |
 | `last_message_at` | `timestamptz` | timestamp da última mensagem |
+| `archived_at` | `timestamptz` | preenchido quando a conversa é finalizada/arquivada após pedido entregue ou cancelado |
 
 ---
 
@@ -174,6 +175,8 @@ O n8n normaliza esse payload e deve inserir uma linha em `messages` e opcionalme
 
 Antes de chamar o **DeepSeek** para gerar sugestões de resposta, o n8n deve buscar o **histórico completo da conversa ativa**. Quando a conversa for recém-criada, o workflow pode aproveitar o histórico da última conversa ativa do mesmo cliente como referência de contexto, sem misturar pedidos distintos.
 
+Quando o pedido vinculado à conversa é movido para `entregue` ou `cancelado` na aplicação, a conversa correspondente é marcada como `finalizada` e arquivada. A partir daí, uma nova mensagem do mesmo cliente deve abrir uma nova conversa/pedido, em vez de reutilizar o pedido anterior.
+
 ```sql
 -- 1. Inserir mensagem recebida
 INSERT INTO messages (
@@ -254,11 +257,12 @@ O n8n executa **dois workflows**:
 - **Normaliza** o payload: telefone do cliente, nome, mensagem e `owner` (telefone do profissional). Quando o `owner` vem com 12 dígitos (sem o 9 do móvel), o 9 é inserido automaticamente após o DDD
 - **`Buscar Profissional Supabase`** (Supabase native node) — lê `festa-com-ia-professionals` pelo telefone normalizado e carrega o perfil completo do profissional
 - **`Resolver Profissional Local`** (Postgres local) — `SELECT id FROM professionals WHERE phone = $1 LIMIT 1` usando o phone vindo do Supabase
-- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `professionals.id` local
+- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `professionals.id` local, reutilizando apenas conversas e pedidos ainda ativos (não arquivados e não entregues/cancelados)
 - **`Buscar Detalhes do Pedido`** — recupera os dados do pedido que entram no prompt da IA, incluindo `people_count`
 - **`Inserir Mensagem no Banco`** (Postgres local) — grava a mensagem recebida em `messages` com `status = 'received'`
 - **`Buscar Histórico da Conversa Atual`** e **`Buscar Histórico da Conversa Anterior`** — compõem o contexto para a IA
-- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil do Supabase, dados do pedido e histórico; gera exatamente 3 sugestões curtas
+- **`Buscar Pedidos do Cliente`** — carrega o histórico completo de pedidos do cliente como contexto auxiliar adicional
+- **`Agente DeepSeek (3 Sugestões)`** — monta o prompt com o perfil do Supabase, dados do pedido, histórico da conversa e histórico completo de pedidos; gera exatamente 3 sugestões curtas
 - **`Parser: Array de Sugestões`** — extrai o array do output da IA
 - **`Salvar Sugestões no Banco`** — persiste o array em `messages.suggestions`
 - **`Atualizar Conversa`** — atualiza `last_message`, `last_message_at` e incrementa `unread_count`
@@ -275,7 +279,7 @@ O n8n executa **dois workflows**:
 
 ### Prompt de sistema (DeepSeek)
 
-A geração das respostas deve usar um **prompt de sistema** montado com os dados do profissional e com o contexto recente da conversa.
+A geração das respostas deve usar um **prompt de sistema** montado com os dados do profissional, com o contexto recente da conversa e com o histórico completo de pedidos do cliente como contexto auxiliar.
 
 Prompt atual do agente:
 
@@ -306,7 +310,9 @@ Gerar EXATAMENTE 3 sugestões de resposta curtas, naturais e prontas para o aten
 
 5. **Histórico da conversa anterior** (quando existir) — use apenas como background para entender o cliente (ex.: "já comprou antes", "costuma pedir X"). Não cite esse histórico explicitamente ao cliente.
 
-6. **Dados do cliente** (nome, telefone) — use o nome quando fizer sentido. Evite formalidade excessiva se os exemplos forem informais.
+6. **Histórico completo de pedidos do cliente** — use como contexto auxiliar para perceber recorrências, preferências, padrões de compra e pedidos anteriores. Não trate esse histórico como pedido ativo se ele estiver finalizado/arquivado.
+
+7. **Dados do cliente** (nome, telefone) — use o nome quando fizer sentido. Evite formalidade excessiva se os exemplos forem informais.
 
 ## Princípios obrigatórios
 
@@ -358,15 +364,17 @@ Se um cliente real lesse a sugestão, ele deve achar que é a MESMA PESSOA de se
 1. Identificar o profissional da conversa.
 2. Carregar os dados do profissional acima.
 3. Buscar o **histórico completo da conversa** e, quando necessário, a última conversa ativa anterior do mesmo cliente.
-4. Montar o prompt de sistema com:
+4. Buscar o **histórico completo de pedidos** do cliente para uso como contexto auxiliar, sem reaproveitar pedidos finalizados como atendimento ativo.
+5. Montar o prompt de sistema com:
    - identidade do negócio
    - regras operacionais do negócio (`service_rules`)
    - portfólio/produtos
    - exemplos de conversa (`conversation_samples`)
    - histórico recente da conversa
-5. Enviar esse contexto para o **DeepSeek** gerar as **3 sugestões de resposta**.
+   - histórico completo de pedidos do cliente como contexto auxiliar
+6. Enviar esse contexto para o **DeepSeek** gerar as **3 sugestões de resposta**.
 
-> Observação: o prompt deve priorizar o histórico da conversa atual, acrescido de exemplos de conversa do profissional, regras de atendimento e dados de produtos vindos do Supabase. O recorte exibido no painel pode ser menor do que o contexto enviado para a IA.
+> Observação: o prompt deve priorizar o histórico da conversa atual, acrescido de exemplos de conversa do profissional, regras de atendimento, dados de produtos vindos do Supabase e histórico completo de pedidos do cliente como contexto auxiliar. O recorte exibido no painel pode ser menor do que o contexto enviado para a IA.
 
 ---
 

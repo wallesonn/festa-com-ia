@@ -7,6 +7,8 @@
 > A UI operacional também escuta o Postgres local em tempo real por `LISTEN/NOTIFY` + SSE, então mudanças vindas do n8n ou da própria aplicação aparecem sem polling.
 >
 > Status atual do n8n: o workflow **inbound** está ativo; o workflow **outbound** existe, mas está desativado no momento.
+>
+> Quando um pedido é marcado como `entregue` ou `cancelado` na aplicação, a conversa vinculada é finalizada e arquivada; novas mensagens do mesmo cliente devem abrir uma nova conversa/pedido.
 
 ---
 
@@ -16,7 +18,7 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 
 - recepção de mensagens
 - identificação de conversa ativa por cliente
-- criação manual de novo pedido quando surgir um novo atendimento na mesma conversa
+- criação de novo pedido quando surgir um novo atendimento, reutilizando apenas conversas/pedidos ainda ativos
 - geração de 3 sugestões de resposta via DeepSeek
 - edição e envio manual pelo atendente
 - persistência em Postgres
@@ -33,6 +35,8 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 - **O atendente edita a resposta antes de enviar**.
 - **O envio ao cliente é feito pelo n8n**.
 - **O n8n grava direto no Postgres**.
+- **Pedidos entregues/cancelados finalizam a conversa vinculada**.
+- **O inbound do n8n não deve reutilizar conversa/pedido arquivado**.
 - **Somente a mensagem final enviada é persistida como histórico final**.
 - **Conversas antigas são arquivadas sem apagar**.
 
@@ -44,7 +48,7 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 flowchart LR
   A[Cliente envia mensagem no WhatsApp] --> B[n8n Webhook]
   B --> C[Normaliza payload e identifica cliente/profissional]
-  C --> D{Existe conversa ativa?}
+  C --> D{Existe conversa ativa com pedido ativo?}
   D -- Sim --> E[Anexa mensagem à conversa ativa]
   D -- Não --> F[Cria nova conversa]
   F --> G[Cria novo pedido em atendimento]
@@ -79,6 +83,7 @@ O n8n deve:
 O sistema usa a regra:
 
 - procurar **conversa ativa** do cliente pelo telefone
+- considerar ativa apenas a conversa que ainda estiver com pedido em andamento
 - se existir, anexar a nova mensagem a essa conversa
 - se não existir, criar uma **nova conversa** e um **novo pedido** em atendimento
 - se houver uma conversa anterior do mesmo cliente, usar esse histórico como base de contexto para a IA quando fizer sentido operacionalmente
@@ -103,6 +108,7 @@ A IA deve usar estas fontes de contexto:
 - regras de atendimento do profissional
 - dados dos produtos do profissional
 - dados do cliente/pedido no Postgres
+- histórico completo de pedidos do cliente como contexto auxiliar
 - dados de autenticação e perfil do profissional via Supabase (`festa-com-ia-professionals`)
 
 O contexto deve ser enviado como prompt de sistema ou estrutura equivalente no fluxo do n8n.

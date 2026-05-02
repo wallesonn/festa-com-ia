@@ -24,6 +24,8 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Atualização em tempo real via `LISTEN/NOTIFY` do Postgres para refletir mudanças do n8n sem polling
   - Drag & drop entre colunas (mouse e toque mobile)
   - Scroll horizontal com botões e deslize de dedo
+  - Pedidos com mensagens do cliente ainda não respondidas aparecem primeiro dentro de cada coluna
+  - O card exibe um badge verde com a quantidade de mensagens pendentes e o cabeçalho da coluna também muda de cor quando há cards com pendências
   - Cor de fundo dos cards por urgência de entrega
   - Histórico de mensagens com bolhas de chat (expansível)
   - Sugestões de resposta com IA (expansíveis)

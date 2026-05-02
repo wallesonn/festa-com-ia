@@ -77,6 +77,7 @@ O n8n deve:
 - normalizar o payload
 - identificar o telefone do cliente
 - localizar a conversa relacionada
+- capturar `imagePreview`/`image` da Uazapi quando disponível para atualizar `clients.profile_photo_url`
 
 ### 2. Identificação da conversa
 
@@ -87,6 +88,7 @@ O sistema usa a regra:
 - se existir, anexar a nova mensagem a essa conversa
 - se não existir, criar uma **nova conversa** e um **novo pedido** em atendimento
 - se houver uma conversa anterior do mesmo cliente, usar esse histórico como base de contexto para a IA quando fizer sentido operacionalmente
+- se o cliente já existir, o fluxo pode atualizar nome e foto no cadastro operacional antes de persistir a mensagem
 
 ### 3. Novo pedido na mesma conversa
 
@@ -108,6 +110,7 @@ A IA deve usar estas fontes de contexto:
 - regras de atendimento do profissional
 - dados dos produtos do profissional
 - dados do cliente/pedido no Postgres
+- foto do cliente vinda da Uazapi (`body.chat.imagePreview` / `body.chat.image`) quando houver atualização cadastral
 - histórico completo de pedidos do cliente como contexto auxiliar
 - dados de autenticação e perfil do profissional via Supabase (`festa-com-ia-professionals`)
 
@@ -222,6 +225,7 @@ Responsável por:
 
 - manter o histórico oficial da operação
 - armazenar clientes, conversas, mensagens e pedidos
+- manter `clients.profile_photo_url` com a melhor URL disponível recebida da Uazapi
 - preservar o estado atual do atendimento
 
 ### Aplicação

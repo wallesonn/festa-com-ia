@@ -71,6 +71,7 @@ export interface Client {
   name: string
   phone: string        // ex: "+55 11 99999-9999"
   email?: string
+  profilePhotoUrl?: string | null
   address?: Address
   source: ClientSource // como conheceu
   notes: string        // observações gerais (alergias, preferências)
@@ -128,6 +129,7 @@ export interface Order {
   conversationId?: string  // ref à conversa de WhatsApp associada
   clientName: string
   clientPhone: string
+  clientPhotoUrl?: string | null
   productType: ProductType
   productSubtype: string
   productId?: string       // ref ao catálogo quando existir

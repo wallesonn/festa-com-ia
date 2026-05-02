@@ -23,6 +23,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [clientPhotoLoadFailed, setClientPhotoLoadFailed] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [expanded, setExpanded] = useState(false)
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
@@ -80,6 +81,9 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
     opacity: isDragging ? 0.4 : 1,
   }
 
+  const clientPhotoUrl = order.clientPhotoUrl?.trim() || ''
+  const showClientPhoto = Boolean(clientPhotoUrl) && !clientPhotoLoadFailed
+
   function countUnreadClientMessages(messages: ChatMessage[]) {
     let lastAttendantIndex = -1
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -134,7 +138,19 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
         >
           <GripVertical className="h-5 w-5" />
         </button>
-        <AvatarDefault size={64} className="rounded-full shrink-0" />
+        {showClientPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={clientPhotoUrl}
+            alt={`Foto de ${order.clientName}`}
+            width={64}
+            height={64}
+            onError={() => setClientPhotoLoadFailed(true)}
+            className="h-16 w-16 rounded-full object-cover shrink-0 border border-white/10 bg-white/5"
+          />
+        ) : (
+          <AvatarDefault size={64} className="rounded-full shrink-0" />
+        )}
         <div className="flex-1 min-w-0 pt-1">
           <div className="flex items-start gap-2">
             <div className="font-semibold text-xl sm:text-2xl text-gray-100 leading-tight">{order.clientName}</div>

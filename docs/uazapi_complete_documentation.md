@@ -7938,6 +7938,8 @@ Retorna informações **completas** sobre um contato ou chat, incluindo **todos 
 - **Combina informações de diferentes fontes**: WhatsApp, contatos salvos, leads
 - **Atualiza automaticamente dados desatualizados** no banco
 
+> No fluxo operacional da Festa com IA, este endpoint é a principal fonte para capturar a melhor URL da foto do cliente e persistir em `clients.profile_photo_url` no Postgres local.
+
 ### Campos Retornados:
 - **Informações básicas**: id, wa_fastid, wa_chatid, owner, name, phone
 - **Dados do WhatsApp**: wa_name, wa_contactName, wa_archived, wa_isBlocked, etc.
@@ -8965,7 +8967,7 @@ Representa uma conversa/chamado no sistema
     },
     "imagePreview": {
       "type": "string",
-      "description": "URL da miniatura da imagem",
+      "description": "URL da miniatura da imagem; no fluxo operacional é usada como primeira opção para salvar `clients.profile_photo_url`",
       "default": ""
     },
     "wa_ephemeralExpiration": {

@@ -16,6 +16,7 @@ create table clients (
   professional_id uuid not null references professionals(id) on delete cascade,
   name text not null,
   phone text not null,
+  profile_photo_url text,
   email text,
   source text default 'whatsapp',
   notes text,

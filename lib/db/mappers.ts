@@ -25,6 +25,7 @@ export type DbOrderRow = {
   updated_at: string
   client_name: string
   client_phone: string
+  client_photo_url: string | null
   payment_id: string | null
   payment_method: string | null
   payment_status: string | null
@@ -66,6 +67,7 @@ export function dbRowToOrder(row: DbOrderRow): Order {
     conversationId: row.conversation_id ?? undefined,
     clientName: row.client_name,
     clientPhone: row.client_phone,
+    clientPhotoUrl: row.client_photo_url ?? undefined,
     productType: row.product_type as ProductType,
     productSubtype: row.product_subtype ?? '',
     eventDate: row.event_date ?? row.delivery_datetime ?? '',

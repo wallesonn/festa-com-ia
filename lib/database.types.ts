@@ -252,6 +252,7 @@ export type Database = {
           notes: string | null
           phone: string
           professional_id: string
+          profile_photo_url: string | null
           source: string | null
           tags: string[] | null
           total_orders: number
@@ -266,6 +267,7 @@ export type Database = {
           notes?: string | null
           phone: string
           professional_id: string
+          profile_photo_url?: string | null
           source?: string | null
           tags?: string[] | null
           total_orders?: number
@@ -280,6 +282,7 @@ export type Database = {
           notes?: string | null
           phone?: string
           professional_id?: string
+          profile_photo_url?: string | null
           source?: string | null
           tags?: string[] | null
           total_orders?: number

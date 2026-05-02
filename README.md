@@ -40,6 +40,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Exclusão de pedidos direto pela tela de detalhes
   - Modal de detalhes exibe o status atual do painel
 - **Integração n8n/IA** — o workflow inbound gera sugestões com DeepSeek usando o histórico da conversa e o histórico completo de pedidos do cliente como contexto auxiliar
+- **Clientes** — o fluxo inbound também pode atualizar `clients.profile_photo_url` com a foto recebida da Uazapi, usando fallback de avatar quando não houver URL
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
 - **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos, WhatsApp padronizado para Brasil e exclusão total da conta com remoção dos dados
 - **Clientes** — listagem de clientes

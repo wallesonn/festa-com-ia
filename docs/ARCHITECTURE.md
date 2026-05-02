@@ -24,6 +24,7 @@ Estado atual da aplicação web:
 - `lib/db/queries.ts` concentra as leituras operacionais para dashboard, painel e pedidos
 - `lib/db/mappers.ts` converte rows do banco para os tipos de domínio usados no frontend
 - `app/pedidos/actions.ts` concentra as mutations de pedidos, incluindo criação, exclusão e atualização de `painel_status`
+- O fluxo inbound do n8n faz upsert de cliente por telefone e pode atualizar `clients.name` e `clients.profile_photo_url` com os dados mais recentes vindos da Uazapi
 - `app/api/realtime/orders/route.ts` expõe uma stream SSE que escuta o canal `festa_realtime_operational` do Postgres e sinaliza a UI quando o banco muda
 - `components/painel/PainelBoard.tsx` e `components/pedidos/PedidosView.tsx` reagem a esses eventos e fazem refresh do servidor sem polling contínuo
 
@@ -100,6 +101,7 @@ Relações principais:
 - `clientes` → `conversas` em `1:n`
 - `conversas` → `pedido` em `1:1` enquanto o atendimento estiver ativo
 - novo pedido dentro da mesma conversa é criado manualmente pelo profissional
+- `clients.profile_photo_url` armazena a melhor URL de foto disponível enviada pela Uazapi (`imagePreview`/`image`) para reutilização no painel e em fallbacks de avatar
 
 Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres local, enquanto o Supabase fica restrito à autenticação e aos dados do usuário/profissional.
 

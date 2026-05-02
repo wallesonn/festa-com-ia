@@ -118,6 +118,7 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `professional_id` | `uuid` FK → professionals | isolamento por profissional |
 | `name` | `text` | |
 | `phone` | `text` | ex: +55 11 99999-9999 |
+| `profile_photo_url` | `text` | nullable; foto do cliente vinda da Uazapi (`imagePreview`/`image`) |
 | `email` | `text` | nullable |
 | `source` | `text` | enum: whatsapp, instagram, indicação, site, outro |
 | `notes` | `text` | alergias, preferências |
@@ -126,6 +127,8 @@ As tabelas abaixo descrevem o **schema operacional do Postgres local**.
 | `last_order_at` | `timestamptz` | nullable |
 | `created_at` | `timestamptz` | |
 | `tags` | `text[]` | ex: ['vip', 'alérgico a nozes'] |
+
+**Observação operacional:** o fluxo inbound do n8n faz upsert de cliente por `phone`; se o cliente já existir, o nome e a `profile_photo_url` podem ser atualizados quando vierem novos dados do payload da Uazapi.
 
 ---
 

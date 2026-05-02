@@ -257,7 +257,7 @@ O n8n executa **dois workflows**:
 - **Normaliza** o payload: telefone do cliente, nome, mensagem e `owner` (telefone do profissional). Quando o `owner` vem com 12 dígitos (sem o 9 do móvel), o 9 é inserido automaticamente após o DDD
 - **`Buscar Profissional Supabase`** (Supabase native node) — lê `festa-com-ia-professionals` pelo telefone normalizado e carrega o perfil completo do profissional
 - **`Resolver Profissional Local`** (Postgres local) — `SELECT id FROM professionals WHERE phone = $1 LIMIT 1` usando o phone vindo do Supabase
-- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — cria/reutiliza `clients`, `conversations` e `orders` a partir do `professionals.id` local, reutilizando apenas conversas e pedidos ainda ativos (não arquivados e não entregues/cancelados)
+- **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — faz upsert de `clients` por telefone, atualizando `name` e `profile_photo_url` quando a Uazapi fornecer `body.chat.imagePreview`/`body.chat.image`, e cria/reutiliza `conversations` e `orders` a partir do `professionals.id` local, reutilizando apenas conversas e pedidos ainda ativos (não arquivados e não entregues/cancelados)
 - **`Buscar Detalhes do Pedido`** — recupera os dados do pedido que entram no prompt da IA, incluindo `people_count`
 - **`Inserir Mensagem no Banco`** (Postgres local) — grava a mensagem recebida em `messages` com `status = 'received'`
 - **`Buscar Histórico da Conversa Atual`** e **`Buscar Histórico da Conversa Anterior`** — compõem o contexto para a IA
@@ -266,6 +266,7 @@ O n8n executa **dois workflows**:
 - **`Parser: Array de Sugestões`** — extrai o array do output da IA
 - **`Salvar Sugestões no Banco`** — persiste o array em `messages.suggestions`
 - **`Atualizar Conversa`** — atualiza `last_message`, `last_message_at` e incrementa `unread_count`
+- **Foto do cliente** — o payload da Uazapi já pode trazer `imagePreview` ou `image`; quando presentes, essas URLs são normalizadas no fluxo e gravadas em `clients.profile_photo_url` para uso no painel e como fallback de avatar
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima
 
 **Workflow 2 — Outbound** (App → WhatsApp/Uazapi → Postgres)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { arrayMove } from '@dnd-kit/sortable'
 import {
@@ -35,11 +35,48 @@ const COLUMNS: { key: PainelStatus; title: string }[] = [
 
 const STATUS_ORDER: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
 
+const DELIVERY_TAB_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7] as const
+
+type DeliveryTabOffset = -1 | (typeof DELIVERY_TAB_OFFSETS)[number]
+
 function sortOrdersByUnreadPriority(orders: Order[]) {
   return [...orders].sort((a, b) => {
     const aUnread = a.unreadClientMessagesCount ?? 0
     const bUnread = b.unreadClientMessagesCount ?? 0
     return bUnread - aUnread
+  })
+}
+
+function padNumber(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function toLocalDateKey(date: Date) {
+  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`
+}
+
+function getDateKeyFromIso(isoValue: string | null | undefined) {
+  if (!isoValue) return null
+
+  const date = new Date(isoValue)
+  if (Number.isNaN(date.getTime())) return null
+
+  return toLocalDateKey(date)
+}
+
+function addDays(date: Date, amount: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + amount)
+  return next
+}
+
+function getTabLabel(offset: DeliveryTabOffset, date: Date) {
+  if (offset === -1) return 'Todos'
+  if (offset === 0) return 'Hoje'
+  if (offset === 1) return 'Amanhã'
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
   })
 }
 
@@ -52,6 +89,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>(() => initialOrders)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [selectedDeliveryTab, setSelectedDeliveryTab] = useState<DeliveryTabOffset>(-1)
   const [schedulingId, setSchedulingId] = useState<string | null>(null)
   const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
   const [scheduleValue, setScheduleValue] = useState('')
@@ -85,6 +123,43 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
 
   const activeOrder = activeId ? orders.find(o => o.id === activeId) : null
   const schedulingOrder = schedulingId ? orders.find((order) => order.id === schedulingId) : null
+
+  const deliveryTabDates = useMemo(() => {
+    const today = new Date()
+
+    return DELIVERY_TAB_OFFSETS.map((offset) => {
+      const date = addDays(today, offset)
+      const dateKey = toLocalDateKey(date)
+      const hasOrdersForDay = orders.some((order) => {
+        if (order.painelStatus === 'atendimento') return false
+        return getDateKeyFromIso(order.deliveryDatetime) === dateKey
+      })
+
+      return {
+        offset,
+        label: getTabLabel(offset, date),
+        date,
+        dateKey,
+        hasOrdersForDay,
+      }
+    })
+  }, [orders])
+
+  const selectedDeliveryDateKey = useMemo(() => {
+    if (selectedDeliveryTab < 0) return null
+
+    const match = deliveryTabDates.find((item) => item.offset === selectedDeliveryTab)
+    return match?.dateKey ?? null
+  }, [deliveryTabDates, selectedDeliveryTab])
+
+  const filteredOrders = useMemo(() => {
+    if (!selectedDeliveryDateKey) return orders
+
+    return orders.filter((order) => {
+      if (order.painelStatus === 'atendimento') return true
+      return getDateKeyFromIso(order.deliveryDatetime) === selectedDeliveryDateKey
+    })
+  }, [orders, selectedDeliveryDateKey])
 
   function patchOrderInList(orderId: string, patch: Partial<Order>) {
     setOrders((current) => current.map((item) => (
@@ -314,12 +389,79 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
         <div className="relative overflow-hidden bg-gradient-to-br from-fuchsia-500/20 via-white/5 to-violet-500/15 p-6 sm:p-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_42%)]" />
-          <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-200">
                 Gestão de pedidos
               </div>
-              <h1 className="text-3xl font-semibold text-white sm:text-4xl">Painel</h1>
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:gap-6">
+                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Painel</h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDeliveryTab(-1)}
+                    className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                      selectedDeliveryTab === -1
+                        ? 'border-emerald-300/70 bg-emerald-400/20 text-emerald-50 shadow-[0_0_0_1px_rgba(110,231,183,0.22)]'
+                        : 'border-white/10 bg-black/15 text-gray-300 hover:border-white/20 hover:bg-white/8'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {deliveryTabDates.slice(0, 3).map((tab) => {
+                    const isSelected = selectedDeliveryTab === tab.offset
+                    const hasOrdersForDay = tab.hasOrdersForDay
+
+                    return (
+                      <button
+                        key={tab.offset}
+                        type="button"
+                        onClick={() => setSelectedDeliveryTab(tab.offset)}
+                        className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                          isSelected
+                            ? 'border-emerald-300/70 bg-emerald-400/20 text-emerald-50 shadow-[0_0_0_1px_rgba(110,231,183,0.22)]'
+                            : hasOrdersForDay
+                              ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-100 hover:border-emerald-300/55 hover:bg-emerald-400/18'
+                              : 'border-white/10 bg-black/15 text-gray-300 hover:border-white/20 hover:bg-white/8'
+                        }`}
+                      >
+                        <span>{tab.label}</span>
+                        {hasOrdersForDay && (
+                          <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${isSelected ? 'bg-emerald-100' : 'bg-emerald-300'}`} />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="max-w-full overflow-x-auto pb-1">
+                  <div className="flex w-max items-center gap-2 pr-2">
+                    {deliveryTabDates.slice(2).map((tab) => {
+                      const isSelected = selectedDeliveryTab === tab.offset
+                      const hasOrdersForDay = tab.hasOrdersForDay
+
+                      return (
+                        <button
+                          key={tab.offset}
+                          type="button"
+                          onClick={() => setSelectedDeliveryTab(tab.offset)}
+                          className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? 'border-emerald-300/70 bg-emerald-400/20 text-emerald-50 shadow-[0_0_0_1px_rgba(110,231,183,0.22)]'
+                              : hasOrdersForDay
+                                ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-100 hover:border-emerald-300/55 hover:bg-emerald-400/18'
+                                : 'border-white/10 bg-black/15 text-gray-300 hover:border-white/20 hover:bg-white/8'
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                          {hasOrdersForDay && (
+                            <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${isSelected ? 'bg-emerald-100' : 'bg-emerald-300'}`} />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 py-1 text-rose-200"><span className="inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0" /> Urgente &lt;2h</span>
@@ -367,7 +509,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
             >
               <div className="flex gap-4 pb-4 w-max min-w-full">
                 {COLUMNS.map(col => {
-                  const items = sortOrdersByUnreadPriority(orders.filter(o => o.painelStatus === col.key))
+                  const items = sortOrdersByUnreadPriority(filteredOrders.filter(o => o.painelStatus === col.key))
                   const hasUnreadMessages = items.some((order) => (order.unreadClientMessagesCount ?? 0) > 0)
                   return (
                     <PainelColumn

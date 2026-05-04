@@ -729,7 +729,7 @@ export default function PerfilPage() {
     return () => {
       active = false
     }
-  }, [refreshUazapiConnection, router])
+  }, [router])
 
   useEffect(() => {
     if (uazapiConnection.status !== 'connecting' || !accessToken || !professionalWhatsAppNumber) {

@@ -30,9 +30,25 @@ export type SendMessageResult = {
   error?: string
 }
 
+async function getProfessionalInstanceId(sql: ReturnType<typeof getSql>, professionalId: string) {
+  const rows = await sql<Array<{ instance_id: string }>>`
+    SELECT instance_id
+    FROM uazapi_instances
+    WHERE professional_id = ${professionalId}
+    LIMIT 1
+  `
+
+  return rows[0]?.instance_id ?? null
+}
+
 export async function sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
   const { conversationId, orderId, professionalId, text } = params
   const sql = getSql()
+
+  const instanceId = await getProfessionalInstanceId(sql, professionalId)
+  if (!instanceId) {
+    return { ok: false, error: 'Instância Uazapi não encontrada para este profissional.' }
+  }
 
   // 1. Insere a mensagem no Postgres com status pending_send
   const [inserted] = await sql<[{ id: string }]>`
@@ -60,6 +76,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
           conversationId,
           orderId,
           professionalId,
+          instanceId,
           text,
           sender: 'attendant',
           direction: 'outbound',

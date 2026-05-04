@@ -27,6 +27,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Pedidos com mensagens do cliente ainda não respondidas aparecem primeiro dentro de cada coluna
   - O card exibe um badge verde com a quantidade de mensagens pendentes e o cabeçalho da coluna também muda de cor quando há cards com pendências
   - Cor de fundo dos cards por urgência de entrega
+  - Alerta sonoro em MP3 para pedidos com urgência vermelha, com repetição em loop a cada 2 segundos e fade-out ao encerrar o estado urgente
   - Histórico de mensagens com bolhas de chat (expansível)
   - Sugestões de resposta com IA (expansíveis)
   - Botões Avançar etapa e Cancelar

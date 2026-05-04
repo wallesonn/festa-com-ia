@@ -23,6 +23,7 @@ import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'luci
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
 import { playCuteSound, playCuteSoundOnce } from '@/lib/audio/cute-sounds'
 import { composeProductSubtype, splitProductSubtype, toggleSelection } from '@/lib/product-subtype'
+import { urgencyLevel } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { useProfessional } from '@/lib/context/ProfessionalContext'
 
@@ -38,6 +39,10 @@ const COLUMNS: { key: PainelStatus; title: string }[] = [
 const STATUS_ORDER: PainelStatus[] = ['atendimento', 'agendado', 'preparando', 'pronto', 'entregue', 'cancelado']
 
 const DELIVERY_TAB_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7] as const
+const URGENCY_ALERT_AUDIO_SRC = '/audio/alert.mp3'
+const URGENCY_ALERT_REPEAT_MS = 2000
+const URGENCY_ALERT_FADE_STEPS = 6
+const URGENCY_ALERT_FADE_STEP_MS = 50
 
 type DeliveryTabOffset = -1 | (typeof DELIVERY_TAB_OFFSETS)[number]
 
@@ -88,6 +93,12 @@ function getClientMessageIds(order: Order) {
     .map((message) => message.id)
 }
 
+function hasUrgentRedOrder(order: Order) {
+  if (order.painelStatus === 'entregue' || order.painelStatus === 'cancelado') return false
+  if (!order.deliveryDatetime) return false
+  return urgencyLevel(order.deliveryDatetime) === 'vermelho'
+}
+
 interface PainelBoardProps {
   initialOrders: Order[]
   professionalId: string
@@ -115,6 +126,9 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const dragSnapshotRef = useRef<Order[] | null>(null)
   const seenClientMessageIdsRef = useRef<Map<string, Set<string>>>(new Map())
   const hasHydratedMessageSoundsRef = useRef(false)
+  const urgentAlertAudioRef = useRef<HTMLAudioElement | null>(null)
+  const urgentAlertIntervalRef = useRef<number | null>(null)
+  const urgentAlertFadeTimeoutRef = useRef<number | null>(null)
 
   useOrdersRealtimeRefresh(Boolean(activeId || schedulingId))
 
@@ -207,6 +221,78 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       return getDateKeyFromIso(order.deliveryDatetime) === selectedDeliveryDateKey
     })
   }, [orders, selectedDeliveryDateKey])
+
+  const hasUrgentRedOrders = useMemo(() => orders.some(hasUrgentRedOrder), [orders])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const audio = urgentAlertAudioRef.current ?? new Audio(URGENCY_ALERT_AUDIO_SRC)
+    audio.preload = 'auto'
+    audio.loop = false
+    urgentAlertAudioRef.current = audio
+
+    function clearFadeTimeout() {
+      if (urgentAlertFadeTimeoutRef.current) {
+        window.clearTimeout(urgentAlertFadeTimeoutRef.current)
+        urgentAlertFadeTimeoutRef.current = null
+      }
+    }
+
+    function stopAudioWithFadeOut() {
+      if (urgentAlertIntervalRef.current) {
+        window.clearInterval(urgentAlertIntervalRef.current)
+        urgentAlertIntervalRef.current = null
+      }
+
+      clearFadeTimeout()
+
+      const startVolume = Math.max(audio.volume || 1, 0.0001)
+      let step = 0
+
+      const fadeStep = () => {
+        step += 1
+        const nextVolume = Math.max(0, startVolume * (1 - step / URGENCY_ALERT_FADE_STEPS))
+        audio.volume = nextVolume
+
+        if (step >= URGENCY_ALERT_FADE_STEPS || nextVolume <= 0.0001) {
+          audio.pause()
+          audio.currentTime = 0
+          audio.volume = 1
+          urgentAlertFadeTimeoutRef.current = null
+          return
+        }
+
+        urgentAlertFadeTimeoutRef.current = window.setTimeout(fadeStep, URGENCY_ALERT_FADE_STEP_MS)
+      }
+
+      fadeStep()
+    }
+
+    function playAudioClip() {
+      audio.pause()
+      audio.currentTime = 0
+      audio.volume = 1
+      void audio.play().catch(() => undefined)
+    }
+
+    if (!hasUrgentRedOrders) {
+      return () => {
+        stopAudioWithFadeOut()
+      }
+    }
+
+    if (urgentAlertIntervalRef.current) return undefined
+
+    playAudioClip()
+    urgentAlertIntervalRef.current = window.setInterval(() => {
+      playAudioClip()
+    }, URGENCY_ALERT_REPEAT_MS)
+
+    return () => {
+      stopAudioWithFadeOut()
+    }
+  }, [hasUrgentRedOrders])
 
   function patchOrderInList(orderId: string, patch: Partial<Order>) {
     setOrders((current) => current.map((item) => (

@@ -21,6 +21,7 @@ import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } from '@/lib/types'
 import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
+import { playCuteSound, playCuteSoundOnce } from '@/lib/audio/cute-sounds'
 import { supabase } from '@/lib/supabase/client'
 import { useProfessional } from '@/lib/context/ProfessionalContext'
 
@@ -80,6 +81,12 @@ function getTabLabel(offset: DeliveryTabOffset, date: Date) {
   })
 }
 
+function getClientMessageIds(order: Order) {
+  return order.messages
+    .filter((message) => message.sender === 'client')
+    .map((message) => message.id)
+}
+
 interface PainelBoardProps {
   initialOrders: Order[]
   professionalId: string
@@ -105,12 +112,47 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ id: string; fromStatus: PainelStatus; toStatus: PainelStatus } | null>(null)
   const dragSnapshotRef = useRef<Order[] | null>(null)
+  const seenClientMessageIdsRef = useRef<Map<string, Set<string>>>(new Map())
+  const hasHydratedMessageSoundsRef = useRef(false)
 
   useOrdersRealtimeRefresh(Boolean(activeId || schedulingId))
 
   useEffect(() => {
     setOrders(initialOrders)
   }, [initialOrders])
+
+  useEffect(() => {
+    if (!hasHydratedMessageSoundsRef.current) {
+      const nextSnapshot = new Map<string, Set<string>>()
+      initialOrders.forEach((order) => {
+        nextSnapshot.set(order.id, new Set(getClientMessageIds(order)))
+      })
+      seenClientMessageIdsRef.current = nextSnapshot
+      hasHydratedMessageSoundsRef.current = true
+      return
+    }
+
+    const previousSnapshot = seenClientMessageIdsRef.current
+    const nextSnapshot = new Map<string, Set<string>>()
+
+    orders.forEach((order) => {
+      const currentIds = getClientMessageIds(order)
+      const currentIdSet = new Set(currentIds)
+      const previousIds = previousSnapshot.get(order.id)
+
+      if (previousIds) {
+        currentIds.forEach((messageId) => {
+          if (!previousIds.has(messageId)) {
+            playCuteSoundOnce('receive', messageId)
+          }
+        })
+      }
+
+      nextSnapshot.set(order.id, currentIdSet)
+    })
+
+    seenClientMessageIdsRef.current = nextSnapshot
+  }, [initialOrders, orders])
 
   function scrollKanban(direction: 'left' | 'right') {
     scrollRef.current?.scrollBy({ left: direction === 'right' ? 300 : -300, behavior: 'smooth' })
@@ -287,6 +329,9 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     })
 
     if (result.success) {
+      if (schedulingTargetStatus === 'pronto') {
+        playCuteSound('ready')
+      }
       router.refresh()
     } else {
       setScheduleError(result.error || 'Erro ao salvar informações.')
@@ -375,6 +420,8 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       void applyPainelChange(drag.id, drag.toStatus).then((success) => {
         if (!success && previous) {
           setOrders(previous)
+        } else if (success && drag.toStatus === 'pronto') {
+          playCuteSound('ready')
         }
       })
     } else {

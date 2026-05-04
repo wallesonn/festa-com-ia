@@ -20,6 +20,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Adicionado
 - **`UAZAPI_WEBHOOK_URL_PROD` e `UAZAPI_WEBHOOK_URL_TEST`**: novas variáveis de ambiente para provisionar os webhooks da instância em produção e teste.
+- **Sons do painel**: adicionados feedbacks sonoros para novas mensagens recebidas, envio de respostas e movimentação de pedidos para a coluna `Pronto`, com volume mais alto e som de conclusão mais impactante.
 
 ## [Unreleased] — 2026-05-02
 

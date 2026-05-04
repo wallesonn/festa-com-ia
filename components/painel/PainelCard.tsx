@@ -8,6 +8,7 @@ import { Order, PainelStatus } from '@/lib/types'
 import { urgencyBorderClass, urgencyPulseClass, fmtDatetime, fmtTimeShort } from '@/lib/utils'
 import { useConversationPolling } from '@/lib/hooks/useConversationPolling'
 import { sendMessage } from '@/app/painel/actions'
+import { playCuteSound } from '@/lib/audio/cute-sounds'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
 import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 
@@ -61,6 +62,11 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
       onSchedule(order.id)
       return
     }
+
+    if (order.painelStatus === 'preparando') {
+      playCuteSound('ready')
+    }
+
     onAdvance(order.id)
   }
 
@@ -118,6 +124,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
         setReply('')
         setReplyOpen(false)
         setExpandedSuggestions(false)
+        playCuteSound('send')
         setTimeout(() => setSent(false), 2000)
       } else {
         setSendError(result.error ?? 'Erro ao enviar')

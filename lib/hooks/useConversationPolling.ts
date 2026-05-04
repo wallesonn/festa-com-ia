@@ -24,7 +24,9 @@ export function useConversationPolling(
       setIsLoading(true)
       try {
         const msgs = await fetchConversationMessages(conversationId!)
-        if (!cancelled) setMessages(msgs)
+        if (!cancelled) {
+          setMessages(msgs)
+        }
       } catch {
         // silent — mantém as mensagens anteriores em caso de erro
       } finally {

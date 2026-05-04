@@ -90,6 +90,11 @@ POSTGRES_USER=festacomia
 POSTGRES_PASSWORD=<senha-forte>
 REDIS_PASSWORD=<senha-forte>
 N8N_WEBHOOK_URL=http://n8n:5678/webhook/send-message
+UAZAPI_BASE_URL=https://superadas.uazapi.com
+UAZAPI_ADMIN_TOKEN=<token-admin-uazapi>
+UAZAPI_SYSTEM_NAME=festa-com-ia
+UAZAPI_WEBHOOK_URL_PROD=https://<sua-url-de-webhook-de-producao>
+UAZAPI_WEBHOOK_URL_TEST=https://<sua-url-de-webhook-de-teste>
 NEXT_PUBLIC_SITE_URL=https://festacomia.pro
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 DOCKER_IMAGE=seu-usuario/sua-imagem
@@ -167,6 +172,8 @@ Confirme que o domínio configurado em `APP_DOMAIN` responde corretamente via Tr
 | `UAZAPI_BASE_URL` | URL base da Uazapi |
 | `UAZAPI_ADMIN_TOKEN` | token de admin da Uazapi usado no backend para consultar `/instance/all` e revalidar o status real das instâncias |
 | `UAZAPI_SYSTEM_NAME` | nome do sistema da Uazapi |
+| `UAZAPI_WEBHOOK_URL_PROD` | URL de webhook de produção usada para provisionar um webhook por instância |
+| `UAZAPI_WEBHOOK_URL_TEST` | URL de webhook de teste usada para provisionar um webhook por instância |
 
 ---
 
@@ -191,6 +198,18 @@ DOCKER_IMAGE=seu-usuario/sua-imagem
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 ```
+
+Para o fluxo Uazapi funcionar corretamente no runtime do container `web`, garanta também que as variáveis abaixo estejam preenchidas no stack do Portainer:
+
+```env
+UAZAPI_BASE_URL=https://superadas.uazapi.com
+UAZAPI_ADMIN_TOKEN=<token-admin-uazapi>
+UAZAPI_SYSTEM_NAME=festa-com-ia
+UAZAPI_WEBHOOK_URL_PROD=https://<sua-url-de-webhook-de-producao>
+UAZAPI_WEBHOOK_URL_TEST=https://<sua-url-de-webhook-de-teste>
+```
+
+O backend usa o token salvo em `uazapi_instances.instance_token` para revalidar a conexão, provisionar webhooks e conectar a instância. Se a instância tiver sido apagada manualmente na Uazapi, o próximo fluxo de conexão remove o vínculo local e recria a instância automaticamente.
 
 ---
 

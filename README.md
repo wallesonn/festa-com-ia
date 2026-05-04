@@ -45,6 +45,9 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos, WhatsApp padronizado para Brasil e exclusão total da conta com remoção dos dados
   - A verificação de conexão do WhatsApp agora revalida o status direto na Uazapi pelo endpoint administrativo de listagem de instâncias antes de atualizar a tela
   - O backend usa `UAZAPI_ADMIN_TOKEN` para consultar `/instance/all` e refletir corretamente desconexões feitas fora do app
+  - Se a instância do profissional for apagada manualmente na Uazapi, o app limpa o vínculo local e recria a conexão no próximo fluxo de conexão
+  - Ao conectar/reutilizar a instância, o backend garante dois webhooks idempotentes por instância com as URLs de produção e teste configuradas por ambiente
+  - A tela exibe um alerta quando o telefone salvo no perfil diverge do número já conectado na Uazapi
 - **Clientes** — listagem de clientes
 - **Configurações da Conta** (`/configuracoes`) redireciona para `/perfil`
 
@@ -53,6 +56,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 2. ⬜ Backend (API REST + WebSockets)
 3. ⬜ Integração WhatsApp via Uazapi (referência oficial: docs.uazapi.com)
    - A tela de perfil usa a listagem administrativa da Uazapi para descobrir/revalidar a instância e o status atual da conexão
+   - Se a instância sumir da Uazapi, o próximo fluxo de conexão recria a instância e reaplica os webhooks automaticamente
 4. ⬜ IA assistiva (sugestões de resposta, estimativas)
 5. ⬜ Autenticação e multi-tenant
 6. ⬜ Deploy em VPS (Portainer + Traefik)

@@ -234,6 +234,18 @@ function normalizeBrazilLocalNumber(value: string) {
   return digits
 }
 
+function normalizeBrazilPhoneForMatch(value: string | null | undefined) {
+  const digits = sanitizeDigits(value ?? '')
+  if (!digits) return ''
+
+  const nationalDigits = digits.startsWith(BRAZIL_COUNTRY_CODE) ? digits.slice(2) : digits
+  if (nationalDigits.length === 11 && nationalDigits[2] === '9') {
+    return `${nationalDigits.slice(0, 2)}${nationalDigits.slice(3)}`
+  }
+
+  return nationalDigits
+}
+
 function buildBrazilPhoneNumber(countryCode: string, ddd: string, localNumber: string) {
   const sanitizedCountryCode = sanitizeDigits(countryCode)
   const sanitizedDdd = sanitizeDigits(ddd)
@@ -409,6 +421,10 @@ export default function PerfilPage() {
       return ''
     }
   }, [form.phoneCountryCode, form.phoneDdd, form.phoneNumber])
+  const whatsappNumberMismatch = useMemo(() => {
+    if (!uazapiConnection.linkedPhone || !professionalWhatsAppNumber) return false
+    return normalizeBrazilPhoneForMatch(uazapiConnection.linkedPhone) !== normalizeBrazilPhoneForMatch(professionalWhatsAppNumber)
+  }, [professionalWhatsAppNumber, uazapiConnection.linkedPhone])
   const currentPhotoUrl = useMemo(() => {
     if (!photoPath) return ''
     return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(photoPath).data.publicUrl
@@ -1078,18 +1094,13 @@ export default function PerfilPage() {
                 <p className="mt-1 break-all text-gray-300">{email}</p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-white">WhatsApp Uazapi</p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      O app consulta a instância do seu número e cria o pareamento quando necessário.
-                    </p>
-                  </div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-950/20 p-4 text-sm text-gray-300">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-medium text-white">WhatsApp</p>
                   <span
                     className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
                       uazapiConnection.status === 'connected'
-                        ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                        ? 'border-emerald-300/50 bg-emerald-400/25 text-emerald-50 shadow-[0_0_24px_rgba(52,211,153,0.22)]'
                         : uazapiConnection.status === 'connecting'
                           ? 'border-amber-400/30 bg-amber-500/10 text-amber-100'
                           : 'border-white/10 bg-white/5 text-gray-200'
@@ -1099,20 +1110,18 @@ export default function PerfilPage() {
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Instância</p>
-                    <p className="mt-1 break-all text-sm text-white">
-                      {uazapiConnection.instanceName ?? 'Ainda não criada'}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Número vinculado</p>
-                    <p className="mt-1 break-all text-sm text-white">
-                      {uazapiConnection.linkedPhone || professionalWhatsAppNumber || 'Informe o telefone'}
-                    </p>
-                  </div>
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/60">Número conectado</p>
+                  <p className="mt-1 break-all text-base font-semibold text-white">
+                    {uazapiConnection.linkedPhone || professionalWhatsAppNumber || 'Informe o telefone'}
+                  </p>
                 </div>
+
+                {whatsappNumberMismatch ? (
+                  <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
+                    O telefone do perfil é diferente do número conectado na Uazapi. Para usar o novo número, reconecte o WhatsApp.
+                  </div>
+                ) : null}
 
                 {uazapiConnection.status === 'connecting' && uazapiConnection.pairCode ? (
                   <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
@@ -1126,13 +1135,9 @@ export default function PerfilPage() {
                   </div>
                 ) : null}
 
-                {uazapiConnection.message ? (
-                  <p className="mt-4 text-xs leading-5 text-gray-400">{uazapiConnection.message}</p>
-                ) : null}
-
                 <div className="mt-4 flex flex-wrap gap-3">
                   {uazapiConnection.status === 'connected' ? (
-                    <Button type="button" disabled className="h-11 rounded-2xl bg-emerald-500/20 px-4 text-sm font-semibold text-emerald-100">
+                    <Button type="button" disabled className="h-11 rounded-2xl bg-emerald-400/25 px-4 text-sm font-semibold text-emerald-50">
                       WhatsApp conectado
                     </Button>
                   ) : (
@@ -1140,7 +1145,7 @@ export default function PerfilPage() {
                       type="button"
                       onClick={() => void handleConnectWhatsApp()}
                       disabled={uazapiConnection.loading || uazapiConnection.actionLoading || !professionalWhatsAppNumber}
-                      className="h-11 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-500 to-violet-500 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(168,85,247,0.28)] transition hover:scale-[1.01]"
+                      className="h-11 rounded-2xl border border-emerald-300/40 bg-gradient-to-r from-emerald-500 to-green-500 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(16,185,129,0.28)] transition hover:scale-[1.01]"
                     >
                       {uazapiConnection.actionLoading
                         ? 'Conectando...'
@@ -1157,17 +1162,11 @@ export default function PerfilPage() {
                     variant="outline"
                     onClick={() => void refreshUazapiConnection()}
                     disabled={uazapiConnection.loading || uazapiConnection.actionLoading || !professionalWhatsAppNumber}
-                    className="h-11 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-gray-100 hover:bg-white/10"
+                    className="h-11 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-50 hover:bg-emerald-400/15"
                   >
                     {uazapiConnection.loading ? 'Atualizando...' : 'Atualizar status'}
                   </Button>
                 </div>
-
-                {uazapiConnection.lastDisconnectReason ? (
-                  <p className="mt-3 text-xs text-gray-500">
-                    Última desconexão: {uazapiConnection.lastDisconnectReason}
-                  </p>
-                ) : null}
               </div>
             </div>
           </div>

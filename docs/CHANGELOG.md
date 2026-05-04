@@ -10,9 +10,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ### Alterado
 - **Perfil / WhatsApp Uazapi**: a tela de perfil agora revalida o status da instância pelo endpoint administrativo `GET /instance/all` antes de confiar no cache local, refletindo corretamente desconexões feitas diretamente na Uazapi.
 - **Integração server-side Uazapi**: a rota de conexão passou a depender do `UAZAPI_ADMIN_TOKEN` no runtime para consultar a listagem administrativa e sincronizar o estado real da instância.
+- **Provisionamento de webhooks da instância**: ao conectar/reutilizar uma instância, o backend agora garante dois webhooks idempotentes por instância usando as URLs de produção e teste configuradas via ambiente.
+- **Recuperação de instância apagada**: se a instância do profissional for removida manualmente na Uazapi, o próximo refresh/conexão limpa o vínculo local e recria a instância automaticamente.
+- **Card de WhatsApp do perfil**: a seção foi simplificada visualmente e passou a exibir um alerta quando o telefone do perfil diverge do número já conectado na Uazapi.
 
 ### Corrigido
 - **Status travado em `connected`**: quando a instância permanecia cadastrada na Uazapi, mas o WhatsApp já tinha sido desconectado, o app agora atualiza para `disconnected` no próximo refresh.
+
+### Adicionado
+- **`UAZAPI_WEBHOOK_URL_PROD` e `UAZAPI_WEBHOOK_URL_TEST`**: novas variáveis de ambiente para provisionar os webhooks da instância em produção e teste.
 
 ## [Unreleased] — 2026-05-02
 

@@ -172,6 +172,138 @@ OS valores desses campos são vísiveis para o dono da instancia via token, por�
 | 500 | Erro interno |
 
 ---
+# Documentação Uazapi: Webhooks e SSE (Completo)
+
+Esta documentação detalha todos os recursos para recebimento de eventos em tempo real da API Uazapi através de **Webhooks** e **Server-Sent Events (SSE)**.
+
+---
+
+## 1. Webhooks da Instância
+
+Os Webhooks permitem que seu servidor receba notificações automáticas (push) sempre que ocorrer um evento no WhatsApp.
+
+### 1.1 Ver Webhook da Instância
+`GET /webhook`
+
+Retorna a configuração atual de todos os webhooks registrados para a instância.
+
+**Características:**
+- Retorna um array de objetos, mesmo que haja apenas um webhook.
+- Inclui detalhes como URL, eventos ativos, filtros e configurações de parâmetros de URL.
+
+**Exemplo de Resposta (200 OK):**
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "enabled": true,
+    "url": "https://example.com/webhook",
+    "events": ["messages", "messages_update"],
+    "excludeMessages": ["wasSentByApi", "isGroupNo"],
+    "addUrlEvents": true,
+    "addUrlTypesMessages": true
+  }
+]
+```
+
+### 1.2 Configurar Webhook da Instância
+`POST /webhook`
+
+Gerencia a criação, atualização e remoção de webhooks.
+
+#### 🚀 Modo Simples (Recomendado)
+Ideal para gerenciar um único webhook sem lidar com IDs:
+- Não envie `action` nem `id`.
+- O sistema gerencia automaticamente a criação ou atualização.
+- **Importante**: Use sempre `"excludeMessages": ["wasSentByApi"]` para evitar loops.
+
+**Exemplo de Payload:**
+```json
+{
+  "url": "https://meusite.com/webhook",
+  "events": ["messages"],
+  "excludeMessages": ["wasSentByApi"]
+}
+```
+
+#### ⚙️ Modo Avançado (Múltiplos Webhooks)
+- **Adicionar**: `action: "add"` (sem ID).
+- **Atualizar**: `action: "update"` (requer ID).
+- **Remover**: `action: "delete"` (requer ID).
+
+### 1.3 Ver Últimos Erros do Webhook Local
+`GET /webhook/errors`
+
+Retorna os últimos 20 erros de envio dos webhooks locais da instância.
+
+**Notas Importantes:**
+- Os dados ficam apenas em **memória** (perdidos ao reiniciar o processo).
+- Retorna URL de destino, evento, payload tentado, número de tentativas e mensagem de erro.
+- O header `X-Webhook-Error-Capture-Started-At` indica o início da captura atual.
+
+---
+
+## 2. Server-Sent Events (SSE)
+`GET /sse`
+
+Estabelece uma conexão HTTP persistente para receber eventos em tempo real sem a necessidade de um servidor de webhook público.
+
+### 2.1 Implementação
+Requer autenticação via query parameter `token`.
+
+**Exemplo em JavaScript:**
+```javascript
+const eventSource = new EventSource('https://api.uazapi.com/sse?token=SEU_TOKEN&events=chats,messages');
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Evento:', data);
+};
+```
+
+### 2.2 Parâmetros de Consulta
+- `token` (obrigatório): Token da instância.
+- `events` (obrigatório): Eventos desejados (ex: `chats,messages`).
+- `excludeMessages` (opcional): Filtros de mensagens (ex: `poll,reaction`).
+
+---
+
+## 3. Catálogo de Eventos e Filtros
+
+### Eventos Disponíveis
+| Evento | Descrição |
+| :--- | :--- |
+| `connection` | Mudanças no estado da conexão. |
+| `messages` | Novas mensagens recebidas. |
+| `messages_update` | Status de entrega/leitura. |
+| `history` | Sincronização de histórico. |
+| `call` | Eventos de chamadas VoIP. |
+| `presence` | Status de presença (online/digitando). |
+| `groups` | Alterações em grupos. |
+| `newsletter_messages` | Mensagens em Canais. |
+| `contacts` | Atualizações de contatos. |
+| `chats` | Eventos de conversas. |
+| `labels` | Gestão de etiquetas. |
+| `blocks` | Bloqueios/desbloqueios. |
+| `sender` | Status de campanhas em massa. |
+
+### Filtros de Mensagens (`excludeMessages`)
+- `wasSentByApi`: Mensagens enviadas pela própria API (Evita loops).
+- `wasNotSentByApi`: Mensagens enviadas manualmente.
+- `fromMeYes` / `fromMeNo`: Origem da mensagem.
+- `isGroupYes` / `isGroupNo`: Contexto da mensagem.
+
+---
+
+## 4. Parâmetros de URL Dinâmicos
+Ao configurar um webhook, você pode ativar:
+- `addUrlEvents`: URL vira `.../webhook/{evento}`.
+- `addUrlTypesMessages`: URL vira `.../webhook/{tipo_mensagem}`.
+- Ambos: `.../webhook/{evento}/{tipo_mensagem}`.
+
+---
+*Documentação extraída integralmente de docs.uazapi.com*
+
 #### Ver Webhook Global
 `GET /globalwebhook`
 

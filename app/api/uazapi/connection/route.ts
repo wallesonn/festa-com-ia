@@ -8,6 +8,10 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const uazapiBaseUrl = process.env.UAZAPI_BASE_URL?.replace(/\/$/, '') ?? ''
 const uazapiAdminToken = process.env.UAZAPI_ADMIN_TOKEN ?? ''
 const uazapiSystemName = process.env.UAZAPI_SYSTEM_NAME?.trim() || 'festa-com-ia'
+const uazapiWebhookUrlProd = process.env.UAZAPI_WEBHOOK_URL_PROD?.trim() ?? ''
+const uazapiWebhookUrlTest = process.env.UAZAPI_WEBHOOK_URL_TEST?.trim() ?? ''
+const uazapiWebhookEvents = ['messages', 'messages_update']
+const uazapiWebhookExcludeMessages = ['wasSendByApi', 'fromMeYes', 'isGroupYes']
 
 type SyncProfessionalPayload = {
   id: string
@@ -67,6 +71,16 @@ type UazapiPublicInstance = {
   lastConnectedAt: string | null
 }
 
+type UazapiWebhookRow = {
+  id?: string
+  enabled?: boolean
+  url?: string
+  events?: string[]
+  excludeMessages?: string[]
+  addUrlEvents?: boolean
+  addUrlTypesMessages?: boolean
+}
+
 type UazapiConnectionResponse = {
   ok: true
   action: 'status' | 'created' | 'connected' | 'reused'
@@ -119,8 +133,8 @@ function normalizeBrazilPhoneForMatch(value: string | null | undefined) {
   }
 
   const nationalDigits = digits.startsWith('55') ? digits.slice(2) : digits
-  if (nationalDigits.length === 11 && nationalDigits.startsWith('9')) {
-    return nationalDigits.slice(1)
+  if (nationalDigits.length === 11 && nationalDigits[2] === '9') {
+    return `${nationalDigits.slice(0, 2)}${nationalDigits.slice(3)}`
   }
 
   return nationalDigits
@@ -412,6 +426,131 @@ async function callUazapi<T>(path: string, options: { method?: 'GET' | 'POST'; a
   return parsedBody as T
 }
 
+function normalizeWebhookRows(payload: unknown): UazapiWebhookRow[] {
+  if (Array.isArray(payload)) {
+    return payload
+      .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+      .map((item) => ({
+        id: typeof item.id === 'string' ? item.id : undefined,
+        enabled: typeof item.enabled === 'boolean' ? item.enabled : undefined,
+        url: typeof item.url === 'string' ? item.url : undefined,
+        events: Array.isArray(item.events) ? item.events.filter((event): event is string => typeof event === 'string') : undefined,
+        excludeMessages: Array.isArray(item.excludeMessages) ? item.excludeMessages.filter((event): event is string => typeof event === 'string') : undefined,
+        addUrlEvents: typeof item.addUrlEvents === 'boolean' ? item.addUrlEvents : undefined,
+        addUrlTypesMessages: typeof item.addUrlTypesMessages === 'boolean' ? item.addUrlTypesMessages : undefined,
+      }))
+  }
+
+  if (payload && typeof payload === 'object') {
+    const source = payload as Record<string, unknown>
+    const candidates = [source.webhooks, source.data, source.items, source.results]
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        return normalizeWebhookRows(candidate)
+      }
+    }
+  }
+
+  return []
+}
+
+function sameStringSet(left: string[] | undefined, right: string[]) {
+  const leftSet = new Set(left ?? [])
+  return leftSet.size === right.length && right.every((item) => leftSet.has(item))
+}
+
+function webhookNeedsUpdate(webhook: UazapiWebhookRow) {
+  return (
+    webhook.enabled !== true ||
+    !sameStringSet(webhook.events, uazapiWebhookEvents) ||
+    !sameStringSet(webhook.excludeMessages, uazapiWebhookExcludeMessages) ||
+    webhook.addUrlEvents !== false ||
+    webhook.addUrlTypesMessages !== false
+  )
+}
+
+async function ensureInstanceWebhooks(instance: Pick<UazapiLocalInstanceRow, 'instance_id' | 'instance_token'>) {
+  const targetUrls = [
+    { label: 'prod', url: uazapiWebhookUrlProd },
+    { label: 'test', url: uazapiWebhookUrlTest },
+  ].filter((target) => Boolean(target.url))
+
+  if (targetUrls.length === 0) {
+    console.info('[uazapi/connection][webhook] skipped', {
+      instanceId: instance.instance_id,
+      reason: 'no_webhook_urls_configured',
+    })
+    return
+  }
+
+  const existingWebhooks = normalizeWebhookRows(
+    await callUazapi<unknown>('/webhook', {
+      method: 'GET',
+      token: instance.instance_token,
+    }),
+  )
+
+  console.info('[uazapi/connection][webhook] current', {
+    instanceId: instance.instance_id,
+    existingCount: existingWebhooks.length,
+    targetCount: targetUrls.length,
+  })
+
+  for (const target of targetUrls) {
+    const existing = existingWebhooks.find((webhook) => webhook.url === target.url)
+    const basePayload = {
+      url: target.url,
+      enabled: true,
+      events: uazapiWebhookEvents,
+      excludeMessages: uazapiWebhookExcludeMessages,
+      addUrlEvents: false,
+      addUrlTypesMessages: false,
+    }
+
+    if (existing?.id) {
+      if (!webhookNeedsUpdate(existing)) {
+        console.info('[uazapi/connection][webhook] already configured', {
+          instanceId: instance.instance_id,
+          label: target.label,
+          webhookId: existing.id,
+        })
+        continue
+      }
+
+      await callUazapi<unknown>('/webhook', {
+        method: 'POST',
+        token: instance.instance_token,
+        body: {
+          action: 'update',
+          id: existing.id,
+          ...basePayload,
+        },
+      })
+
+      console.info('[uazapi/connection][webhook] updated', {
+        instanceId: instance.instance_id,
+        label: target.label,
+        webhookId: existing.id,
+      })
+      continue
+    }
+
+    await callUazapi<unknown>('/webhook', {
+      method: 'POST',
+      token: instance.instance_token,
+      body: {
+        action: 'add',
+        ...basePayload,
+      },
+    })
+
+    console.info('[uazapi/connection][webhook] added', {
+      instanceId: instance.instance_id,
+      label: target.label,
+    })
+  }
+}
+
 async function ensureUazapiInstancesTable(sql: ReturnType<typeof getSql>) {
   await sql`
     CREATE TABLE IF NOT EXISTS uazapi_instances (
@@ -524,6 +663,13 @@ async function getStoredInstance(sql: ReturnType<typeof getSql>, professionalId:
   `
 
   return rows[0] ?? null
+}
+
+async function deleteStoredInstance(sql: ReturnType<typeof getSql>, professionalId: string) {
+  await sql`
+    DELETE FROM uazapi_instances
+    WHERE professional_id = ${professionalId}
+  `
 }
 
 async function upsertLocalInstance(
@@ -768,6 +914,23 @@ export async function GET(request: NextRequest) {
     }
 
     const remoteInstanceFromAll = await findRemoteInstanceForStored(professionalContextResult.professional, storedInstance)
+    if (!remoteInstanceFromAll) {
+      await deleteStoredInstance(sql, professionalContextResult.professional.professionalId)
+
+      console.info('[uazapi/connection][GET] stale local instance removed', {
+        professionalId: professionalContextResult.professional.professionalId,
+        instanceId: storedInstance.instance_id,
+        instanceName: storedInstance.instance_name,
+      })
+
+      return NextResponse.json<UazapiConnectionResponse>({
+        ok: true,
+        action: 'status',
+        exists: false,
+        instance: null,
+      })
+    }
+
     const remoteStatus = remoteInstanceFromAll ?? extractConnectionState(
       await callUazapi<unknown>('/instance/status', {
         method: 'GET',
@@ -834,6 +997,22 @@ export async function POST(request: NextRequest) {
 
     const context = professionalContextResult.professional
     let storedInstance = await getOrImportStoredInstance(sql, context)
+
+    if (storedInstance) {
+      const remoteInstanceFromAll = await findRemoteInstanceForStored(context, storedInstance)
+      if (!remoteInstanceFromAll) {
+        await deleteStoredInstance(sql, context.professionalId)
+
+        console.info('[uazapi/connection][POST] stale local instance removed before reconnect', {
+          professionalId: context.professionalId,
+          phone: context.phone,
+          instanceId: storedInstance.instance_id,
+          instanceName: storedInstance.instance_name,
+        })
+
+        storedInstance = null
+      }
+    }
 
     if (!storedInstance) {
       const remoteInstances = await listRemoteInstances()
@@ -912,6 +1091,8 @@ export async function POST(request: NextRequest) {
       status: storedInstance.connection_status,
       linkedPhone: storedInstance.linked_phone,
     })
+
+    await ensureInstanceWebhooks(storedInstance)
 
     const currentStatus = storedInstance.connection_status
     if (currentStatus === 'connected') {

@@ -22,6 +22,7 @@ import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } fr
 import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
 import { playCuteSound, playCuteSoundOnce } from '@/lib/audio/cute-sounds'
+import { composeProductSubtype, splitProductSubtype, toggleSelection } from '@/lib/product-subtype'
 import { supabase } from '@/lib/supabase/client'
 import { useProfessional } from '@/lib/context/ProfessionalContext'
 
@@ -101,7 +102,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
   const [scheduleValue, setScheduleValue] = useState('')
   const [productType, setProductType] = useState<ProductType>('Bolo')
-  const [productSubtype, setProductSubtype] = useState('')
+  const [productSubtypes, setProductSubtypes] = useState<string[]>([])
   const [peopleCount, setPeopleCount] = useState<number>(0)
   const [totalPrice, setTotalPrice] = useState<number>(0)
   const [observations, setObservations] = useState('')
@@ -120,6 +121,10 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   useEffect(() => {
     setOrders(initialOrders)
   }, [initialOrders])
+
+  function getScheduleSubtypeOptions(group: ProductType) {
+    return professionalTags.subgroups[group] || PRODUCT_SUBTYPES[group] || []
+  }
 
   useEffect(() => {
     if (!hasHydratedMessageSoundsRef.current) {
@@ -283,8 +288,9 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     setProductType(safeType)
     
     // Se o pedido já tem um subtipo, tenta manter. Se não, pega o primeiro da linha do profissional
-    const availableSubtypes = professionalTags.subgroups[safeType] || PRODUCT_SUBTYPES[safeType] || []
-    setProductSubtype(order.productSubtype || availableSubtypes[0] || '')
+    const availableSubtypes = getScheduleSubtypeOptions(safeType)
+    const selectedSubtypes = splitProductSubtype(order.productSubtype).filter((item) => availableSubtypes.includes(item))
+    setProductSubtypes(selectedSubtypes.length > 0 ? selectedSubtypes : availableSubtypes[0] ? [availableSubtypes[0]] : [])
     setPeopleCount(order.peopleCount || 0)
     setTotalPrice(order.totalPrice || 0)
     setObservations(order.observations || '')
@@ -299,6 +305,12 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     }
 
     const deliveryDatetime = new Date(scheduleValue).toISOString()
+    const nextProductSubtype = composeProductSubtype(productSubtypes)
+
+    if (!nextProductSubtype) {
+      setScheduleError('Selecione ao menos uma linha/sabor.')
+      return
+    }
     
     // Atualiza localmente para feedback imediato
     patchOrderInList(schedulingOrder.id, {
@@ -306,7 +318,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
       deliveryDatetime,
       eventDate: deliveryDatetime,
       productType,
-      productSubtype,
+      productSubtype: nextProductSubtype,
       peopleCount,
       totalPrice,
       observations,
@@ -318,7 +330,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     
     const result = await updateOrder(schedulingOrder.id, {
       productType,
-      productSubtype,
+      productSubtype: nextProductSubtype,
       peopleCount,
       deliveryDatetime: deliveryDatetime,
       deliveryType: schedulingOrder.deliveryType || 'entrega',
@@ -342,6 +354,10 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     setSchedulingTargetStatus('agendado')
     setScheduleValue('')
     setScheduleError(null)
+  }
+
+  function toggleScheduleSubtype(subtype: string) {
+    setProductSubtypes((current) => toggleSelection(current, subtype))
   }
 
   function handleCloseSchedule() {
@@ -631,7 +647,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                 </div>
 
                 {/* Produto e Subtipo */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-gray-400 px-1">Categoria</label>
                     <select
@@ -639,8 +655,11 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onChange={(e) => {
                         const newType = e.target.value as ProductType
                         setProductType(newType)
-                        const nextSubtypes = professionalTags.subgroups[newType] || PRODUCT_SUBTYPES[newType] || []
-                        setProductSubtype(nextSubtypes[0] || '')
+                        const nextSubtypes = getScheduleSubtypeOptions(newType)
+                        setProductSubtypes((current) => {
+                          const kept = current.filter((item) => nextSubtypes.includes(item))
+                          return kept.length > 0 ? kept : nextSubtypes[0] ? [nextSubtypes[0]] : []
+                        })
                       }}
                       className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
                     >
@@ -649,17 +668,30 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       ))}
                     </select>
                   </div>
+
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-400 px-1">Linha/Sabor</label>
-                    <select
-                      value={productSubtype}
-                      onChange={(e) => setProductSubtype(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
-                    >
-                      {(professionalTags.subgroups[productType] || PRODUCT_SUBTYPES[productType] || []).map(sub => (
-                        <option key={sub} value={sub} className="bg-[#111] text-white">{sub}</option>
-                      ))}
-                    </select>
+                    <label className="text-xs font-medium text-gray-400 px-1">Linha / Sabores</label>
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-white/5 p-2 space-y-1">
+                      {getScheduleSubtypeOptions(productType).map((sub) => {
+                        const selected = productSubtypes.includes(sub)
+
+                        return (
+                          <label
+                            key={sub}
+                            className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm transition ${selected ? 'bg-emerald-500/15 text-white' : 'text-gray-200 hover:bg-white/5'}`}
+                          >
+                            <span>{sub}</span>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => toggleScheduleSubtype(sub)}
+                              className="h-4 w-4 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-emerald-500"
+                            />
+                          </label>
+                        )
+                      })}
+                    </div>
+                    <p className="text-[11px] text-gray-400 px-1">Selecione uma ou mais opções.</p>
                   </div>
                 </div>
 

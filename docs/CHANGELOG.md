@@ -14,6 +14,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Recuperação de instância apagada**: se a instância do profissional for removida manualmente na Uazapi, o próximo refresh/conexão limpa o vínculo local e recria a instância automaticamente.
 - **Card de WhatsApp do perfil**: a seção foi simplificada visualmente e passou a exibir um alerta quando o telefone do perfil diverge do número já conectado na Uazapi.
 - **Painel / abas por data de entrega**: o cabeçalho do painel agora exibe abas para `Todos`, `Hoje`, `Amanhã` e os próximos 7 dias, filtrando os pedidos por `deliveryDatetime` em todas as colunas exceto `Em atendimento`.
+- **Pedidos e Painel / variações múltiplas**: os modais de editar/agendar pedido passaram a permitir selecionar mais de uma opção de variação/linha, mantendo compatibilidade com os pedidos já salvos no formato antigo.
 
 ### Corrigido
 - **Status travado em `connected`**: quando a instância permanecia cadastrada na Uazapi, mas o WhatsApp já tinha sido desconectado, o app agora atualiza para `disconnected` no próximo refresh.

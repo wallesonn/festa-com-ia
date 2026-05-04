@@ -6,6 +6,7 @@ import { Order, PRODUCT_GROUPS, PRODUCT_SUBTYPES, ProductType, PainelStatus, Del
 import { supabase } from '@/lib/supabase/client'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
 import { useProfessional } from '@/lib/context/ProfessionalContext'
+import { composeProductSubtype, splitProductSubtype, toggleSelection } from '@/lib/product-subtype'
 import { fmtDatetime } from '@/lib/utils'
 import { ChevronDown, Plus, X, Search, Package, Users, Calendar, CheckCircle, XCircle, AlertCircle, Trash2, Wallet, RotateCcw, Pencil, Save, Download } from 'lucide-react'
 
@@ -275,7 +276,7 @@ function OrderDetailModal({
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
   const [editProductType, setEditProductType] = useState(order.productType)
-  const [editProductSubtype, setEditProductSubtype] = useState(order.productSubtype)
+  const [editProductSubtypes, setEditProductSubtypes] = useState<string[]>(splitProductSubtype(order.productSubtype))
   const [editPeopleCount, setEditPeopleCount] = useState(String(order.peopleCount || ''))
   const [editDeliveryDatetime, setEditDeliveryDatetime] = useState(toDatetimeLocal(order.deliveryDatetime))
   const [editDeliveryType, setEditDeliveryType] = useState(order.deliveryType)
@@ -284,9 +285,11 @@ function OrderDetailModal({
   const [editPaymentMethod, setEditPaymentMethod] = useState(order.payment.method)
   const [editPainelStatus, setEditPainelStatus] = useState(order.painelStatus)
 
+  const editSubtypeOptions = tags.subgroups[editProductType] || PRODUCT_SUBTYPES[editProductType] || []
+
   function handleStartEdit() {
     setEditProductType(order.productType)
-    setEditProductSubtype(order.productSubtype)
+    setEditProductSubtypes(splitProductSubtype(order.productSubtype))
     setEditPeopleCount(String(order.peopleCount || ''))
     setEditDeliveryDatetime(toDatetimeLocal(order.deliveryDatetime))
     setEditDeliveryType(order.deliveryType)
@@ -302,9 +305,17 @@ function OrderDetailModal({
     setEditSaving(true)
     setEditError(null)
     const isoDatetime = editDeliveryDatetime ? new Date(editDeliveryDatetime).toISOString() : ''
+    const nextProductSubtype = composeProductSubtype(editProductSubtypes)
+
+    if (!nextProductSubtype) {
+      setEditSaving(false)
+      setEditError('Selecione ao menos uma linha/sabor.')
+      return
+    }
+
     const result = await updateOrder(order.id, {
       productType: editProductType,
-      productSubtype: editProductSubtype,
+      productSubtype: nextProductSubtype,
       peopleCount: Number(editPeopleCount) || 0,
       deliveryDatetime: isoDatetime,
       deliveryType: editDeliveryType,
@@ -320,6 +331,10 @@ function OrderDetailModal({
     } else {
       setEditError(result.error)
     }
+  }
+
+  function toggleEditSubtype(subtype: string) {
+    setEditProductSubtypes((current) => toggleSelection(current, subtype))
   }
 
   async function handleDelete() {
@@ -412,7 +427,19 @@ function OrderDetailModal({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>Tipo de produto</label>
-                    <select value={editProductType} onChange={e => setEditProductType(e.target.value as ProductType)} className={inputCls}>
+                    <select
+                      value={editProductType}
+                      onChange={e => {
+                        const nextType = e.target.value as ProductType
+                        setEditProductType(nextType)
+                        const nextOptions = tags.subgroups[nextType] || PRODUCT_SUBTYPES[nextType] || []
+                        setEditProductSubtypes((current) => {
+                          const kept = current.filter((item) => nextOptions.includes(item))
+                          return kept.length > 0 ? kept : nextOptions[0] ? [nextOptions[0]] : []
+                        })
+                      }}
+                      className={inputCls}
+                    >
                       {PRODUCT_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
@@ -426,16 +453,27 @@ function OrderDetailModal({
 
                 <div>
                   <label className={labelCls}>Linha / Sabor</label>
-                  <select
-                    value={editProductSubtype}
-                    onChange={e => setEditProductSubtype(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="">Selecione uma linha...</option>
-                    {(tags.subgroups[editProductType] || PRODUCT_SUBTYPES[editProductType] || []).map(sub => (
-                      <option key={sub} value={sub}>{sub}</option>
-                    ))}
-                  </select>
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-2 space-y-1">
+                    {editSubtypeOptions.map((sub) => {
+                      const selected = editProductSubtypes.includes(sub)
+
+                      return (
+                        <label
+                          key={sub}
+                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm transition ${selected ? 'bg-fuchsia-500/15 text-white' : 'text-gray-200 hover:bg-white/5'}`}
+                        >
+                          <span>{sub}</span>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleEditSubtype(sub)}
+                            className="h-4 w-4 rounded border-white/20 bg-black/40 text-fuchsia-500 focus:ring-fuchsia-500"
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400 px-1">Selecione uma ou mais opções.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1025,7 +1063,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
       matchType = o.productType === filterType
     }
 
-    const matchSubtype = filterSubtype === 'todos' || o.productSubtype === filterSubtype
+    const matchSubtype = filterSubtype === 'todos' || splitProductSubtype(o.productSubtype).includes(filterSubtype)
     return matchSearch && matchType && matchSubtype
   })
 
@@ -1158,7 +1196,7 @@ export function PedidosView({ initialOrders }: PedidosViewProps) {
               Todos os subtipos
             </button>
             {activeSubtypes.map(sub => {
-              const subCount = orders.filter(o => o.productType === filterType && o.productSubtype === sub).length
+              const subCount = orders.filter(o => o.productType === filterType && splitProductSubtype(o.productSubtype).includes(sub)).length
               return (
                 <button
                   key={sub}

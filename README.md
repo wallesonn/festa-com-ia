@@ -41,6 +41,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Modal de detalhes exibe o status atual do painel
 - **Integração n8n/IA** — o workflow inbound gera sugestões com DeepSeek usando o histórico da conversa e o histórico completo de pedidos do cliente como contexto auxiliar
 - **Clientes** — o fluxo inbound também pode atualizar `clients.profile_photo_url` com a foto recebida da Uazapi, usando fallback de avatar quando não houver URL
+- **Envio outbound via n8n/Uazapi** — o app envia `instanceId` no webhook de saída e o workflow consulta `uazapi_instances.instance_token` no Postgres antes de disparar o `POST /send/text`, sem expor o token no payload
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
 - **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos, WhatsApp padronizado para Brasil e exclusão total da conta com remoção dos dados
   - A verificação de conexão do WhatsApp agora revalida o status direto na Uazapi pelo endpoint administrativo de listagem de instâncias antes de atualizar a tela
@@ -57,6 +58,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 3. ⬜ Integração WhatsApp via Uazapi (referência oficial: docs.uazapi.com)
    - A tela de perfil usa a listagem administrativa da Uazapi para descobrir/revalidar a instância e o status atual da conexão
    - Se a instância sumir da Uazapi, o próximo fluxo de conexão recria a instância e reaplica os webhooks automaticamente
+   - O outbound do painel envia `instanceId` para o n8n, que consulta o token da instância no Postgres antes de chamar a Uazapi
 4. ⬜ IA assistiva (sugestões de resposta, estimativas)
 5. ⬜ Autenticação e multi-tenant
 6. ⬜ Deploy em VPS (Portainer + Traefik)

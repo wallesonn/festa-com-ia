@@ -189,6 +189,23 @@ create table business_hours (
   closed boolean not null default false
 );
 
+create table if not exists uazapi_instances (
+  id uuid primary key default uuid_generate_v4(),
+  professional_id uuid not null unique references professionals(id) on delete cascade,
+  instance_id text not null unique,
+  instance_name text not null,
+  instance_token text not null,
+  linked_phone text not null,
+  connection_status text not null default 'disconnected',
+  pair_code text,
+  qr_code text,
+  last_disconnect_reason text,
+  last_checked_at timestamptz,
+  last_connected_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists product_taxonomy_reference (
   id uuid primary key default uuid_generate_v4(),
   product_group text not null unique,

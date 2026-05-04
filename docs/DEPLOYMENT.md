@@ -164,6 +164,9 @@ Confirme que o domínio configurado em `APP_DOMAIN` responde corretamente via Tr
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | chave anon do Supabase, usada no build |
 | `N8N_DOMAIN` | domínio público do n8n quando ele roda na VPS |
 | `N8N_ENCRYPTION_KEY` | chave de criptografia interna do n8n |
+| `UAZAPI_BASE_URL` | URL base da Uazapi |
+| `UAZAPI_ADMIN_TOKEN` | token de admin da Uazapi usado no backend para consultar `/instance/all` e revalidar o status real das instâncias |
+| `UAZAPI_SYSTEM_NAME` | nome do sistema da Uazapi |
 
 ---
 

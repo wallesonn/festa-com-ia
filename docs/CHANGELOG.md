@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-05-04
+
+### Alterado
+- **Perfil / WhatsApp Uazapi**: a tela de perfil agora revalida o status da instância pelo endpoint administrativo `GET /instance/all` antes de confiar no cache local, refletindo corretamente desconexões feitas diretamente na Uazapi.
+- **Integração server-side Uazapi**: a rota de conexão passou a depender do `UAZAPI_ADMIN_TOKEN` no runtime para consultar a listagem administrativa e sincronizar o estado real da instância.
+
+### Corrigido
+- **Status travado em `connected`**: quando a instância permanecia cadastrada na Uazapi, mas o WhatsApp já tinha sido desconectado, o app agora atualiza para `disconnected` no próximo refresh.
+
 ## [Unreleased] — 2026-05-02
 
 ### Alterado

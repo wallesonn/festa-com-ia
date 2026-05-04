@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
@@ -305,6 +305,42 @@ type ProfileForm = {
   serviceRules: string
 }
 
+type UazapiConnectionState = {
+  status: 'unknown' | 'not_created' | 'disconnected' | 'connecting' | 'connected'
+  instanceId: string | null
+  instanceName: string | null
+  linkedPhone: string | null
+  pairCode: string | null
+  qrCode: string | null
+  lastDisconnectReason: string | null
+  lastCheckedAt: string | null
+  lastConnectedAt: string | null
+  loading: boolean
+  actionLoading: boolean
+  message: string | null
+}
+
+type UazapiConnectionApiResponse = {
+  ok: true
+  action: 'status' | 'created' | 'connected' | 'reused'
+  exists: boolean
+  instance: {
+    id: string
+    name: string
+    linkedPhone: string
+    status: string
+    pairCode: string | null
+    qrCode: string | null
+    lastDisconnectReason: string | null
+    lastCheckedAt: string | null
+    lastConnectedAt: string | null
+  } | null
+}
+
+type UazapiConnectionErrorResponse = {
+  error: string
+}
+
 function parseProductsProduced(value: string | null | undefined) {
   if (!value) return []
 
@@ -327,6 +363,7 @@ export default function PerfilPage() {
   const [email, setEmail] = useState('')
   const [userId, setUserId] = useState('')
   const [professionalId, setProfessionalId] = useState('')
+  const [accessToken, setAccessToken] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -339,6 +376,20 @@ export default function PerfilPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
   const [rulesBuilder, setRulesBuilder] = useState<RulesBuilderState>(DEFAULT_RULES_BUILDER)
+  const [uazapiConnection, setUazapiConnection] = useState<UazapiConnectionState>({
+    status: 'unknown',
+    instanceId: null,
+    instanceName: null,
+    linkedPhone: null,
+    pairCode: null,
+    qrCode: null,
+    lastDisconnectReason: null,
+    lastCheckedAt: null,
+    lastConnectedAt: null,
+    loading: false,
+    actionLoading: false,
+    message: null,
+  })
   const [form, setForm] = useState<ProfileForm>({
     phoneCountryCode: BRAZIL_COUNTRY_CODE,
     phoneDdd: '',
@@ -351,6 +402,13 @@ export default function PerfilPage() {
   const router = useRouter()
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase().replace(/@/g, '-').replace(/\./g, '-'), [email])
+  const professionalWhatsAppNumber = useMemo(() => {
+    try {
+      return buildBrazilPhoneNumber(form.phoneCountryCode, form.phoneDdd, form.phoneNumber)
+    } catch {
+      return ''
+    }
+  }, [form.phoneCountryCode, form.phoneDdd, form.phoneNumber])
   const currentPhotoUrl = useMemo(() => {
     if (!photoPath) return ''
     return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(photoPath).data.publicUrl
@@ -359,6 +417,14 @@ export default function PerfilPage() {
   const conversationSamplesLength = form.conversationSamples.length
   const serviceRulesLength = form.serviceRules.length
   const rulesCustomNotesLength = rulesBuilder.customNotes.length
+  const uazapiStatusLabelMap: Record<UazapiConnectionState['status'], string> = {
+    unknown: 'Verificando',
+    not_created: 'Não criado',
+    disconnected: 'Desconectado',
+    connecting: 'Aguardando pareamento',
+    connected: 'Conectado',
+  }
+  const uazapiStatusLabel = uazapiStatusLabelMap[uazapiConnection.status]
 
   useEffect(() => {
     if (!photoFile) {
@@ -379,6 +445,178 @@ export default function PerfilPage() {
     return `${normalizedEmail}/profile-${Date.now()}-${safeFileName}`
   }
 
+  const applyUazapiConnectionState = useCallback((payload: UazapiConnectionApiResponse, fallbackMessage: string) => {
+    const instance = payload.instance
+    const status = instance?.status === 'connected' || instance?.status === 'connecting' || instance?.status === 'disconnected'
+      ? instance.status
+      : payload.exists
+        ? 'disconnected'
+        : 'not_created'
+
+    setUazapiConnection({
+      status,
+      instanceId: instance?.id ?? null,
+      instanceName: instance?.name ?? null,
+      linkedPhone: instance?.linkedPhone ?? null,
+      pairCode: instance?.pairCode ?? null,
+      qrCode: instance?.qrCode ?? null,
+      lastDisconnectReason: instance?.lastDisconnectReason ?? null,
+      lastCheckedAt: instance?.lastCheckedAt ?? null,
+      lastConnectedAt: instance?.lastConnectedAt ?? null,
+      loading: false,
+      actionLoading: false,
+      message:
+        status === 'connected'
+          ? 'WhatsApp conectado.'
+          : status === 'connecting' && instance?.pairCode
+            ? 'WhatsApp aguardando pareamento.'
+            : fallbackMessage,
+    })
+  }, [])
+
+  const refreshUazapiConnection = useCallback(async (token = accessToken, phone = professionalWhatsAppNumber, silent = false) => {
+    if (!token || !phone) {
+      console.info('[perfil/uazapi] refresh skipped', {
+        hasToken: Boolean(token),
+        hasPhone: Boolean(phone),
+      })
+
+      setUazapiConnection((prev) => ({
+        ...prev,
+        status: 'not_created',
+        loading: false,
+        actionLoading: false,
+        message: 'Complete o cadastro do WhatsApp para habilitar a conexão.',
+      }))
+      return
+    }
+
+    console.info('[perfil/uazapi] refresh start', {
+      phone,
+      silent,
+      currentStatus: uazapiConnection.status,
+    })
+
+    setUazapiConnection((prev) => ({
+      ...prev,
+      loading: true,
+      message: silent ? prev.message : 'Verificando a conexão do WhatsApp...',
+    }))
+
+    try {
+      const response = await fetch('/api/uazapi/connection', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const result = (await response.json().catch(() => null)) as UazapiConnectionApiResponse | UazapiConnectionErrorResponse | null
+
+      if (!response.ok || !result || !('ok' in result)) {
+        throw new Error((result && 'error' in result ? result.error : null) ?? 'Não foi possível consultar a conexão do WhatsApp agora.')
+      }
+
+      console.info('[perfil/uazapi] refresh result', {
+        action: result.action,
+        exists: result.exists,
+        instanceId: result.instance?.id ?? null,
+        instanceName: result.instance?.name ?? null,
+        status: result.instance?.status ?? null,
+        linkedPhone: result.instance?.linkedPhone ?? null,
+        pairCode: result.instance?.pairCode ? 'present' : 'absent',
+        qrCode: result.instance?.qrCode ? 'present' : 'absent',
+      })
+
+      applyUazapiConnectionState(result, 'Conexão do WhatsApp atualizada.')
+    } catch (connectionError) {
+      const message = connectionError instanceof Error ? connectionError.message : 'Não foi possível consultar a conexão do WhatsApp agora.'
+      console.error('[perfil/uazapi] refresh error', {
+        phone,
+        message,
+      })
+
+      setUazapiConnection((prev) => ({
+        ...prev,
+        loading: false,
+        actionLoading: false,
+        message,
+        status: prev.status === 'unknown' ? 'unknown' : prev.status,
+      }))
+    }
+  }, [accessToken, applyUazapiConnectionState, professionalWhatsAppNumber])
+
+  const handleConnectWhatsApp = useCallback(async () => {
+    setFeedback(null)
+    setError(null)
+
+    if (!accessToken) {
+      setError('Sessão inválida. Faça login novamente para conectar o WhatsApp.')
+      return
+    }
+
+    if (!professionalWhatsAppNumber) {
+      setError('Informe o DDD e o número do WhatsApp antes de conectar.')
+      return
+    }
+
+    console.info('[perfil/uazapi] connect start', {
+      phone: professionalWhatsAppNumber,
+    })
+
+    setUazapiConnection((prev) => ({
+      ...prev,
+      actionLoading: true,
+      message: 'Criando ou reutilizando a instância da Uazapi...',
+    }))
+
+    try {
+      const response = await fetch('/api/uazapi/connection', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const result = (await response.json().catch(() => null)) as UazapiConnectionApiResponse | UazapiConnectionErrorResponse | null
+
+      if (!response.ok || !result || !('ok' in result)) {
+        throw new Error((result && 'error' in result ? result.error : null) ?? 'Não foi possível conectar o WhatsApp agora.')
+      }
+
+      console.info('[perfil/uazapi] connect result', {
+        action: result.action,
+        exists: result.exists,
+        instanceId: result.instance?.id ?? null,
+        instanceName: result.instance?.name ?? null,
+        status: result.instance?.status ?? null,
+        linkedPhone: result.instance?.linkedPhone ?? null,
+        pairCode: result.instance?.pairCode ? 'present' : 'absent',
+        qrCode: result.instance?.qrCode ? 'present' : 'absent',
+      })
+
+      applyUazapiConnectionState(result, 'WhatsApp pronto para pareamento.')
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('uazapi-connection-updated'))
+      }
+    } catch (connectionError) {
+      const message = connectionError instanceof Error ? connectionError.message : 'Não foi possível conectar o WhatsApp agora.'
+      console.error('[perfil/uazapi] connect error', {
+        phone: professionalWhatsAppNumber,
+        message,
+      })
+
+      setUazapiConnection((prev) => ({
+        ...prev,
+        actionLoading: false,
+        loading: false,
+        message,
+      }))
+      setError(message)
+    }
+  }, [accessToken, applyUazapiConnectionState, professionalWhatsAppNumber, refreshUazapiConnection])
+
   useEffect(() => {
     let active = true
 
@@ -390,6 +628,11 @@ export default function PerfilPage() {
       if (!active) return
 
       if (authError || !authData.user) {
+        console.warn('[perfil/uazapi] auth invalid while loading profile', {
+          hasUser: Boolean(authData.user),
+          error: authError?.message ?? null,
+        })
+
         router.replace('/login')
         return
       }
@@ -415,10 +658,23 @@ export default function PerfilPage() {
         !profile ||
         !profile.onboarding_completed
 
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (!active) return
+
+      console.info('[perfil/uazapi] profile loaded', {
+        userId: user.id,
+        hasProfile: Boolean(profile),
+        businessName: profile?.business_name ?? null,
+        phone: profile?.phone ?? null,
+        sessionReady: Boolean(sessionData.session?.access_token),
+      })
+
       setIsFirstAccess(firstAccess)
       setProfessionalId(profile?.id ?? '')
       setEmail(profile?.email ?? user.email ?? '')
       setPhotoPath(profile?.photo_path ?? null)
+      const sessionAccessToken = sessionData.session?.access_token ?? ''
+      setAccessToken(sessionAccessToken)
       setForm({
         phoneCountryCode: parsedPhone.countryCode,
         phoneDdd: parsedPhone.ddd,
@@ -428,6 +684,27 @@ export default function PerfilPage() {
         conversationSamples: profile?.conversation_samples ?? '',
         serviceRules: profile?.service_rules ?? '',
       })
+
+      if (sessionError || !sessionAccessToken) {
+        console.warn('[perfil/uazapi] session unavailable for connection check', {
+          error: sessionError?.message ?? null,
+        })
+
+        setUazapiConnection((prev) => ({
+          ...prev,
+          loading: false,
+          actionLoading: false,
+          status: 'unknown',
+          message: 'Faça login novamente para consultar a conexão do WhatsApp.',
+        }))
+      } else if (profile?.phone) {
+        console.info('[perfil/uazapi] triggering initial refresh', {
+          phone: sanitizeDigits(profile.phone),
+        })
+
+        void refreshUazapiConnection(sessionAccessToken, sanitizeDigits(profile.phone), true)
+      }
+
       setLoading(false)
     }
 
@@ -436,7 +713,21 @@ export default function PerfilPage() {
     return () => {
       active = false
     }
-  }, [router])
+  }, [refreshUazapiConnection, router])
+
+  useEffect(() => {
+    if (uazapiConnection.status !== 'connecting' || !accessToken || !professionalWhatsAppNumber) {
+      return undefined
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshUazapiConnection(accessToken, professionalWhatsAppNumber, true)
+    }, 10000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [accessToken, professionalWhatsAppNumber, refreshUazapiConnection, uazapiConnection.status])
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -599,6 +890,8 @@ export default function PerfilPage() {
     }
     setPhotoFile(null)
     setPhotoPreview(null)
+
+    void refreshUazapiConnection(accessToken, phone, true)
 
     // Sinaliza ao AppShell para recarregar a foto no header
     if (typeof window !== 'undefined') {
@@ -783,6 +1076,98 @@ export default function PerfilPage() {
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
                 <p className="font-medium text-white">Email de acesso</p>
                 <p className="mt-1 break-all text-gray-300">{email}</p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-300">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-white">WhatsApp Uazapi</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      O app consulta a instância do seu número e cria o pareamento quando necessário.
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                      uazapiConnection.status === 'connected'
+                        ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                        : uazapiConnection.status === 'connecting'
+                          ? 'border-amber-400/30 bg-amber-500/10 text-amber-100'
+                          : 'border-white/10 bg-white/5 text-gray-200'
+                    }`}
+                  >
+                    {uazapiStatusLabel}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Instância</p>
+                    <p className="mt-1 break-all text-sm text-white">
+                      {uazapiConnection.instanceName ?? 'Ainda não criada'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Número vinculado</p>
+                    <p className="mt-1 break-all text-sm text-white">
+                      {uazapiConnection.linkedPhone || professionalWhatsAppNumber || 'Informe o telefone'}
+                    </p>
+                  </div>
+                </div>
+
+                {uazapiConnection.status === 'connecting' && uazapiConnection.pairCode ? (
+                  <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+                    <p className="text-xs uppercase tracking-[0.24em] text-amber-100/70">Código de pareamento</p>
+                    <p className="mt-2 font-mono text-3xl font-semibold tracking-[0.28em] text-amber-50">
+                      {uazapiConnection.pairCode}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-amber-100/80">
+                      Abra o WhatsApp no celular, selecione a opção de parear por código e informe este valor.
+                    </p>
+                  </div>
+                ) : null}
+
+                {uazapiConnection.message ? (
+                  <p className="mt-4 text-xs leading-5 text-gray-400">{uazapiConnection.message}</p>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {uazapiConnection.status === 'connected' ? (
+                    <Button type="button" disabled className="h-11 rounded-2xl bg-emerald-500/20 px-4 text-sm font-semibold text-emerald-100">
+                      WhatsApp conectado
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => void handleConnectWhatsApp()}
+                      disabled={uazapiConnection.loading || uazapiConnection.actionLoading || !professionalWhatsAppNumber}
+                      className="h-11 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-500 to-violet-500 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(168,85,247,0.28)] transition hover:scale-[1.01]"
+                    >
+                      {uazapiConnection.actionLoading
+                        ? 'Conectando...'
+                        : uazapiConnection.status === 'connecting'
+                          ? 'Gerar novo código'
+                          : uazapiConnection.status === 'not_created'
+                            ? 'Criar e conectar WhatsApp'
+                            : 'Conectar WhatsApp'}
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void refreshUazapiConnection()}
+                    disabled={uazapiConnection.loading || uazapiConnection.actionLoading || !professionalWhatsAppNumber}
+                    className="h-11 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-gray-100 hover:bg-white/10"
+                  >
+                    {uazapiConnection.loading ? 'Atualizando...' : 'Atualizar status'}
+                  </Button>
+                </div>
+
+                {uazapiConnection.lastDisconnectReason ? (
+                  <p className="mt-3 text-xs text-gray-500">
+                    Última desconexão: {uazapiConnection.lastDisconnectReason}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>

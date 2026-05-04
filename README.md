@@ -43,6 +43,8 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 - **Clientes** — o fluxo inbound também pode atualizar `clients.profile_photo_url` com a foto recebida da Uazapi, usando fallback de avatar quando não houver URL
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto
 - **Perfil** (`/perfil`) com onboarding do profissional, edição de dados básicos, WhatsApp padronizado para Brasil e exclusão total da conta com remoção dos dados
+  - A verificação de conexão do WhatsApp agora revalida o status direto na Uazapi pelo endpoint administrativo de listagem de instâncias antes de atualizar a tela
+  - O backend usa `UAZAPI_ADMIN_TOKEN` para consultar `/instance/all` e refletir corretamente desconexões feitas fora do app
 - **Clientes** — listagem de clientes
 - **Configurações da Conta** (`/configuracoes`) redireciona para `/perfil`
 
@@ -50,6 +52,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
 1. ✅ Frontend MVP (Painel, Dashboard, Pedidos, Clientes)
 2. ⬜ Backend (API REST + WebSockets)
 3. ⬜ Integração WhatsApp via Uazapi (referência oficial: docs.uazapi.com)
+   - A tela de perfil usa a listagem administrativa da Uazapi para descobrir/revalidar a instância e o status atual da conexão
 4. ⬜ IA assistiva (sugestões de resposta, estimativas)
 5. ⬜ Autenticação e multi-tenant
 6. ⬜ Deploy em VPS (Portainer + Traefik)

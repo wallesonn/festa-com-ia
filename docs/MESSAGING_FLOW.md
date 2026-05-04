@@ -272,8 +272,9 @@ O n8n executa **dois workflows**:
 **Workflow 2 — Outbound** (App → WhatsApp/Uazapi → Postgres)
 - Workflow existente no n8n: `Festa: App → WhatsApp Outbound via Uazapi` (**desativado no momento**)
 - Trigger webhook: `POST /webhook/send-message`
-- Recebe `messageId`, `conversationId`, `professionalId` e `text` do app (a mensagem já foi gravada com `pending_send`)
+- Recebe `messageId`, `conversationId`, `professionalId`, `instanceId` e `text` do app (a mensagem já foi gravada com `pending_send`)
 - Busca o telefone do cliente via `conversation_id` no Postgres
+- Busca o `instance_token` em `uazapi_instances` usando o `instanceId` recebido no webhook
 - Envia a mensagem pelo provider Uazapi (`free.uazapi.com`)
 - Atualiza `messages.status` para `sent` (ou `failed`) conforme o resultado do envio
 - O SQL exato está na seção [Contrato com o n8n](#contrato-com-o-n8n) acima

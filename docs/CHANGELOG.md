@@ -17,6 +17,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Pedidos e Painel / variações múltiplas**: os modais de editar/agendar pedido passaram a permitir selecionar mais de uma opção de variação/linha, mantendo compatibilidade com os pedidos já salvos no formato antigo.
 
 ### Corrigido
+- **Workflow outbound do n8n**: o fluxo de envio de mensagens passou a receber `instanceId` no webhook do app, consultar `uazapi_instances.instance_token` no Postgres e usar esse token no envio para a Uazapi sem expor o segredo no payload.
 - **Status travado em `connected`**: quando a instância permanecia cadastrada na Uazapi, mas o WhatsApp já tinha sido desconectado, o app agora atualiza para `disconnected` no próximo refresh.
 
 ### Adicionado

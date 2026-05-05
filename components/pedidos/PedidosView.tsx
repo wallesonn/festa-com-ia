@@ -683,9 +683,7 @@ function RegisterModal({
   const [productSubgroup, setProductSubgroup] = useState(
     (tags.subgroups[fallbackGroup] ?? [])[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].subgroups[0],
   )
-  const [productVariations, setProductVariations] = useState<string[]>([
-    (tags.variations[fallbackGroup] ?? [])[0] ?? ORDER_FORM_TAXONOMY[fallbackGroup].variations[0],
-  ])
+  const [productVariations, setProductVariations] = useState<string[]>(tags.variations[fallbackGroup] ?? [])
 
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -732,8 +730,7 @@ function RegisterModal({
   }
 
   function getVariationOptions(group: ProductType) {
-    const fromProfessional = tags.variations[group] ?? []
-    return fromProfessional.length > 0 ? fromProfessional : ORDER_FORM_TAXONOMY[group].variations
+    return tags.variations[group] ?? []
   }
 
   useEffect(() => {
@@ -743,7 +740,7 @@ function RegisterModal({
       const nextVariations = getVariationOptions(nextGroup)
       setProductGroup(nextGroup)
       setProductSubgroup(nextSubgroups[0] ?? '')
-      setProductVariations(nextVariations.length > 0 ? [nextVariations[0]] : [])
+      setProductVariations(nextVariations)
     }
   }, [allowedGroups, productGroup, tags.subgroups, tags.variations])
 
@@ -754,7 +751,7 @@ function RegisterModal({
     setProductSubgroup((current) => (nextSubgroups.includes(current) ? current : nextSubgroups[0] ?? ''))
     setProductVariations((current) => {
       const kept = current.filter((variation) => nextVariations.includes(variation))
-      return kept.length > 0 ? kept : nextVariations.length > 0 ? [nextVariations[0]] : []
+      return kept.length > 0 ? kept : nextVariations
     })
   }
 
@@ -776,11 +773,14 @@ function RegisterModal({
   }, [productSubgroup, subgroupOptions])
 
   useEffect(() => {
-    if (variationOptions.length === 0) return
+    if (variationOptions.length === 0) {
+      setProductVariations([])
+      return
+    }
 
-    const hasValidSelection = productVariations.some((variation) => variationOptions.includes(variation))
-    if (!hasValidSelection) {
-      setProductVariations([variationOptions[0]])
+    const nextSelection = productVariations.filter((variation) => variationOptions.includes(variation))
+    if (nextSelection.length !== productVariations.length) {
+      setProductVariations(nextSelection)
     }
   }, [productVariations, variationOptions])
 
@@ -871,25 +871,31 @@ function RegisterModal({
                 <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
               </summary>
               <div className="max-h-48 overflow-y-auto border-t border-white/10 p-2">
-                {variationOptions.map((variation) => {
-                  const selected = productVariations.includes(variation)
-                  return (
-                    <label
-                      key={variation}
-                      className={`flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm transition ${
-                        selected ? 'bg-fuchsia-500/15 text-white' : 'text-gray-200 hover:bg-white/5'
-                      }`}
-                    >
-                      <span>{variation}</span>
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleVariation(variation)}
-                        className="h-4 w-4 rounded border-white/20 bg-black/40 text-fuchsia-500 focus:ring-fuchsia-500"
-                      />
-                    </label>
-                  )
-                })}
+                {variationOptions.length > 0 ? (
+                  variationOptions.map((variation) => {
+                    const selected = productVariations.includes(variation)
+                    return (
+                      <label
+                        key={variation}
+                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm transition ${
+                          selected ? 'bg-fuchsia-500/15 text-white' : 'text-gray-200 hover:bg-white/5'
+                        }`}
+                      >
+                        <span>{variation}</span>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleVariation(variation)}
+                          className="h-4 w-4 rounded border-white/20 bg-black/40 text-fuchsia-500 focus:ring-fuchsia-500"
+                        />
+                      </label>
+                    )
+                  })
+                ) : (
+                  <p className="px-3 py-3 text-sm text-gray-400">
+                    Nenhuma variação salva para este tipo de produto. Cadastre as variações na página Produtos.
+                  </p>
+                )}
               </div>
             </details>
           </div>

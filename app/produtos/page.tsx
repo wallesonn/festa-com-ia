@@ -21,22 +21,24 @@ type TagSuggestion = {
   variations: string[]
 }
 
+const COMMON_VARIATION_SUGGESTIONS = ['Consumo Dia Seguinte']
+
 const PRODUCT_TAG_SUGGESTIONS: Record<ProductType, TagSuggestion> = {
   Bolo: {
     subgroups: ['Tradicional', 'Recheado', 'Decorado', 'Naked Cake', 'Mini bolo'],
-    variations: ['Chocolate', 'Red Velvet', 'Morango', 'Limão', 'Baunilha', 'Massa de cenoura'],
+    variations: ['Chocolate', 'Red Velvet', 'Morango', 'Limão', 'Baunilha', 'Massa de cenoura', ...COMMON_VARIATION_SUGGESTIONS],
   },
   Doces: {
     subgroups: ['Brigadeiros', 'Docinhos de festa', 'Doces finos', 'Sobremesas', 'Copinhos'],
-    variations: ['Brigadeiro', 'Beijinho', 'Bicho-de-pé', 'Cajuzinho', 'Palha Italiana', 'Doce de leite'],
+    variations: ['Brigadeiro', 'Beijinho', 'Bicho-de-pé', 'Cajuzinho', 'Palha Italiana', 'Doce de leite', ...COMMON_VARIATION_SUGGESTIONS],
   },
   Salgados: {
     subgroups: ['Fritos', 'Assados', 'Mini porções', 'Gourmet', 'Kits de salgados'],
-    variations: ['Coxinha', 'Enroladinho', 'Mini-quiche', 'Kibe', 'Bolinha de Queijo', 'Empanado leve'],
+    variations: ['Coxinha', 'Enroladinho', 'Mini-quiche', 'Kibe', 'Bolinha de Queijo', 'Empanado leve', ...COMMON_VARIATION_SUGGESTIONS],
   },
   Refeição: {
     subgroups: ['Feijoadas', 'Tortas', 'Lasanhas', 'Pratos executivos', 'Pratos caseiros'],
-    variations: ['Feijoada', 'Lasanha', 'Prato executivo', 'Arroz carreteiro', 'Porção individual', 'Travessa familiar'],
+    variations: ['Feijoada', 'Lasanha', 'Prato executivo', 'Arroz carreteiro', 'Porção individual', 'Travessa familiar', ...COMMON_VARIATION_SUGGESTIONS],
   },
 }
 

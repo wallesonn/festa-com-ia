@@ -10,7 +10,8 @@ import { useConversationPolling } from '@/lib/hooks/useConversationPolling'
 import { sendMessage } from '@/app/painel/actions'
 import { playCuteSound } from '@/lib/audio/cute-sounds'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
-import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp, Loader2, ArrowRight } from 'lucide-react'
+import { splitProductSubtype } from '@/lib/product-subtype'
 
 interface PainelCardProps {
   order: Order
@@ -41,6 +42,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const [productLineRaw, ...productVariationParts] = order.productSubtype.split('·')
   const productLine = productLineRaw?.trim() || 'Sem linha'
   const productVariations = productVariationParts.join('·').trim()
+  const hasConsumoDiaSeguinte = splitProductSubtype(order.productSubtype).includes('Consumo Dia Seguinte')
   const statusTone = order.painelStatus === 'pronto'
     ? 'border-l-4 border-emerald-500'
     : order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
@@ -145,19 +147,30 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
         >
           <GripVertical className="h-5 w-5" />
         </button>
-        {showClientPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={clientPhotoUrl}
-            alt={`Foto de ${order.clientName}`}
-            width={64}
-            height={64}
-            onError={() => setClientPhotoLoadFailed(true)}
-            className="h-16 w-16 rounded-full object-cover shrink-0 border border-white/10 bg-white/5"
-          />
-        ) : (
-          <AvatarDefault size={64} className="rounded-full shrink-0" />
-        )}
+        <div className="flex shrink-0 flex-col items-center gap-1">
+          {showClientPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={clientPhotoUrl}
+              alt={`Foto de ${order.clientName}`}
+              width={64}
+              height={64}
+              onError={() => setClientPhotoLoadFailed(true)}
+              className="h-16 w-16 rounded-full object-cover border-2 border-white/15 bg-white/5 shadow-lg shadow-black/20"
+            />
+          ) : (
+            <AvatarDefault size={64} className="rounded-full" />
+          )}
+          {hasConsumoDiaSeguinte && (
+            <div
+              className="inline-flex items-center justify-center rounded-full border-2 border-sky-300/70 bg-sky-500/20 px-3 py-2 text-sky-200 shadow-[0_0_0_1px_rgba(56,189,248,0.35),0_0_24px_rgba(56,189,248,0.45)]"
+              title="Consumo Dia Seguinte"
+              aria-label="Pedido com consumo dia seguinte"
+            >
+              <ArrowRight className="h-7 w-7 stroke-[3.2]" />
+            </div>
+          )}
+        </div>
         <div className="flex-1 min-w-0 pt-1">
           <div className="flex items-start gap-2">
             <div className="font-semibold text-xl sm:text-2xl text-gray-100 leading-tight">{order.clientName}</div>

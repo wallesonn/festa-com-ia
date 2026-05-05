@@ -113,7 +113,8 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
   const [scheduleValue, setScheduleValue] = useState('')
   const [productType, setProductType] = useState<ProductType>('Bolo')
-  const [productSubtypes, setProductSubtypes] = useState<string[]>([])
+  const [productSubgroup, setProductSubgroup] = useState('')
+  const [productVariations, setProductVariations] = useState<string[]>([])
   const [peopleCount, setPeopleCount] = useState<number>(0)
   const [totalPrice, setTotalPrice] = useState<number>(0)
   const [observations, setObservations] = useState('')
@@ -138,6 +139,10 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
 
   function getScheduleSubtypeOptions(group: ProductType) {
     return professionalTags.subgroups[group] || PRODUCT_SUBTYPES[group] || []
+  }
+
+  function getScheduleVariationOptions(group: ProductType) {
+    return professionalTags.variations[group] || []
   }
 
   useEffect(() => {
@@ -372,11 +377,15 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     const rawType = (order.productType as ProductType) || professionalTags.groups[0] || 'Bolo'
     const safeType = professionalTags.groups.includes(rawType as ProductType) ? (rawType as ProductType) : (professionalTags.groups[0] || 'Bolo')
     setProductType(safeType)
-    
-    // Se o pedido já tem um subtipo, tenta manter. Se não, pega o primeiro da linha do profissional
-    const availableSubtypes = getScheduleSubtypeOptions(safeType)
-    const selectedSubtypes = splitProductSubtype(order.productSubtype).filter((item) => availableSubtypes.includes(item))
-    setProductSubtypes(selectedSubtypes.length > 0 ? selectedSubtypes : availableSubtypes[0] ? [availableSubtypes[0]] : [])
+
+    const availableSubgroups = getScheduleSubtypeOptions(safeType)
+    const availableVariations = getScheduleVariationOptions(safeType)
+    const selectedTags = splitProductSubtype(order.productSubtype)
+    const selectedSubgroup = selectedTags.find((item) => availableSubgroups.includes(item)) ?? availableSubgroups[0] ?? ''
+    const selectedVariations = selectedTags.filter((item) => availableVariations.includes(item))
+
+    setProductSubgroup(selectedSubgroup)
+    setProductVariations(selectedVariations)
     setPeopleCount(order.peopleCount || 0)
     setTotalPrice(order.totalPrice || 0)
     setObservations(order.observations || '')
@@ -391,10 +400,12 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     }
 
     const deliveryDatetime = new Date(scheduleValue).toISOString()
-    const nextProductSubtype = composeProductSubtype(productSubtypes)
+    const nextProductSubtype = productVariations.length > 0
+      ? `${productSubgroup} · ${productVariations.join(', ')}`
+      : productSubgroup
 
     if (!nextProductSubtype) {
-      setScheduleError('Selecione ao menos uma linha/sabor.')
+      setScheduleError('Selecione ao menos uma linha.')
       return
     }
     
@@ -442,8 +453,8 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     setScheduleError(null)
   }
 
-  function toggleScheduleSubtype(subtype: string) {
-    setProductSubtypes((current) => toggleSelection(current, subtype))
+  function toggleScheduleVariation(variation: string) {
+    setProductVariations((current) => toggleSelection(current, variation))
   }
 
   function handleCloseSchedule() {
@@ -452,6 +463,26 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     setScheduleValue('')
     setScheduleError(null)
   }
+
+  useEffect(() => {
+    if (!schedulingOrder) return
+
+    const availableSubgroups = getScheduleSubtypeOptions(productType)
+    if (!availableSubgroups.includes(productSubgroup)) {
+      setProductSubgroup(availableSubgroups[0] ?? '')
+    }
+
+    const availableVariations = getScheduleVariationOptions(productType)
+    if (availableVariations.length === 0) {
+      setProductVariations([])
+      return
+    }
+
+    const nextSelection = productVariations.filter((variation) => availableVariations.includes(variation))
+    if (nextSelection.length !== productVariations.length) {
+      setProductVariations(nextSelection)
+    }
+  }, [productType, productSubgroup, productVariations, schedulingOrder])
 
   function handleAdvance(id: string) {
     const order = orders.find(o => o.id === id)
@@ -741,11 +772,10 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onChange={(e) => {
                         const newType = e.target.value as ProductType
                         setProductType(newType)
-                        const nextSubtypes = getScheduleSubtypeOptions(newType)
-                        setProductSubtypes((current) => {
-                          const kept = current.filter((item) => nextSubtypes.includes(item))
-                          return kept.length > 0 ? kept : nextSubtypes[0] ? [nextSubtypes[0]] : []
-                        })
+                        const nextSubgroups = getScheduleSubtypeOptions(newType)
+                        const nextVariations = getScheduleVariationOptions(newType)
+                        setProductSubgroup(nextSubgroups[0] ?? '')
+                        setProductVariations(nextVariations)
                       }}
                       className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
                     >
@@ -756,28 +786,47 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-400 px-1">Linha / Sabores</label>
-                    <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-white/5 p-2 space-y-1">
-                      {getScheduleSubtypeOptions(productType).map((sub) => {
-                        const selected = productSubtypes.includes(sub)
+                    <label className="text-xs font-medium text-gray-400 px-1">Linha</label>
+                    <select
+                      value={productSubgroup}
+                      onChange={(e) => setProductSubgroup(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-white/20 appearance-none"
+                    >
+                      {getScheduleSubtypeOptions(productType).map((sub) => (
+                        <option key={sub} value={sub} className="bg-[#111] text-white">{sub}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                        return (
-                          <label
-                            key={sub}
-                            className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm transition ${selected ? 'bg-emerald-500/15 text-white' : 'text-gray-200 hover:bg-white/5'}`}
-                          >
-                            <span>{sub}</span>
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => toggleScheduleSubtype(sub)}
-                              className="h-4 w-4 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-emerald-500"
-                            />
-                          </label>
-                        )
-                      })}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-400 px-1">Variações</label>
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-white/5 p-2 space-y-1">
+                      {getScheduleVariationOptions(productType).length > 0 ? (
+                        getScheduleVariationOptions(productType).map((variation) => {
+                          const selected = productVariations.includes(variation)
+
+                          return (
+                            <label
+                              key={variation}
+                              className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm transition ${selected ? 'bg-emerald-500/15 text-white' : 'text-gray-200 hover:bg-white/5'}`}
+                            >
+                              <span>{variation}</span>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => toggleScheduleVariation(variation)}
+                                className="h-4 w-4 rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-emerald-500"
+                              />
+                            </label>
+                          )
+                        })
+                      ) : (
+                        <p className="px-3 py-3 text-sm text-gray-400">
+                          Nenhuma variação salva para este tipo de produto. Cadastre as variações na página Produtos.
+                        </p>
+                      )}
                     </div>
-                    <p className="text-[11px] text-gray-400 px-1">Selecione uma ou mais opções.</p>
+                    <p className="text-[11px] text-gray-400 px-1">Selecione uma ou mais opções salvas.</p>
                   </div>
                 </div>
 

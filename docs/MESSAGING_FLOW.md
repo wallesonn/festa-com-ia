@@ -1,6 +1,6 @@
 # Fluxo de Mensagens — Festa com IA
 
-> Fluxo operacional de mensagens WhatsApp via Uazapi integrado ao Painel por meio de n8n e Postgres, com IA orientada por histórico completo da conversa e contexto do profissional.
+> Fluxo operacional de mensagens WhatsApp via Uazapi integrado ao Painel por meio de n8n e Postgres, com IA orientada por histórico completo da conversa, contexto do profissional e transcrição de áudios quando a entrada não vier como texto.
 
 ---
 
@@ -12,6 +12,7 @@ WhatsApp
    ▼
   n8n  ──────────────────────────────────────────────────────────────────┐
    │  • recebe mensagem inbound                                          │
+   │  • transcreve áudio via Uazapi antes da normalização                │
    │  • identifica conversa ativa e cria nova conversa quando necessário │
    │  • busca o profissional no Supabase e resolve o ID local            │
    │  • gera 3 sugestões de resposta via DeepSeek                         │
@@ -173,6 +174,15 @@ Já `body.message.sender_pn` continua sendo o número do cliente que enviou a me
 
 O n8n normaliza esse payload e deve inserir uma linha em `messages` e opcionalmente atualizar `conversations`.
 
+Quando a mensagem chegar como áudio, o workflow deve:
+
+- baixar a mídia via Uazapi
+- solicitar a transcrição na própria Uazapi
+- usar o campo `transcription` como texto principal da mensagem
+- preservar a referência do áudio em `metadata` quando isso ajudar na auditoria ou depuração
+
+Assim, `messages.text` e o texto enviado ao DeepSeek passam a representar a versão transcrita, não o binário bruto do arquivo.
+
 Antes de chamar o **DeepSeek** para gerar sugestões de resposta, o n8n deve buscar o **histórico completo da conversa ativa**. Quando a conversa for recém-criada, o workflow pode aproveitar o histórico da última conversa ativa do mesmo cliente como referência de contexto, sem misturar pedidos distintos.
 
 Quando o pedido vinculado à conversa é movido para `entregue` ou `cancelado` na aplicação, a conversa correspondente é marcada como `finalizada` e arquivada. A partir daí, uma nova mensagem do mesmo cliente deve abrir uma nova conversa/pedido, em vez de reutilizar o pedido anterior.
@@ -255,6 +265,7 @@ O n8n executa **dois workflows**:
 - Trigger webhook: `POST /webhook/d7ddac98-e3b2-4351-ba35-d63220bfd681`
 - Recebe mensagem do cliente via Uazapi e **filtra** eventos inválidos (`fromMe`, `isGroup`, `EventType ≠ messages`) → caminho `Ignorar Mensagem`
 - **Normaliza** o payload: telefone do cliente, nome, mensagem e `owner` (telefone do profissional). Quando o `owner` vem com 12 dígitos (sem o 9 do móvel), o 9 é inserido automaticamente após o DDD
+- **Transcrição de áudio** — quando a mensagem é de áudio, o workflow baixa a mídia e usa a transcrição retornada pela Uazapi antes de continuar com a normalização e com o prompt
 - **`Buscar Profissional Supabase`** (Supabase native node) — lê `festa-com-ia-professionals` pelo telefone normalizado e carrega o perfil completo do profissional
 - **`Resolver Profissional Local`** (Postgres local) — `SELECT id FROM professionals WHERE phone = $1 LIMIT 1` usando o phone vindo do Supabase
 - **`Garantir Cliente+Conversa+Pedido`** (Postgres local) — faz upsert de `clients` por telefone, atualizando `name` e `profile_photo_url` quando a Uazapi fornecer `body.chat.imagePreview`/`body.chat.image`, e cria/reutiliza `conversations` e `orders` a partir do `professionals.id` local, reutilizando apenas conversas e pedidos ainda ativos (não arquivados e não entregues/cancelados)

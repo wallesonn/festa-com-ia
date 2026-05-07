@@ -1,6 +1,6 @@
 # Fluxo Operacional — Festa com IA
 
-> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp (Uazapi) → n8n → Postgres local → Painel da aplicação**, considerando o uso do DeepSeek para sugerir respostas, a revisão humana e a persistência do histórico.
+> Este documento descreve o caminho da mensagem do cliente entre **WhatsApp (Uazapi) → n8n → Postgres local → Painel da aplicação**, considerando o uso do DeepSeek para sugerir respostas, a revisão humana, a transcrição de áudios e a persistência do histórico.
 >
 > O Supabase fica restrito a **Auth** e aos dados de **`festa-com-ia-professionals`**; não participa da persistência operacional do atendimento.
 >
@@ -17,6 +17,7 @@
 Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 
 - recepção de mensagens
+- transcrição de mensagens de áudio antes da normalização
 - identificação de conversa ativa por cliente
 - criação de novo pedido quando surgir um novo atendimento, reutilizando apenas conversas/pedidos ainda ativos
 - geração de 3 sugestões de resposta via DeepSeek
@@ -47,21 +48,25 @@ Definir o fluxo operacional do MVP para atendimento via WhatsApp, incluindo:
 ```mermaid
 flowchart LR
   A[Cliente envia mensagem no WhatsApp] --> B[n8n Webhook]
-  B --> C[Normaliza payload e identifica cliente/profissional]
-  C --> D{Existe conversa ativa com pedido ativo?}
-  D -- Sim --> E[Anexa mensagem à conversa ativa]
-  D -- Não --> F[Cria nova conversa]
-  F --> G[Cria novo pedido em atendimento]
-  E --> G
-  G --> H[Busca contexto completo no Postgres]
-  H --> I[DeepSeek gera 3 sugestões]
-  I --> J[Aplicação exibe mensagem + histórico curto + sugestões]
-  J --> K[Atendente edita a resposta]
-  K --> L[Atendente clica Enviar]
-  L --> M[n8n envia a mensagem ao WhatsApp]
-  M --> N[Salva mensagem final no Postgres]
-  M -- falha --> O[Marca falha na própria conversa]
-  O --> K
+  B --> C{Mensagem é áudio?}
+  C -- Sim --> D[Transcreve áudio via Uazapi]
+  C -- Não --> E[Normaliza payload]
+  D --> E
+  E --> F[Identifica cliente/profissional]
+  F --> G{Existe conversa ativa com pedido ativo?}
+  G -- Sim --> H[Anexa mensagem à conversa ativa]
+  G -- Não --> I[Cria nova conversa]
+  I --> J[Cria novo pedido em atendimento]
+  H --> J
+  J --> K[Busca contexto completo no Postgres]
+  K --> L[DeepSeek gera 3 sugestões]
+  L --> M[Aplicação exibe mensagem + histórico curto + sugestões]
+  M --> N[Atendente edita a resposta]
+  N --> O[Atendente clica Enviar]
+  O --> P[n8n envia a mensagem ao WhatsApp]
+  P --> Q[Salva mensagem final no Postgres]
+  P -- falha --> R[Marca falha na própria conversa]
+  R --> N
 ```
 
 ---
@@ -75,9 +80,24 @@ A mensagem chega pelo **WhatsApp** e é recebida por um webhook do **n8n**.
 O n8n deve:
 
 - normalizar o payload
+- se a mensagem vier como áudio, baixar e transcrever o arquivo antes de seguir com a normalização
 - identificar o telefone do cliente
 - localizar a conversa relacionada
 - capturar `imagePreview`/`image` da Uazapi quando disponível para atualizar `clients.profile_photo_url`
+
+### 1.1. Transcrição de áudio
+
+Quando a mensagem recebida for de áudio, o workflow inbound deve inserir uma etapa intermediária de transcrição usando a Uazapi antes de montar o texto final que entra no banco e no prompt da IA.
+
+Fluxo recomendado dessa etapa:
+
+- identificar o `messageType`/`mediaType` de áudio no payload da Uazapi
+- chamar o endpoint de download da mídia com `transcribe: true`
+- usar o campo `transcription` retornado pela Uazapi como texto principal da mensagem
+- preservar o conteúdo original do áudio em metadata, se necessário, para auditoria ou depuração
+- seguir com a mesma lógica de cliente, conversa, pedido e prompt usada para mensagens de texto
+
+Assim, o restante do inbound passa a trabalhar com uma mensagem textual normalizada, independentemente de ter chegado como texto digitado ou áudio transcrito.
 
 ### 2. Identificação da conversa
 
@@ -111,8 +131,11 @@ A IA deve usar estas fontes de contexto:
 - dados dos produtos do profissional
 - dados do cliente/pedido no Postgres
 - foto do cliente vinda da Uazapi (`body.chat.imagePreview` / `body.chat.image`) quando houver atualização cadastral
+- transcrição do áudio quando a mensagem chegar nesse formato, para que a IA receba o texto em vez do binário original
 - histórico completo de pedidos do cliente como contexto auxiliar
 - dados de autenticação e perfil do profissional via Supabase (`festa-com-ia-professionals`)
+
+No inbound com áudio, a Uazapi primeiro transcreve a mídia e o workflow usa o texto transcrito como base para a persistência e para o prompt.
 
 O contexto deve ser enviado como prompt de sistema ou estrutura equivalente no fluxo do n8n.
 

@@ -24,7 +24,7 @@ Estado atual da aplicação web:
 - `lib/db/queries.ts` concentra as leituras operacionais para dashboard, painel e pedidos
 - `lib/db/mappers.ts` converte rows do banco para os tipos de domínio usados no frontend
 - `app/pedidos/actions.ts` concentra as mutations de pedidos, incluindo criação, exclusão e atualização de `painel_status`
-- O fluxo inbound do n8n faz upsert de cliente por telefone e pode atualizar `clients.name` e `clients.profile_photo_url` com os dados mais recentes vindos da Uazapi
+- O fluxo inbound do n8n faz upsert de cliente por telefone, pode atualizar `clients.name` e `clients.profile_photo_url` com os dados mais recentes vindos da Uazapi e, quando a mensagem chega como áudio, transcreve o conteúdo antes de seguir para a normalização e para o prompt da IA
 - `app/api/realtime/orders/route.ts` expõe uma stream SSE que escuta o canal `festa_realtime_operational` do Postgres e sinaliza a UI quando o banco muda
 - `components/painel/PainelBoard.tsx` e `components/pedidos/PedidosView.tsx` reagem a esses eventos e fazem refresh do servidor sem polling contínuo
 
@@ -60,7 +60,7 @@ Além disso, a UI principal do MVP já segue este fluxo de leitura:
 
 `Postgres local` → `queries.ts` → `server components` → `client components`
 
-Na visão-alvo do produto, o n8n resolve a conversa ativa do cliente, mantém o pedido associado à conversa e envia para a IA o histórico completo daquela conversa, além de exemplos de conversa, regras de atendimento e dados de produtos do profissional. No painel, o profissional vê apenas um recorte curto do histórico junto com as sugestões de resposta.
+Na visão-alvo do produto, o n8n resolve a conversa ativa do cliente, mantém o pedido associado à conversa e envia para a IA o histórico completo daquela conversa, além de exemplos de conversa, regras de atendimento, dados de produtos do profissional e o texto transcrito quando a mensagem chegar em áudio. No painel, o profissional vê apenas um recorte curto do histórico junto com as sugestões de resposta.
 
 ## Domínios e Módulos
 - Painel do Profissional
@@ -102,6 +102,7 @@ Relações principais:
 - `conversas` → `pedido` em `1:1` enquanto o atendimento estiver ativo
 - novo pedido dentro da mesma conversa é criado manualmente pelo profissional
 - `clients.profile_photo_url` armazena a melhor URL de foto disponível enviada pela Uazapi (`imagePreview`/`image`) para reutilização no painel e em fallbacks de avatar
+- Mensagens de áudio recebem uma etapa de transcrição na Uazapi antes de alimentar o histórico, a persistência e o prompt da IA
 
 Observação: o MVP operacional mantém o histórico de conversas e pedidos no Postgres local, enquanto o Supabase fica restrito à autenticação e aos dados do usuário/profissional.
 

@@ -40,7 +40,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Criação de pedidos já inicia com status de painel em `agendado`
   - Exclusão de pedidos direto pela tela de detalhes
   - Modal de detalhes exibe o status atual do painel
-- **Integração n8n/IA** — o workflow inbound gera sugestões com DeepSeek usando o histórico da conversa e o histórico completo de pedidos do cliente como contexto auxiliar
+- **Integração n8n/IA** — o workflow inbound gera sugestões com DeepSeek usando o histórico da conversa e o histórico completo de pedidos do cliente como contexto auxiliar; quando a mensagem chega como áudio, ela é transcrita via Uazapi antes de seguir para a normalização e para o prompt da IA
 - **Clientes** — o fluxo inbound também pode atualizar `clients.profile_photo_url` com a foto recebida da Uazapi, usando fallback de avatar quando não houver URL
 - **Envio outbound via n8n/Uazapi** — o app envia `instanceId` no webhook de saída e o workflow consulta `uazapi_instances.instance_token` no Postgres antes de disparar o `POST /send/text`, sem expor o token no payload
 - **Produtos** — cadastro das linhas, subgrupos e variações por grupo de produto

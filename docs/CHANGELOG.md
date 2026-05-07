@@ -8,6 +8,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ## [Unreleased] — 2026-05-04
 
 ### Alterado
+- **Documentação do inbound n8n**: os guias de fluxo operacional, fluxo de mensagens e arquitetura agora descrevem a etapa de transcrição de áudio via Uazapi antes da normalização, persistência e geração de sugestões pela IA.
 - **Perfil / WhatsApp Uazapi**: a tela de perfil agora revalida o status da instância pelo endpoint administrativo `GET /instance/all` antes de confiar no cache local, refletindo corretamente desconexões feitas diretamente na Uazapi.
 - **Integração server-side Uazapi**: a rota de conexão passou a depender do `UAZAPI_ADMIN_TOKEN` no runtime para consultar a listagem administrativa e sincronizar o estado real da instância.
 - **Provisionamento de webhooks da instância**: ao conectar/reutilizar uma instância, o backend agora garante dois webhooks idempotentes por instância usando as URLs de produção e teste configuradas via ambiente.

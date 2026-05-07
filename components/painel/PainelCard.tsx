@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { ChatMessage } from '@/lib/types'
@@ -44,7 +44,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const productVariations = productVariationParts.join('·').trim()
   const hasConsumoDiaSeguinte = splitProductSubtype(order.productSubtype).includes('Consumo Dia Seguinte')
   const statusTone = order.painelStatus === 'pronto'
-    ? 'border-l-4 border-emerald-500'
+    ? ''
     : order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
       ? ''
       : `${urgencyBorderClass(order.deliveryDatetime)} ${urgencyPulseClass(order.deliveryDatetime)}`
@@ -57,6 +57,17 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
             : 'Arquivar'
 
   const primaryActionDisabled = order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[PainelCard]', {
+        id: order.id,
+        painelStatus: order.painelStatus,
+        deliveryDatetime: order.deliveryDatetime,
+        statusTone,
+      })
+    }
+  }, [order.id, order.painelStatus, order.deliveryDatetime, statusTone])
 
   function handlePrimaryAction() {
     if (primaryActionDisabled) return

@@ -11,6 +11,18 @@ export default async function PedidosPage() {
     const professional = await getFirstProfessional()
     const rows = professional ? await getActiveOrders(professional.id) : []
     orders = rows.map(dbRowToOrder)
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[pedidos] orders mapped:', {
+        count: orders.length,
+        sample: orders.slice(0, 10).map((order) => ({
+          id: order.id,
+          painelStatus: order.painelStatus,
+          deliveryDatetime: order.deliveryDatetime,
+          updatedAt: order.updatedAt,
+        })),
+      })
+    }
   } catch {
     orders = []
   }

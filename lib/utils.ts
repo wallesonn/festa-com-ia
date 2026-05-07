@@ -71,7 +71,14 @@ export function bucketLabel(bucket: OrderBucket) {
 }
 
 export function urgencyLevel(deliveryIso: string): UrgencyLevel {
-  const diffMs = new Date(deliveryIso).getTime() - Date.now()
+  const deliveryTime = new Date(deliveryIso).getTime()
+
+  if (Number.isNaN(deliveryTime)) {
+    console.warn('[urgencyLevel] deliveryDatetime inválida:', deliveryIso)
+    return 'neutro'
+  }
+
+  const diffMs = deliveryTime - Date.now()
   const diffH = diffMs / (1000 * 60 * 60)
   if (diffH < 2) return 'vermelho'
   if (diffH < 12) return 'laranja'
@@ -80,9 +87,9 @@ export function urgencyLevel(deliveryIso: string): UrgencyLevel {
 
 export function urgencyBorderClass(deliveryIso: string): string {
   const level = urgencyLevel(deliveryIso)
-  if (level === 'vermelho') return 'border-l-4 border-rose-500'
-  if (level === 'laranja') return 'border-l-4 border-amber-400'
-  return 'border-l-4 border-white/15'
+  if (level === 'vermelho') return 'border-l-4 border-l-rose-500'
+  if (level === 'laranja') return 'border-l-4 border-l-amber-400'
+  return 'border-l-4 border-l-white/15'
 }
 
 export function urgencyBgClass(deliveryIso: string): string {

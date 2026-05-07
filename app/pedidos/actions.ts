@@ -40,6 +40,15 @@ export type UpdateOrderPainelStatusResult =
 export async function updateOrderPainelStatus(orderId: string, painelStatus: string, deliveryDatetime?: string): Promise<UpdateOrderPainelStatusResult> {
   try {
     const sql = getSql()
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[updateOrderPainelStatus] start', {
+        orderId,
+        painelStatus,
+        deliveryDatetime,
+      })
+    }
+
     if (deliveryDatetime) {
       await sql`UPDATE orders SET painel_status = ${painelStatus}, delivery_datetime = ${deliveryDatetime}, event_date = ${deliveryDatetime}, updated_at = now() WHERE id = ${orderId}`
     } else {
@@ -57,6 +66,14 @@ export async function updateOrderPainelStatus(orderId: string, painelStatus: str
       `
     }
     refreshOrderPages()
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[updateOrderPainelStatus] success', {
+        orderId,
+        painelStatus,
+      })
+    }
+
     return { success: true }
   } catch (err) {
     console.error('[updateOrderPainelStatus]', err)
@@ -164,6 +181,14 @@ export async function markPayment(orderId: string, kind: MarkPaymentKind): Promi
       return { success: false, error: 'Pedido não encontrado após atualização.' }
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[updateOrder] success', {
+        orderId,
+        painelStatus: rows[0].painel_status,
+        deliveryDatetime: rows[0].delivery_datetime,
+      })
+    }
+
     return { success: true, order: dbRowToOrder(rows[0]) }
   } catch (err) {
     console.error('[markPayment]', err)
@@ -202,6 +227,16 @@ export type UpdateOrderResult =
 export async function updateOrder(orderId: string, input: UpdateOrderInput): Promise<UpdateOrderResult> {
   try {
     const sql = getSql()
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[updateOrder] start', {
+        orderId,
+        painelStatus: input.painelStatus,
+        deliveryDatetime: input.deliveryDatetime,
+        productType: input.productType,
+        productSubtype: input.productSubtype,
+      })
+    }
 
     const deliveryDt = input.deliveryDatetime || null
 

@@ -65,6 +65,7 @@ export async function getOrdersWithPayments(professionalId: string): Promise<DbO
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id
     WHERE o.professional_id = ${professionalId}
+      AND o.archived_at IS NULL
     ORDER BY o.updated_at DESC
   `
 }
@@ -123,6 +124,7 @@ export async function getActiveOrders(professionalId: string): Promise<DbOrderRo
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id
     WHERE o.professional_id = ${professionalId}
+      AND o.archived_at IS NULL
       AND NOT (
         o.painel_status IN ('entregue','cancelado')
         AND COALESCE(o.delivery_datetime, o.updated_at) < CURRENT_DATE - INTERVAL '3 days'
@@ -138,6 +140,7 @@ export type ArchivedOrderRow = {
   product_type: string
   product_subtype: string
   delivery_datetime: string | null
+  archived_at: string | null
   delivery_type: string
   people_count: number
   total_price: number
@@ -161,6 +164,7 @@ export async function getArchivedOrders(professionalId: string): Promise<Archive
       o.product_type,
       o.product_subtype,
       o.delivery_datetime,
+      o.archived_at,
       o.delivery_type,
       o.people_count,
       o.total_price,
@@ -176,9 +180,14 @@ export async function getArchivedOrders(professionalId: string): Promise<Archive
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id
     WHERE o.professional_id = ${professionalId}
-      AND o.painel_status IN ('entregue','cancelado')
-      AND COALESCE(o.delivery_datetime, o.updated_at) < CURRENT_DATE - INTERVAL '3 days'
-    ORDER BY COALESCE(o.delivery_datetime, o.updated_at) DESC
+      AND (
+        o.archived_at IS NOT NULL
+        OR (
+          o.painel_status IN ('entregue','cancelado')
+          AND COALESCE(o.delivery_datetime, o.updated_at) < CURRENT_DATE - INTERVAL '3 days'
+        )
+      )
+    ORDER BY COALESCE(o.archived_at, o.delivery_datetime, o.updated_at) DESC
   `
 }
 
@@ -262,11 +271,13 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
     o_inprogress AS (
       SELECT COUNT(*)::int AS c FROM orders
       WHERE professional_id = ${professionalId}
+        AND archived_at IS NULL
         AND painel_status IN ('preparando','pronto')
     ),
     o_today AS (
       SELECT COUNT(*)::int AS c FROM orders
       WHERE professional_id = ${professionalId}
+        AND archived_at IS NULL
         AND delivery_datetime::date = CURRENT_DATE
         AND painel_status NOT IN ('entregue','cancelado')
     ),
@@ -319,6 +330,7 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
         COUNT(*) FILTER (WHERE painel_status = 'entregue')::int    AS entregue,
         COUNT(*) FILTER (WHERE painel_status NOT IN ('entregue','cancelado'))::int AS ativo
       FROM orders WHERE professional_id = ${professionalId}
+        AND archived_at IS NULL
     ),
     week_days AS (
       SELECT

@@ -31,6 +31,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Histórico de mensagens com bolhas de chat (expansível)
   - Sugestões de resposta com IA (expansíveis)
   - Botões Avançar etapa e Cancelar
+  - Arquivamento manual com confirmação para pedidos em `Entregue` ou `Cancelado`
 - **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local e layout em cards glassmorphism
 - **Pedidos** — listagem com filtros, modal de detalhes e modal de cadastro, também conectada ao Postgres local e às tags por grupo do profissional
   - A tela reflete alterações do banco em tempo real, sem depender de cache do navegador

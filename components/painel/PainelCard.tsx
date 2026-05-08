@@ -19,9 +19,10 @@ interface PainelCardProps {
   onAdvance: (id: string) => void
   onSchedule: (id: string, targetStatus?: PainelStatus) => void
   onCancel: (id: string) => void
+  onArchive: (id: string) => Promise<void>
 }
 
-export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel }: PainelCardProps) {
+export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel, onArchive }: PainelCardProps) {
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -30,6 +31,9 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const [expanded, setExpanded] = useState(false)
   const [expandedSuggestions, setExpandedSuggestions] = useState(false)
   const [replyOpen, setReplyOpen] = useState(true)
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
 
   const { messages: liveMessages, isLoading: isPolling } = useConversationPolling(
     expanded ? (order.conversationId ?? null) : null
@@ -40,8 +44,9 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const unreadClientMessagesCount = order.unreadClientMessagesCount ?? countUnreadClientMessages(displayMessages)
 
   const [productLineRaw, ...productVariationParts] = order.productSubtype.split('·')
-  const productLine = productLineRaw?.trim() || 'Sem linha'
-  const productVariations = productVariationParts.join('·').trim()
+  const productSubtypeParts = splitProductSubtype(order.productSubtype)
+  const productLine = productSubtypeParts[0] || productLineRaw?.trim() || 'Sem linha'
+  const productVariations = productSubtypeParts.slice(1).join(', ').trim() || productVariationParts.join('·').trim()
   const hasConsumoDiaSeguinte = splitProductSubtype(order.productSubtype).includes('Consumo Dia Seguinte')
   const statusTone = order.painelStatus === 'pronto'
     ? ''
@@ -56,23 +61,15 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
           : order.painelStatus === 'pronto' ? 'Entregar'
             : 'Arquivar'
 
-  const primaryActionDisabled = order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelCard]', {
-        id: order.id,
-        painelStatus: order.painelStatus,
-        deliveryDatetime: order.deliveryDatetime,
-        statusTone,
-      })
-    }
-  }, [order.id, order.painelStatus, order.deliveryDatetime, statusTone])
-
-  function handlePrimaryAction() {
-    if (primaryActionDisabled) return
+  async function handlePrimaryAction() {
     if (order.painelStatus === 'atendimento') {
       onSchedule(order.id)
+      return
+    }
+
+    if (order.painelStatus === 'entregue' || order.painelStatus === 'cancelado') {
+      setArchiveError(null)
+      setShowArchiveConfirm(true)
       return
     }
 
@@ -81,6 +78,24 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
     }
 
     onAdvance(order.id)
+  }
+
+  async function handleDirectArchive() {
+    await onArchive(order.id)
+  }
+
+  async function handleArchiveConfirm() {
+    setIsArchiving(true)
+    setArchiveError(null)
+
+    try {
+      await onArchive(order.id)
+      setShowArchiveConfirm(false)
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : 'Erro ao arquivar o pedido.')
+    } finally {
+      setIsArchiving(false)
+    }
   }
 
   const isCancelled = order.painelStatus === 'cancelado'
@@ -200,7 +215,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
             <span className="shrink-0 text-white/35">·</span>
             <span className="font-medium">{productLine}</span>
             <span className="shrink-0 text-white/35">·</span>
-            <span className="font-medium">{productVariations || 'Sem variações'}</span>
+            <span className="font-medium">{productVariations || 'Sem Tags'}</span>
           </div>
         </div>
       </div>
@@ -294,19 +309,25 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
       <div className="flex gap-2 pt-1 border-t border-white/10">
         {order.painelStatus !== 'entregue' && !isCancelled && (
           <button
-            onClick={() => onCancel(order.id)}
+            onClick={() => {
+              if (order.painelStatus === 'atendimento') {
+                void handleDirectArchive()
+                return
+              }
+
+              onCancel(order.id)
+            }}
             className="flex items-center justify-center gap-1 text-xs font-semibold px-3 min-h-[40px] rounded-lg bg-rose-900/60 active:bg-rose-700 text-rose-200 transition-colors"
           >
             <X className="h-4 w-4" />
-            Cancelar
+            {order.painelStatus === 'atendimento' ? 'Arquivar' : 'Cancelar'}
           </button>
         )}
         <button
           onClick={handlePrimaryAction}
-          disabled={primaryActionDisabled}
           className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold min-h-[40px] rounded-lg transition-colors ${
-            primaryActionDisabled
-              ? 'bg-white/10 text-gray-300 cursor-default'
+            order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
+              ? 'bg-white/10 text-gray-300 hover:bg-white/15'
               : 'bg-white text-gray-900 active:bg-white/80'
           }`}
         >
@@ -314,6 +335,59 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
           {primaryActionLabel}
         </button>
       </div>
+
+      {showArchiveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 py-6 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111111] shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-gray-400">Arquivamento</p>
+                <h2 className="mt-1 text-xl font-semibold text-white">Arquivar pedido</h2>
+                <p className="mt-1 text-sm text-gray-300">{order.clientName}</p>
+              </div>
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className="rounded-full p-2 text-gray-400 hover:bg-white/5 hover:text-white"
+                aria-label="Fechar modal de arquivamento"
+                disabled={isArchiving}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <p className="text-sm leading-6 text-gray-300">
+                Esse pedido será removido do painel ativo e movido para a lista de arquivados.
+              </p>
+
+              {archiveError && (
+                <p className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                  {archiveError}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowArchiveConfirm(false)}
+                  disabled={isArchiving}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleArchiveConfirm}
+                  disabled={isArchiving}
+                  className="flex-1 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
+                >
+                  {isArchiving ? 'Arquivando...' : 'Arquivar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -73,14 +73,11 @@ export function bucketLabel(bucket: OrderBucket) {
 export function urgencyLevel(deliveryIso: string): UrgencyLevel {
   const deliveryTime = new Date(deliveryIso).getTime()
 
-  if (Number.isNaN(deliveryTime)) {
-    console.warn('[urgencyLevel] deliveryDatetime inválida:', deliveryIso)
-    return 'neutro'
-  }
+  if (Number.isNaN(deliveryTime)) return 'neutro'
 
   const diffMs = deliveryTime - Date.now()
   const diffH = diffMs / (1000 * 60 * 60)
-  if (diffH < 2) return 'vermelho'
+  if (diffH < 0.5) return 'vermelho'
   if (diffH < 12) return 'laranja'
   return 'neutro'
 }

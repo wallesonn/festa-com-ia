@@ -40,6 +40,7 @@ export async function GET() {
       'Produto':         r.product_type,
       'Subtipo':         r.product_subtype,
       'Entrega':         fmtDate(r.delivery_datetime),
+      'Arquivado em':    fmtDate(r.archived_at),
       'Tipo entrega':    r.delivery_type === 'entrega' ? 'Entrega' : 'Retirada',
       'Pessoas':         r.people_count,
       'Valor total':     fmtCurrency(r.total_price),

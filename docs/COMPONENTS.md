@@ -78,14 +78,16 @@ Card interativo do Painel. Integra `useSortable` do `@dnd-kit/sortable`.
 **Funcionalidades:**
 - Handle de arrastar (ícone `GripVertical`) — `touch-none` para não conflitar com scroll
 - Base em glassmorphism com borda e fundo translúcidos
-- Borda lateral por urgência de entrega (`urgencyLevel` + `urgencyBorderClass`)
+- Borda lateral por urgência de entrega (`urgencyLevel` + `urgencyBorderClass`) nos estados ativos; quando o pedido está em `Pronto`, a borda permanece neutra
+- Linha e variações do produto são normalizadas com `splitProductSubtype`, aceitando tanto `·` quanto vírgulas antes de exibir o fallback `Sem variações`
+- Quando o pedido está em `Entregue` ou `Cancelado`, o botão principal vira `Arquivar` e abre um modal de confirmação; ao confirmar, o pedido recebe `archived_at` e sai das listas ativas
 - Histórico de 5 mensagens com bolhas: atendente à direita, cliente à esquerda
 - Botão expandir/recolher conversa
 - Sugestões de resposta (1 visível, demais expansíveis)
 - Campo de digitação com botão enviar
 - Botão **Cancelar** (esquerda) e **Avançar etapa** (direita)
 
-Props: `order`, `onAdvance(id)`, `onCancel(id)`.
+Props: `order`, `onAdvance(id)`, `onSchedule(id, targetStatus?)`, `onCancel(id)`, `onArchive(id)`.
 
 ---
 

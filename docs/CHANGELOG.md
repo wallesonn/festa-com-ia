@@ -20,8 +20,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ### Corrigido
 - **Workflow outbound do n8n**: o fluxo de envio de mensagens passou a receber `instanceId` no webhook do app, consultar `uazapi_instances.instance_token` no Postgres e usar esse token no envio para a Uazapi sem expor o segredo no payload.
 - **Status travado em `connected`**: quando a instância permanecia cadastrada na Uazapi, mas o WhatsApp já tinha sido desconectado, o app agora atualiza para `disconnected` no próximo refresh.
+- **Painel / borda do card em `Pronto`**: o `PainelCard` agora mantém a borda neutra quando o pedido está na coluna `Pronto`, preservando os alertas de urgência apenas para os demais estados ativos.
+- **Painel / variações no card**: o `PainelCard` agora normaliza `productSubtype` com o parser compartilhado, evitando mostrar `Sem variações` quando as variações já vêm gravadas em formato compatível com vírgulas ou `·`.
 
 ### Adicionado
+- **Painel / arquivamento manual**: pedidos em `Entregue` ou `Cancelado` agora podem ser arquivados via botão no card com modal de confirmação; o pedido recebe `archived_at`, sai das listas ativas e passa a aparecer na exportação de arquivados.
 - **`UAZAPI_WEBHOOK_URL_PROD` e `UAZAPI_WEBHOOK_URL_TEST`**: novas variáveis de ambiente para provisionar os webhooks da instância em produção e teste.
 - **Sons do painel**: adicionados feedbacks sonoros para novas mensagens recebidas, envio de respostas e movimentação de pedidos para a coluna `Pronto`, com volume mais alto e som de conclusão mais impactante.
 - **Alerta urgente do painel**: pedidos com urgência vermelha agora disparam um áudio em MP3 com repetição a cada 2 segundos e fade-out quando o estado urgente termina.

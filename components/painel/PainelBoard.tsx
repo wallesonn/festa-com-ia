@@ -15,7 +15,7 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core'
-import { updateOrderPainelStatus } from '@/app/pedidos/actions'
+import { archiveOrder, updateOrderPainelStatus } from '@/app/pedidos/actions'
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } from '@/lib/types'
@@ -134,20 +134,6 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   useOrdersRealtimeRefresh(Boolean(activeId || schedulingId))
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelBoard] initialOrders recebidos', {
-        count: initialOrders.length,
-        sample: initialOrders.slice(0, 10).map((order) => ({
-          id: order.id,
-          painelStatus: order.painelStatus,
-          deliveryDatetime: order.deliveryDatetime,
-          updatedAt: order.updatedAt,
-        })),
-      })
-    }
-  }, [initialOrders])
-
-  useEffect(() => {
     setOrders(initialOrders)
   }, [initialOrders])
 
@@ -235,20 +221,10 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const filteredOrders = useMemo(() => {
     if (!selectedDeliveryDateKey) return orders
 
-    const nextOrders = orders.filter((order) => {
+    return orders.filter((order) => {
       if (order.painelStatus === 'atendimento') return true
       return getDateKeyFromIso(order.deliveryDatetime) === selectedDeliveryDateKey
     })
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelBoard] filtro por data aplicado', {
-        selectedDeliveryTab,
-        selectedDeliveryDateKey,
-        count: nextOrders.length,
-      })
-    }
-
-    return nextOrders
   }, [orders, selectedDeliveryDateKey])
 
   const hasUrgentRedOrders = useMemo(() => orders.some(hasUrgentRedOrder), [orders])
@@ -324,10 +300,6 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   }, [hasUrgentRedOrders])
 
   function patchOrderInList(orderId: string, patch: Partial<Order>) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelBoard] patchOrderInList', { orderId, patch })
-    }
-
     setOrders((current) => current.map((item) => (
       item.id === orderId
         ? { ...item, ...patch, updatedAt: new Date().toISOString() }
@@ -362,24 +334,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   }
 
   async function applyPainelChange(orderId: string, painelStatus: PainelStatus, deliveryDatetime?: string) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelBoard] applyPainelChange:start', {
-        orderId,
-        painelStatus,
-        deliveryDatetime,
-      })
-    }
-
     const result = await updateOrderPainelStatus(orderId, painelStatus, deliveryDatetime)
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelBoard] applyPainelChange:result', {
-        orderId,
-        painelStatus,
-        success: result.success,
-        error: 'error' in result ? result.error : undefined,
-      })
-    }
 
     if (result.success) {
       router.refresh()
@@ -387,6 +342,16 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     }
 
     return false
+  }
+
+  async function handleArchive(orderId: string) {
+    const result = await archiveOrder(orderId)
+    if (result.success) {
+      router.refresh()
+      return
+    }
+
+    throw new Error(result.error)
   }
 
   function toDatetimeLocalValue(date: Date) {
@@ -449,16 +414,6 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
     const nextProductSubtype = productVariations.length > 0
       ? `${productSubgroup} · ${productVariations.join(', ')}`
       : productSubgroup
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PainelBoard] handleConfirmSchedule', {
-        orderId: schedulingOrder.id,
-        targetStatus: schedulingTargetStatus,
-        deliveryDatetime,
-        productType,
-        nextProductSubtype,
-      })
-    }
 
     if (!nextProductSubtype) {
       setScheduleError('Selecione ao menos uma linha.')
@@ -764,6 +719,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                           onAdvance={handleAdvance}
                           onSchedule={handleOpenSchedule}
                           onCancel={handleCancel}
+                          onArchive={handleArchive}
                         />
                       ))}
                     </PainelColumn>
@@ -780,6 +736,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onAdvance={() => {}}
                       onSchedule={() => {}}
                       onCancel={() => {}}
+                      onArchive={async () => {}}
                     />
                   </div>
                 ) : null}

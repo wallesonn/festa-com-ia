@@ -94,7 +94,7 @@ function getClientMessageIds(order: Order) {
 }
 
 function hasUrgentRedOrder(order: Order) {
-  if (order.painelStatus === 'entregue' || order.painelStatus === 'cancelado') return false
+  if (order.painelStatus === 'pronto' || order.painelStatus === 'entregue' || order.painelStatus === 'cancelado') return false
   if (!order.deliveryDatetime) return false
   return urgencyLevel(order.deliveryDatetime) === 'vermelho'
 }

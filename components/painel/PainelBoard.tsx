@@ -15,7 +15,7 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core'
-import { archiveOrder, updateOrderPainelStatus } from '@/app/pedidos/actions'
+import { archiveOrder, silenceOrder, updateOrderPainelStatus } from '@/app/pedidos/actions'
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
 import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } from '@/lib/types'
@@ -347,6 +347,17 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   async function handleArchive(orderId: string) {
     const result = await archiveOrder(orderId)
     if (result.success) {
+      router.refresh()
+      return
+    }
+
+    throw new Error(result.error)
+  }
+
+  async function handleSilence(orderId: string) {
+    const result = await silenceOrder(orderId)
+    if (result.success) {
+      setOrders((current) => current.filter((order) => order.id !== orderId))
       router.refresh()
       return
     }
@@ -720,6 +731,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                           onSchedule={handleOpenSchedule}
                           onCancel={handleCancel}
                           onArchive={handleArchive}
+                          onSilence={handleSilence}
                         />
                       ))}
                     </PainelColumn>
@@ -737,6 +749,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                       onSchedule={() => {}}
                       onCancel={() => {}}
                       onArchive={async () => {}}
+                      onSilence={async () => {}}
                     />
                   </div>
                 ) : null}

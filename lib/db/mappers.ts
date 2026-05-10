@@ -23,6 +23,7 @@ export type DbOrderRow = {
   last_message_at: string | null
   created_at: string
   updated_at: string
+  silenced_until: string | null
   client_name: string
   client_phone: string
   client_photo_url: string | null
@@ -82,6 +83,7 @@ export function dbRowToOrder(row: DbOrderRow): Order {
     payment,
     lastMessage: row.last_message ?? '',
     lastMessageAt: row.last_message_at ?? row.updated_at,
+    silencedUntil: row.silenced_until ?? null,
     unreadClientMessagesCount: row.unread_client_messages_count ?? 0,
     messages,
     createdAt: row.created_at,

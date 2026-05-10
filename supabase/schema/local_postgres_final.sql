@@ -101,6 +101,7 @@ create table orders (
   last_message text,
   last_message_at timestamptz,
   archived_at timestamptz,
+  silenced_until timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

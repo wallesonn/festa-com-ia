@@ -20,9 +20,10 @@ interface PainelCardProps {
   onSchedule: (id: string, targetStatus?: PainelStatus) => void
   onCancel: (id: string) => void
   onArchive: (id: string) => Promise<void>
+  onSilence: (id: string) => Promise<void>
 }
 
-export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel, onArchive }: PainelCardProps) {
+export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel, onArchive, onSilence }: PainelCardProps) {
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -34,6 +35,9 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [showSilenceConfirm, setShowSilenceConfirm] = useState(false)
+  const [isSilencing, setIsSilencing] = useState(false)
+  const [silenceError, setSilenceError] = useState<string | null>(null)
 
   const { messages: liveMessages, isLoading: isPolling } = useConversationPolling(
     expanded ? (order.conversationId ?? null) : null
@@ -61,6 +65,8 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
           : order.painelStatus === 'pronto' ? 'Entregar'
             : 'Arquivar'
 
+  const secondaryActionLabel = order.painelStatus === 'atendimento' ? 'Silenciar' : 'Cancelar'
+
   async function handlePrimaryAction() {
     if (order.painelStatus === 'atendimento') {
       onSchedule(order.id)
@@ -80,8 +86,18 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
     onAdvance(order.id)
   }
 
-  async function handleDirectArchive() {
-    await onArchive(order.id)
+  async function handleSilenceConfirm() {
+    setIsSilencing(true)
+    setSilenceError(null)
+
+    try {
+      await onSilence(order.id)
+      setShowSilenceConfirm(false)
+    } catch (err) {
+      setSilenceError(err instanceof Error ? err.message : 'Erro ao silenciar o pedido.')
+    } finally {
+      setIsSilencing(false)
+    }
   }
 
   async function handleArchiveConfirm() {
@@ -311,7 +327,8 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
           <button
             onClick={() => {
               if (order.painelStatus === 'atendimento') {
-                void handleDirectArchive()
+                setSilenceError(null)
+                setShowSilenceConfirm(true)
                 return
               }
 
@@ -320,7 +337,7 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
             className="flex items-center justify-center gap-1 text-xs font-semibold px-3 min-h-[40px] rounded-lg bg-rose-900/60 active:bg-rose-700 text-rose-200 transition-colors"
           >
             <X className="h-4 w-4" />
-            {order.painelStatus === 'atendimento' ? 'Arquivar' : 'Cancelar'}
+            {secondaryActionLabel}
           </button>
         )}
         <button
@@ -335,6 +352,59 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
           {primaryActionLabel}
         </button>
       </div>
+
+      {showSilenceConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 py-6 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111111] shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-gray-400">Silenciamento</p>
+                <h2 className="mt-1 text-xl font-semibold text-white">Silenciar pedido</h2>
+                <p className="mt-1 text-sm text-gray-300">{order.clientName}</p>
+              </div>
+              <button
+                onClick={() => setShowSilenceConfirm(false)}
+                className="rounded-full p-2 text-gray-400 hover:bg-white/5 hover:text-white"
+                aria-label="Fechar modal de silenciamento"
+                disabled={isSilencing}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <p className="text-sm leading-6 text-gray-300">
+                Esse card ficará oculto do painel por 24 horas. Depois disso, ele só volta a aparecer quando chegar uma nova mensagem do cliente.
+              </p>
+
+              {silenceError && (
+                <p className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                  {silenceError}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSilenceConfirm(false)}
+                  disabled={isSilencing}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSilenceConfirm}
+                  disabled={isSilencing}
+                  className="flex-1 rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold text-black hover:bg-sky-400 disabled:opacity-50"
+                >
+                  {isSilencing ? 'Silenciando...' : 'Silenciar por 24h'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showArchiveConfirm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 py-6 backdrop-blur-sm sm:items-center">

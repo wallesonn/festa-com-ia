@@ -2,6 +2,21 @@ import { getSql } from './client'
 import type { Tables } from '@/lib/database.types'
 import type { DbOrderRow } from './mappers'
 
+export async function hasOrdersSilencedUntilColumn(): Promise<boolean> {
+  const sql = getSql()
+  const rows = await sql<Array<{ has_silenced_until: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'orders'
+        AND column_name = 'silenced_until'
+    ) AS has_silenced_until
+  `
+
+  return rows[0]?.has_silenced_until ?? false
+}
+
 export async function getFirstProfessional() {
   const sql = getSql()
   const rows = await sql<Tables<'professionals'>[]>`
@@ -14,12 +29,39 @@ export async function getFirstProfessional() {
 
 export async function getOrdersWithPayments(professionalId: string): Promise<DbOrderRow[]> {
   const sql = getSql()
+  const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
+  const silencedUntilSelect = hasSilencedUntil
+    ? sql.unsafe('o.silenced_until,')
+    : sql.unsafe('NULL::timestamptz AS silenced_until,')
+  const silencedUntilJoin = hasSilencedUntil
+    ? sql.unsafe(`
+      LEFT JOIN LATERAL (
+        SELECT MAX(m.sent_at) AS last_client_message_at
+        FROM messages m
+        WHERE m.conversation_id = o.conversation_id
+          AND m.sender = 'client'
+      ) client_msgs ON true
+    `)
+    : sql.unsafe('')
+  const silencedUntilWhere = hasSilencedUntil
+    ? sql.unsafe(`
+      AND (
+        o.silenced_until IS NULL
+        OR (
+          o.silenced_until <= now()
+          AND COALESCE(client_msgs.last_client_message_at, 'epoch'::timestamptz) > o.silenced_until
+        )
+      )
+    `)
+    : sql.unsafe('')
+
   return sql<DbOrderRow[]>`
     SELECT
       o.id, o.client_id, o.conversation_id, o.product_type, o.product_subtype,
       o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
       o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
       o.last_message, o.last_message_at, o.created_at, o.updated_at,
+      ${silencedUntilSelect}
       c.name  AS client_name,
       c.phone AS client_phone,
       c.profile_photo_url AS client_photo_url,
@@ -64,8 +106,10 @@ export async function getOrdersWithPayments(professionalId: string): Promise<DbO
     FROM orders o
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id
+    ${silencedUntilJoin}
     WHERE o.professional_id = ${professionalId}
       AND o.archived_at IS NULL
+      ${silencedUntilWhere}
     ORDER BY o.updated_at DESC
   `
 }
@@ -73,12 +117,39 @@ export async function getOrdersWithPayments(professionalId: string): Promise<DbO
 // Pedidos ativos = tudo EXCETO os arquivados (entregue/cancelado há mais de 3 dias)
 export async function getActiveOrders(professionalId: string): Promise<DbOrderRow[]> {
   const sql = getSql()
+  const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
+  const silencedUntilSelect = hasSilencedUntil
+    ? sql.unsafe('o.silenced_until,')
+    : sql.unsafe('NULL::timestamptz AS silenced_until,')
+  const silencedUntilJoin = hasSilencedUntil
+    ? sql.unsafe(`
+      LEFT JOIN LATERAL (
+        SELECT MAX(m.sent_at) AS last_client_message_at
+        FROM messages m
+        WHERE m.conversation_id = o.conversation_id
+          AND m.sender = 'client'
+      ) client_msgs ON true
+    `)
+    : sql.unsafe('')
+  const silencedUntilWhere = hasSilencedUntil
+    ? sql.unsafe(`
+      AND (
+        o.silenced_until IS NULL
+        OR (
+          o.silenced_until <= now()
+          AND COALESCE(client_msgs.last_client_message_at, 'epoch'::timestamptz) > o.silenced_until
+        )
+      )
+    `)
+    : sql.unsafe('')
+
   return sql<DbOrderRow[]>`
     SELECT
       o.id, o.client_id, o.conversation_id, o.product_type, o.product_subtype,
       o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
       o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
       o.last_message, o.last_message_at, o.created_at, o.updated_at,
+      ${silencedUntilSelect}
       c.name  AS client_name,
       c.phone AS client_phone,
       c.profile_photo_url AS client_photo_url,
@@ -123,8 +194,10 @@ export async function getActiveOrders(professionalId: string): Promise<DbOrderRo
     FROM orders o
     JOIN clients c ON c.id = o.client_id
     LEFT JOIN payments p ON p.order_id = o.id
+    ${silencedUntilJoin}
     WHERE o.professional_id = ${professionalId}
       AND o.archived_at IS NULL
+      ${silencedUntilWhere}
       AND NOT (
         o.painel_status IN ('entregue','cancelado')
         AND COALESCE(o.delivery_datetime, o.updated_at) < CURRENT_DATE - INTERVAL '3 days'
@@ -258,8 +331,35 @@ export type DashboardStats = {
 
 export async function getDashboardStats(professionalId: string): Promise<DashboardStats> {
   const sql = getSql()
+  const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
   const [row] = await sql<[DashboardStats]>`
     WITH
+    visible_orders AS (
+      SELECT
+        o.*,
+        (
+          SELECT MAX(m.sent_at)
+          FROM messages m
+          WHERE m.conversation_id = o.conversation_id
+            AND m.sender = 'client'
+        ) AS last_client_message_at
+      FROM orders o
+      WHERE o.professional_id = ${professionalId}
+        AND o.archived_at IS NULL
+    ),
+    active_orders AS (
+      SELECT *
+      FROM visible_orders
+      ${hasSilencedUntil
+        ? sql.unsafe(`
+      WHERE silenced_until IS NULL
+        OR (
+          silenced_until <= now()
+          AND COALESCE(last_client_message_at, 'epoch'::timestamptz) > silenced_until
+        )
+        `)
+        : sql.unsafe('')}
+    ),
     m_today AS (
       SELECT COUNT(*)::int AS c FROM messages
       WHERE professional_id = ${professionalId} AND sent_at::date = CURRENT_DATE
@@ -270,14 +370,12 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
     ),
     o_inprogress AS (
       SELECT COUNT(*)::int AS c FROM orders
-      WHERE professional_id = ${professionalId}
-        AND archived_at IS NULL
+      WHERE id IN (SELECT id FROM active_orders)
         AND painel_status IN ('preparando','pronto')
     ),
     o_today AS (
       SELECT COUNT(*)::int AS c FROM orders
-      WHERE professional_id = ${professionalId}
-        AND archived_at IS NULL
+      WHERE id IN (SELECT id FROM active_orders)
         AND delivery_datetime::date = CURRENT_DATE
         AND painel_status NOT IN ('entregue','cancelado')
     ),
@@ -329,8 +427,7 @@ export async function getDashboardStats(professionalId: string): Promise<Dashboa
         COUNT(*) FILTER (WHERE painel_status = 'pronto')::int      AS pronto,
         COUNT(*) FILTER (WHERE painel_status = 'entregue')::int    AS entregue,
         COUNT(*) FILTER (WHERE painel_status NOT IN ('entregue','cancelado'))::int AS ativo
-      FROM orders WHERE professional_id = ${professionalId}
-        AND archived_at IS NULL
+      FROM active_orders
     ),
     week_days AS (
       SELECT

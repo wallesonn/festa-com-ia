@@ -546,6 +546,7 @@ export type Database = {
           product_subtype: string | null
           product_type: string
           professional_id: string
+          silenced_until: string | null
           status: string
           total_price: number
           updated_at: string
@@ -570,6 +571,7 @@ export type Database = {
           product_subtype?: string | null
           product_type: string
           professional_id: string
+          silenced_until?: string | null
           status?: string
           total_price?: number
           updated_at?: string
@@ -594,6 +596,7 @@ export type Database = {
           product_subtype?: string | null
           product_type?: string
           professional_id?: string
+          silenced_until?: string | null
           status?: string
           total_price?: number
           updated_at?: string

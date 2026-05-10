@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSql } from '@/lib/db/client'
-import { getFirstProfessional } from '@/lib/db/queries'
+import { getFirstProfessional, hasOrdersSilencedUntilColumn } from '@/lib/db/queries'
 import { dbRowToOrder } from '@/lib/db/mappers'
 import type { DbOrderRow } from '@/lib/db/mappers'
 import type { Order } from '@/lib/types'
@@ -38,6 +38,10 @@ export type UpdateOrderPainelStatusResult =
   | { success: false; error: string }
 
 export type ArchiveOrderResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export type SilenceOrderResult =
   | { success: true }
   | { success: false; error: string }
 
@@ -100,6 +104,31 @@ export async function archiveOrder(orderId: string): Promise<ArchiveOrderResult>
   }
 }
 
+export async function silenceOrder(orderId: string): Promise<SilenceOrderResult> {
+  try {
+    const sql = getSql()
+    const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
+
+    if (!hasSilencedUntil) {
+      return { success: false, error: 'Migration pendente: a coluna silenced_until ainda não existe no banco.' }
+    }
+
+    await sql`
+      UPDATE orders
+      SET silenced_until = now() + interval '24 hours',
+          updated_at = now()
+      WHERE id = ${orderId}
+    `
+
+    refreshOrderPages()
+
+    return { success: true }
+  } catch (err) {
+    console.error('[silenceOrder]', err)
+    return { success: false, error: 'Erro ao silenciar o pedido.' }
+  }
+}
+
 export type MarkPaymentKind = 'deposit' | 'full' | 'reset'
 
 export type MarkPaymentResult =
@@ -109,6 +138,10 @@ export type MarkPaymentResult =
 export async function markPayment(orderId: string, kind: MarkPaymentKind): Promise<MarkPaymentResult> {
   try {
     const sql = getSql()
+    const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
+    const silencedUntilSelect = hasSilencedUntil
+      ? sql.unsafe('o.silenced_until,')
+      : sql.unsafe('NULL::timestamptz AS silenced_until,')
 
     // Busca totais atuais do pagamento para calcular paid/due corretamente
     const [current] = await sql<Array<{
@@ -175,6 +208,7 @@ export async function markPayment(orderId: string, kind: MarkPaymentKind): Promi
         o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
         o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
         o.last_message, o.last_message_at, o.created_at, o.updated_at,
+        ${silencedUntilSelect}
         c.name  AS client_name,
         c.phone AS client_phone,
         c.profile_photo_url AS client_photo_url,
@@ -238,6 +272,10 @@ export type UpdateOrderResult =
 export async function updateOrder(orderId: string, input: UpdateOrderInput): Promise<UpdateOrderResult> {
   try {
     const sql = getSql()
+    const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
+    const silencedUntilSelect = hasSilencedUntil
+      ? sql.unsafe('o.silenced_until,')
+      : sql.unsafe('NULL::timestamptz AS silenced_until,')
 
     const deliveryDt = input.deliveryDatetime || null
 
@@ -270,6 +308,7 @@ export async function updateOrder(orderId: string, input: UpdateOrderInput): Pro
         o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
         o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
         o.last_message, o.last_message_at, o.created_at, o.updated_at,
+        ${silencedUntilSelect}
         c.name  AS client_name,
         c.phone AS client_phone,
         c.profile_photo_url AS client_photo_url,
@@ -303,6 +342,10 @@ export async function updateOrder(orderId: string, input: UpdateOrderInput): Pro
 export async function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
   try {
     const sql = getSql()
+    const hasSilencedUntil = await hasOrdersSilencedUntilColumn()
+    const silencedUntilSelect = hasSilencedUntil
+      ? sql.unsafe('o.silenced_until,')
+      : sql.unsafe('NULL::timestamptz AS silenced_until,')
 
     const professional = await getFirstProfessional()
     if (!professional) {
@@ -362,6 +405,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         o.event_date, o.delivery_datetime, o.delivery_type, o.people_count,
         o.observations, o.internal_notes, o.total_price, o.status, o.painel_status,
         o.last_message, o.last_message_at, o.created_at, o.updated_at,
+        ${silencedUntilSelect}
         c.name  AS client_name,
         c.phone AS client_phone,
         c.profile_photo_url AS client_photo_url,

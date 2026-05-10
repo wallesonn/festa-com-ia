@@ -146,6 +146,7 @@ export interface Order {
   payment: Payment
   lastMessage: string
   lastMessageAt: string    // ISO
+  silencedUntil?: string | null
   unreadClientMessagesCount?: number
   messages: ChatMessage[]
   createdAt: string        // ISO

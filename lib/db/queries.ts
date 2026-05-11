@@ -307,6 +307,52 @@ export async function getClientsByProfessional(professionalId: string) {
   `
 }
 
+export type ClientSummaryRow = {
+  id: string
+  name: string
+  phone: string
+  email: string | null
+  profile_photo_url: string | null
+  source: string | null
+  notes: string | null
+  tags: string[] | null
+  total_orders: number
+  total_spent: number
+  last_order_at: string | null
+  created_at: string
+  conversations_count: number
+}
+
+export async function getClientSummariesByProfessional(professionalId: string): Promise<ClientSummaryRow[]> {
+  const sql = getSql()
+
+  return sql<ClientSummaryRow[]>`
+    SELECT
+      c.id,
+      c.name,
+      c.phone,
+      c.email,
+      c.profile_photo_url,
+      c.source,
+      c.notes,
+      c.tags,
+      c.total_orders,
+      c.total_spent,
+      c.last_order_at,
+      c.created_at,
+      COALESCE(conv.conversations_count, 0)::int AS conversations_count
+    FROM clients c
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS conversations_count
+      FROM conversations conv
+      WHERE conv.client_id = c.id
+        AND conv.professional_id = c.professional_id
+    ) conv ON true
+    WHERE c.professional_id = ${professionalId}
+    ORDER BY c.name ASC
+  `
+}
+
 export type DashboardStats = {
   messages_today: number
   messages_yesterday: number

@@ -385,6 +385,7 @@ export default function PerfilPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false)
+  const [isDisconnectModalOpen, setIsDisconnectModalOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
   const [rulesBuilder, setRulesBuilder] = useState<RulesBuilderState>(DEFAULT_RULES_BUILDER)
@@ -632,6 +633,76 @@ export default function PerfilPage() {
       setError(message)
     }
   }, [accessToken, applyUazapiConnectionState, professionalWhatsAppNumber, refreshUazapiConnection])
+
+  const handleDisconnectWhatsApp = useCallback(async () => {
+    setFeedback(null)
+    setError(null)
+
+    if (!accessToken) {
+      setError('Sessão inválida. Faça login novamente para desconectar o WhatsApp.')
+      return
+    }
+
+    if (uazapiConnection.status !== 'connected') {
+      setError('Não há um WhatsApp conectado para desconectar.')
+      return
+    }
+
+    console.info('[perfil/uazapi] disconnect start', {
+      instanceId: uazapiConnection.instanceId,
+      instanceName: uazapiConnection.instanceName,
+      phone: professionalWhatsAppNumber,
+    })
+
+    setUazapiConnection((prev) => ({
+      ...prev,
+      actionLoading: true,
+      message: 'Desconectando o WhatsApp...',
+    }))
+
+    try {
+      const response = await fetch('/api/uazapi/connection', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      const result = (await response.json().catch(() => null)) as UazapiConnectionApiResponse | UazapiConnectionErrorResponse | null
+
+      if (!response.ok || !result || !('ok' in result)) {
+        throw new Error((result && 'error' in result ? result.error : null) ?? 'Não foi possível desconectar o WhatsApp agora.')
+      }
+
+      console.info('[perfil/uazapi] disconnect result', {
+        action: result.action,
+        exists: result.exists,
+        instanceId: result.instance?.id ?? null,
+        instanceName: result.instance?.name ?? null,
+        status: result.instance?.status ?? null,
+      })
+
+      applyUazapiConnectionState(result, 'WhatsApp desconectado.')
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('uazapi-connection-updated'))
+      }
+    } catch (connectionError) {
+      const message = connectionError instanceof Error ? connectionError.message : 'Não foi possível desconectar o WhatsApp agora.'
+      console.error('[perfil/uazapi] disconnect error', {
+        phone: professionalWhatsAppNumber,
+        message,
+      })
+
+      setUazapiConnection((prev) => ({
+        ...prev,
+        actionLoading: false,
+        loading: false,
+        message,
+      }))
+      setError(message)
+    }
+  }, [accessToken, applyUazapiConnectionState, professionalWhatsAppNumber, uazapiConnection.instanceId, uazapiConnection.instanceName, uazapiConnection.status])
 
   useEffect(() => {
     let active = true
@@ -1048,9 +1119,6 @@ export default function PerfilPage() {
                   <div className="space-y-2">
                     <div>
                       <p className="text-sm font-medium text-white">Foto do profissional / empresa</p>
-                      <p className="text-xs text-gray-400">
-                        A imagem será salva em <code className="rounded bg-white/10 px-1 py-0.5 text-[11px]">{STORAGE_BUCKET}/{normalizedEmail || '...'}</code>
-                      </p>
                     </div>
                     <input
                       type="file"
@@ -1137,9 +1205,20 @@ export default function PerfilPage() {
 
                 <div className="mt-4 flex flex-wrap gap-3">
                   {uazapiConnection.status === 'connected' ? (
-                    <Button type="button" disabled className="h-11 rounded-2xl bg-emerald-400/25 px-4 text-sm font-semibold text-emerald-50">
-                      WhatsApp conectado
-                    </Button>
+                    <>
+                      <Button type="button" disabled className="h-11 rounded-2xl bg-emerald-400/25 px-4 text-sm font-semibold text-emerald-50">
+                        WhatsApp conectado
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDisconnectModalOpen(true)}
+                        disabled={uazapiConnection.loading || uazapiConnection.actionLoading}
+                        className="h-11 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 hover:bg-rose-500/15"
+                      >
+                        Desconectar WhatsApp
+                      </Button>
+                    </>
                   ) : (
                     <Button
                       type="button"
@@ -1577,6 +1656,55 @@ export default function PerfilPage() {
               >
                 OK, usar este texto
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDisconnectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[1.75rem] border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-black/40">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-rose-300/80">Desconectar WhatsApp</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Encerrar sessão do WhatsApp?</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-300">
+                  Essa ação encerra a sessão atual e exige um novo pareamento para conectar novamente.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDisconnectModalOpen(false)}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:border-white/20 hover:bg-white/10"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm text-rose-100">
+              Se confirmar, o WhatsApp será desconectado e o status voltará para desconectado até um novo login.
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDisconnectModalOpen(false)}
+                className="h-11 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-gray-200 hover:bg-white/10"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setIsDisconnectModalOpen(false)
+                  void handleDisconnectWhatsApp()
+                }}
+                disabled={uazapiConnection.loading || uazapiConnection.actionLoading}
+                className="h-11 rounded-2xl bg-rose-500 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(244,63,94,0.22)] transition hover:scale-[1.01] hover:bg-rose-400"
+              >
+                {uazapiConnection.actionLoading ? 'Desconectando...' : 'Confirmar desconexão'}
+              </Button>
             </div>
           </div>
         </div>

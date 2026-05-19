@@ -83,7 +83,7 @@ type UazapiWebhookRow = {
 
 type UazapiConnectionResponse = {
   ok: true
-  action: 'status' | 'created' | 'connected' | 'reused'
+  action: 'status' | 'created' | 'connected' | 'reused' | 'disconnected'
   exists: boolean
   instance: UazapiPublicInstance | null
 }
@@ -170,6 +170,72 @@ function summarizeRemoteInstance(instance: UazapiRemoteInstance) {
     phone: instance.phone ?? null,
     adminField01: instance.adminField01 ?? null,
     adminField02: instance.adminField02 ?? null,
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const professionalContextResult = await getProfessionalContext(request)
+    if ('error' in professionalContextResult) {
+      return NextResponse.json<UazapiErrorResponse>({ error: professionalContextResult.error ?? 'Não foi possível desconectar o WhatsApp agora.' }, { status: 400 })
+    }
+
+    console.info('[uazapi/connection][DELETE] start', {
+      professionalId: professionalContextResult.professional.professionalId,
+      phone: professionalContextResult.professional.phone,
+      businessName: professionalContextResult.professional.businessName,
+    })
+
+    const sql = getSql()
+    await ensureUazapiInstancesTable(sql)
+
+    const context = professionalContextResult.professional
+    const storedInstance = await getOrImportStoredInstance(sql, context)
+
+    if (!storedInstance) {
+      return NextResponse.json<UazapiErrorResponse>({ error: 'Nenhuma instância de WhatsApp foi encontrada para desconectar.' }, { status: 404 })
+    }
+
+    await callUazapi<unknown>('/instance/disconnect', {
+      method: 'POST',
+      token: storedInstance.instance_token,
+    })
+
+    const remoteStatus = extractConnectionState(
+      await callUazapi<unknown>('/instance/status', {
+        method: 'GET',
+        token: storedInstance.instance_token,
+      }),
+    )
+
+    const disconnectedStatus = remoteStatus.status === 'connected' ? 'disconnected' : remoteStatus.status ?? 'disconnected'
+
+    const refreshed = await upsertLocalInstance(sql, context, {
+      ...remoteStatus,
+      id: storedInstance.instance_id,
+      name: storedInstance.instance_name,
+      token: storedInstance.instance_token,
+      phone: storedInstance.linked_phone,
+    }, {
+      connection_status: disconnectedStatus,
+      pair_code: remoteStatus.paircode ?? null,
+      qr_code: remoteStatus.qrcode ?? null,
+      last_disconnect_reason: remoteStatus.lastDisconnectReason ?? storedInstance.last_disconnect_reason,
+      last_checked_at: new Date().toISOString(),
+      last_connected_at: storedInstance.last_connected_at,
+    })
+
+    return NextResponse.json<UazapiConnectionResponse>({
+      ok: true,
+      action: 'disconnected',
+      exists: true,
+      instance: refreshed ? toPublicInstance(refreshed) : null,
+    })
+  } catch (error) {
+    console.error('[uazapi/connection][DELETE]', error)
+    return NextResponse.json<UazapiErrorResponse>({
+      error: error instanceof Error ? error.message : 'Não foi possível desconectar o WhatsApp agora.',
+    }, { status: 500 })
   }
 }
 

@@ -85,9 +85,10 @@ Card interativo do Painel. Integra `useSortable` do `@dnd-kit/sortable`.
 - Botão expandir/recolher conversa
 - Sugestões de resposta (1 visível, demais expansíveis)
 - Campo de digitação com botão enviar
-- Botão **Cancelar** (esquerda) e **Avançar etapa** (direita)
+- Faixa inferior com botões icon-only para **detalhes**, **ação secundária** e **ação principal**, reduzindo o uso de texto no card
+- O botão de detalhes abre o mesmo `OrderDetailModal` usado em `components/pedidos/PedidosView.tsx`
 
-Props: `order`, `onAdvance(id)`, `onSchedule(id, targetStatus?)`, `onCancel(id)`, `onArchive(id)`.
+Props: `order`, `onAdvance(id)`, `onSchedule(id, targetStatus?)`, `onCancel(id)`, `onArchive(id)`, `onSilence(id)`, `onOpenDetails(order?)`.
 
 ---
 

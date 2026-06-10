@@ -18,6 +18,7 @@ import {
 import { archiveOrder, silenceOrder, updateOrderPainelStatus } from '@/app/pedidos/actions'
 import { PainelCard } from '@/components/painel/PainelCard'
 import { PainelColumn } from '@/components/painel/PainelColumn'
+import { OrderDetailModal } from '@/components/pedidos/PedidosView'
 import { Order, PainelStatus, ProductType, PRODUCT_GROUPS, PRODUCT_SUBTYPES } from '@/lib/types'
 import { Calendar, ChevronLeft, ChevronRight as ChevronRightIcon, X } from 'lucide-react'
 import { useOrdersRealtimeRefresh } from '@/lib/realtime/use-orders-realtime-refresh'
@@ -111,6 +112,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   const [selectedDeliveryTab, setSelectedDeliveryTab] = useState<DeliveryTabOffset>(-1)
   const [schedulingId, setSchedulingId] = useState<string | null>(null)
   const [schedulingTargetStatus, setSchedulingTargetStatus] = useState<PainelStatus>('agendado')
+  const [detailsOrder, setDetailsOrder] = useState<Order | null>(null)
   const [scheduleValue, setScheduleValue] = useState('')
   const [productType, setProductType] = useState<ProductType>('Bolo')
   const [productSubgroup, setProductSubgroup] = useState('')
@@ -136,6 +138,20 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
   useEffect(() => {
     setOrders(initialOrders)
   }, [initialOrders])
+
+  useEffect(() => {
+    if (!detailsOrder) return
+
+    const latestDetailsOrder = orders.find((order) => order.id === detailsOrder.id)
+    if (!latestDetailsOrder) {
+      setDetailsOrder(null)
+      return
+    }
+
+    if (latestDetailsOrder.updatedAt !== detailsOrder.updatedAt || latestDetailsOrder.painelStatus !== detailsOrder.painelStatus) {
+      setDetailsOrder(latestDetailsOrder)
+    }
+  }, [detailsOrder, orders])
 
   function getScheduleSubtypeOptions(group: ProductType) {
     return professionalTags.subgroups[group] || PRODUCT_SUBTYPES[group] || []
@@ -588,6 +604,22 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
 
   return (
     <div className="space-y-6">
+      {detailsOrder && (
+        <OrderDetailModal
+          order={detailsOrder}
+          tags={professionalTags}
+          onClose={() => setDetailsOrder(null)}
+          onOrderUpdated={(nextOrder) => {
+            setOrders((current) => current.map((item) => (item.id === nextOrder.id ? nextOrder : item)))
+            setDetailsOrder(nextOrder)
+          }}
+          onOrderDeleted={(id) => {
+            setOrders((current) => current.filter((item) => item.id !== id))
+            setDetailsOrder(null)
+          }}
+        />
+      )}
+
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl">
         <div className="relative overflow-hidden bg-gradient-to-br from-fuchsia-500/20 via-white/5 to-violet-500/15 p-6 sm:p-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_42%)]" />
@@ -732,6 +764,7 @@ export function PainelBoard({ initialOrders, professionalId }: PainelBoardProps)
                           onCancel={handleCancel}
                           onArchive={handleArchive}
                           onSilence={handleSilence}
+                          onOpenDetails={setDetailsOrder}
                         />
                       ))}
                     </PainelColumn>

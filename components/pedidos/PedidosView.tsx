@@ -87,7 +87,7 @@ const RECIPE_MAP: Record<string, { emoji: string; ingredients: string[]; steps: 
   },
 }
 
-type ProfessionalProductTags = {
+export type ProfessionalProductTags = {
   groups: ProductType[]
   subgroups: Record<string, string[]>
   variations: Record<string, string[]>
@@ -251,7 +251,7 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'transferência',    label: 'Transferência' },
 ]
 
-function OrderDetailModal({
+export function OrderDetailModal({
   order,
   tags,
   onClose,

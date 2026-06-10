@@ -5,6 +5,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-06-06
+
+### Alterado
+- **Painel / card de pedido**: o botão de detalhes foi movido para a faixa inferior do card, ao lado das ações principais, e os botões inferiores passaram a usar ícones para reduzir o impacto visual no layout.
+- **Painel / detalhes do pedido**: o painel agora reutiliza o `OrderDetailModal` da tela de Pedidos para exibir os detalhes completos do pedido, mantendo a atualização otimista ao editar ou excluir um item pelo modal.
+
 ## [Unreleased] — 2026-05-04
 
 ### Alterado

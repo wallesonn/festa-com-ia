@@ -30,6 +30,7 @@ Plataforma destinada a profissionais que produzem bolos, doces e itens de festa 
   - Alerta sonoro em MP3 para pedidos com urgência vermelha, com repetição em loop a cada 2 segundos e fade-out ao encerrar o estado urgente
   - Histórico de mensagens com bolhas de chat (expansível)
   - Sugestões de resposta com IA (expansíveis)
+  - A faixa inferior do card concentra ações icon-only, incluindo o atalho para abrir os detalhes completos do pedido reutilizando o modal da tela de Pedidos
   - Botões Avançar etapa e Cancelar
   - Arquivamento manual com confirmação para pedidos em `Entregue` ou `Cancelado`
 - **Dashboard** com métricas calculadas a partir dos pedidos reais do Postgres local e layout em cards glassmorphism

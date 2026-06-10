@@ -10,7 +10,7 @@ import { useConversationPolling } from '@/lib/hooks/useConversationPolling'
 import { sendMessage } from '@/app/painel/actions'
 import { playCuteSound } from '@/lib/audio/cute-sounds'
 import { AvatarDefault } from '@/components/ui/AvatarDefault'
-import { Send, ChevronRight, X, GripVertical, ChevronDown, ChevronUp, Loader2, ArrowRight } from 'lucide-react'
+import { Send, X, GripVertical, ChevronDown, ChevronUp, Loader2, ArrowRight, Eye, BellOff, CalendarClock, ChefHat, CheckCircle2, PackageCheck, Archive } from 'lucide-react'
 import { splitProductSubtype } from '@/lib/product-subtype'
 
 interface PainelCardProps {
@@ -21,9 +21,10 @@ interface PainelCardProps {
   onCancel: (id: string) => void
   onArchive: (id: string) => Promise<void>
   onSilence: (id: string) => Promise<void>
+  onOpenDetails?: (order: Order) => void
 }
 
-export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel, onArchive, onSilence }: PainelCardProps) {
+export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCancel, onArchive, onSilence, onOpenDetails }: PainelCardProps) {
   const [reply, setReply] = useState('')
   const [sent, setSent] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -66,6 +67,16 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
             : 'Arquivar'
 
   const secondaryActionLabel = order.painelStatus === 'atendimento' ? 'Silenciar' : 'Cancelar'
+  const primaryActionIcon = order.painelStatus === 'atendimento'
+    ? <CalendarClock className="h-4 w-4" />
+    : order.painelStatus === 'agendado'
+      ? <ChefHat className="h-4 w-4" />
+      : order.painelStatus === 'preparando'
+        ? <CheckCircle2 className="h-4 w-4" />
+        : order.painelStatus === 'pronto'
+          ? <PackageCheck className="h-4 w-4" />
+          : <Archive className="h-4 w-4" />
+  const secondaryActionIcon = order.painelStatus === 'atendimento' ? <BellOff className="h-4 w-4" /> : <X className="h-4 w-4" />
 
   async function handlePrimaryAction() {
     if (order.painelStatus === 'atendimento') {
@@ -214,11 +225,13 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
           )}
         </div>
         <div className="flex-1 min-w-0 pt-1">
-          <div className="flex items-start gap-2">
-            <div className="font-semibold text-xl sm:text-2xl text-gray-100 leading-tight">{order.clientName}</div>
+          <div className="flex items-start gap-2 min-w-0">
+            <div className="min-w-0 flex-1 truncate font-semibold text-xl sm:text-2xl text-gray-100 leading-tight" title={order.clientName}>
+              {order.clientName}
+            </div>
             {unreadClientMessagesCount > 0 && (
               <span
-                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white shadow-sm shadow-emerald-500/30"
+                className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white shadow-sm shadow-emerald-500/30"
                 title={`${unreadClientMessagesCount} mensagem(ns) do cliente sem resposta`}
                 aria-label={`${unreadClientMessagesCount} mensagem(ns) do cliente sem resposta`}
               >
@@ -334,22 +347,35 @@ export function PainelCard({ order, professionalId, onAdvance, onSchedule, onCan
 
               onCancel(order.id)
             }}
-            className="flex items-center justify-center gap-1 text-xs font-semibold px-3 min-h-[40px] rounded-lg bg-rose-900/60 active:bg-rose-700 text-rose-200 transition-colors"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-rose-900/60 text-rose-200 transition-colors hover:bg-rose-800/70 active:bg-rose-700"
+            title={secondaryActionLabel}
+            aria-label={secondaryActionLabel}
           >
-            <X className="h-4 w-4" />
-            {secondaryActionLabel}
+            {secondaryActionIcon}
+          </button>
+        )}
+        {onOpenDetails && (
+          <button
+            type="button"
+            onClick={() => onOpenDetails(order)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+            title="Ver detalhes do pedido"
+            aria-label="Ver detalhes do pedido"
+          >
+            <Eye className="h-5 w-5" />
           </button>
         )}
         <button
           onClick={handlePrimaryAction}
-          className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold min-h-[40px] rounded-lg transition-colors ${
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors ${
             order.painelStatus === 'entregue' || order.painelStatus === 'cancelado'
               ? 'bg-white/10 text-gray-300 hover:bg-white/15'
               : 'bg-white text-gray-900 active:bg-white/80'
           }`}
+          title={primaryActionLabel}
+          aria-label={primaryActionLabel}
         >
-          <ChevronRight className="h-4 w-4" />
-          {primaryActionLabel}
+          <span className="scale-110">{primaryActionIcon}</span>
         </button>
       </div>
 

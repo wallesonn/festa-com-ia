@@ -94,8 +94,11 @@ Tela de onboarding e edição básica do profissional.
 - coleta nome da empresa e WhatsApp com país fixo Brasil, DDD e sanitização do número
 - marca o onboarding como concluído
 - registra os grupos de produto produzidos
+- prevê localização opcional do estabelecimento com endereço e coordenadas para uso futuro em distância e profissionais próximos
 - grava os dados em `festa-com-ia-professionals`
 - permite excluir a conta e todos os dados com confirmação explícita
+
+> Estratégia futura de localização: [`LOCATION_STRATEGY.md`](./LOCATION_STRATEGY.md).
 
 ---
 

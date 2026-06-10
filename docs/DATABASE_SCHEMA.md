@@ -50,9 +50,17 @@
 | `slug` | `text` | nullable, útil para URL |
 | `service_rules` | `text` | nullable; regras operacionais do negócio (horários, delivery, produtos, restrições e prazos) |
 | `photo_path` | `text` | nullable; caminho no bucket `festa-com-ia` do Supabase Storage |
+| `location_state` | `text` | nullable; planejado para localização opcional do estabelecimento |
+| `location_city` | `text` | nullable; planejado para localização opcional do estabelecimento |
+| `location_street` | `text` | nullable; planejado para endereço completo do estabelecimento |
+| `location_latitude` | `double precision` | nullable; planejado para cálculo futuro de distância e proximidade |
+| `location_longitude` | `double precision` | nullable; planejado para cálculo futuro de distância e proximidade |
+| `location_updated_at` | `timestamptz` | nullable; planejado para auditoria da última atualização da localização |
 | `status` | `text` | active / paused / archived |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
+
+> Estratégia registrada em [`LOCATION_STRATEGY.md`](./LOCATION_STRATEGY.md): começar com campos opcionais simples de endereço e coordenadas, mantendo evolução futura para busca por proximidade e PostGIS.
 
 #### RLS e policies
 

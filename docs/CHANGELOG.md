@@ -7,6 +7,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased] — 2026-06-06
 
+### Adicionado
+- **Estratégia de localização do profissional** (`docs/LOCATION_STRATEGY.md`): registrada a decisão de começar com campos opcionais simples de endereço e coordenadas no perfil, preparando cálculo futuro de distância, busca de profissionais próximos e evolução posterior para PostGIS.
+
 ### Alterado
 - **Painel / card de pedido**: o botão de detalhes foi movido para a faixa inferior do card, ao lado das ações principais, e os botões inferiores passaram a usar ícones para reduzir o impacto visual no layout.
 - **Painel / detalhes do pedido**: o painel agora reutiliza o `OrderDetailModal` da tela de Pedidos para exibir os detalhes completos do pedido, mantendo a atualização otimista ao editar ou excluir um item pelo modal.

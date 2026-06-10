@@ -66,9 +66,17 @@ Cadastro do profissional no Supabase, usado por login, onboarding e taxonomia co
 | `product_subgroups` | `Record<string, string[]>` | subgrupos por grupo de produto |
 | `product_variations` | `Record<string, string[]>` | variações por grupo de produto |
 | `onboarding_completed` | `boolean` | marca o primeiro acesso como concluído |
+| `location_state` | `string \| null` | estado/UF opcional do estabelecimento |
+| `location_city` | `string \| null` | cidade opcional do estabelecimento |
+| `location_street` | `string \| null` | endereço completo opcional do estabelecimento |
+| `location_latitude` | `number \| null` | latitude opcional para cálculo futuro de distância |
+| `location_longitude` | `number \| null` | longitude opcional para cálculo futuro de distância |
+| `location_updated_at` | `string \| null` | timestamp da última atualização da localização |
 | `status` | `string` | active / paused / archived |
 | `created_at` | `string` | timestamp de criação |
 | `updated_at` | `string` | timestamp de atualização |
+
+> A estratégia de localização está documentada em [`LOCATION_STRATEGY.md`](./LOCATION_STRATEGY.md). A decisão atual é começar com campos opcionais simples e evoluir para busca por proximidade/PostGIS quando necessário.
 
 ### `product_taxonomy_reference`
 Tabela de referência global no Postgres local, com um conjunto base por grupo de produto.

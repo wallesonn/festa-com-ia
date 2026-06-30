@@ -1699,21 +1699,6 @@ export default function PerfilPage() {
                     Ao escolher uma sugestão, o endereço completo e as coordenadas são preenchidos automaticamente.
                   </p>
                 </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-gray-400">Latitude</span>
-                    <div className="w-full rounded-xl border border-white/5 bg-white/5 px-4 py-2 text-xs font-mono text-gray-300">
-                      {form.locationLatitude !== null ? form.locationLatitude.toFixed(6) : 'Não definida'}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-xs font-medium text-gray-400">Longitude</span>
-                    <div className="w-full rounded-xl border border-white/5 bg-white/5 px-4 py-2 text-xs font-mono text-gray-300">
-                      {form.locationLongitude !== null ? form.locationLongitude.toFixed(6) : 'Não definida'}
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">

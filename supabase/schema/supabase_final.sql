@@ -19,6 +19,12 @@ create table if not exists public."festa-com-ia-professionals" (
   onboarding_completed boolean not null default false,
   slug text,
   service_rules text,
+  location_state text,
+  location_city text,
+  location_street text,
+  location_latitude double precision,
+  location_longitude double precision,
+  location_updated_at timestamptz,
   status text not null default 'active',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -315,6 +315,9 @@ type ProfileForm = {
   productsProduced: string[]
   conversationSamples: string
   serviceRules: string
+  locationStreet: string
+  locationLatitude: number | null
+  locationLongitude: number | null
 }
 
 type UazapiConnectionState = {
@@ -351,6 +354,13 @@ type UazapiConnectionApiResponse = {
 
 type UazapiConnectionErrorResponse = {
   error: string
+}
+
+type PlacesAutocompleteSuggestion = {
+  description: string
+  placeId: string
+  mainText: string
+  secondaryText: string
 }
 
 function parseProductsProduced(value: string | null | undefined) {
@@ -411,7 +421,188 @@ export default function PerfilPage() {
     productsProduced: [],
     conversationSamples: '',
     serviceRules: '',
+    locationStreet: '',
+    locationLatitude: null,
+    locationLongitude: null,
   })
+  const [reverseGeocodingLoading, setReverseGeocodingLoading] = useState(false)
+  const [addressSuggestions, setAddressSuggestions] = useState<PlacesAutocompleteSuggestion[]>([])
+  const [addressAutocompleteLoading, setAddressAutocompleteLoading] = useState(false)
+  const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false)
+  const [addressResolvingLoading, setAddressResolvingLoading] = useState(false)
+  const [addressInputMode, setAddressInputMode] = useState<'typing' | 'selected' | 'gps'>('selected')
+
+  const handleUseCurrentLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setError('A geolocalização não é suportada pelo seu navegador.')
+      return
+    }
+
+    setReverseGeocodingLoading(true)
+    setError(null)
+    setFeedback(null)
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords
+        setAddressInputMode('gps')
+        setAddressSuggestions([])
+        setAddressSuggestionsOpen(false)
+
+        setForm((prev) => ({
+          ...prev,
+          locationLatitude: latitude,
+          locationLongitude: longitude,
+        }))
+
+        try {
+          const response = await fetch(`/api/reverse-geocode?lat=${latitude}&lon=${longitude}`)
+          if (!response.ok) {
+            const result = await response.json().catch(() => ({}))
+            throw new Error(result.error || 'Erro ao reverter coordenadas para endereço.')
+          }
+          const data = await response.json()
+          setForm((prev) => ({
+            ...prev,
+            locationStreet: data.display_name || data.street || '',
+          }))
+          setFeedback('Localização atualizada com base no GPS com sucesso.')
+        } catch (err) {
+          console.error('[reverse-geocoding]', err)
+          setFeedback('Coordenadas capturadas via GPS. Não foi possível preencher o endereço por extenso automaticamente, mas as coordenadas foram salvas.')
+        } finally {
+          setReverseGeocodingLoading(false)
+        }
+      },
+      (err) => {
+        console.error('[geolocation-error]', err)
+        let msg = 'Erro ao capturar localização via GPS.'
+        if (err.code === 1) msg = 'Permissão de localização negada pelo usuário.'
+        else if (err.code === 2) msg = 'Localização indisponível.'
+        else if (err.code === 3) msg = 'Tempo esgotado para obter a localização.'
+        setError(msg)
+        setReverseGeocodingLoading(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }, [])
+
+  const resolveAddressCoordinates = useCallback(async (address: string) => {
+    const normalizedAddress = address.trim()
+
+    if (!normalizedAddress) {
+      setError('Digite um endereço para buscar coordenadas.')
+      return
+    }
+
+    setAddressResolvingLoading(true)
+    setError(null)
+    setFeedback(null)
+
+    try {
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(normalizedAddress)}`)
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        throw new Error(result.error || 'Endereço não localizado.')
+      }
+
+      const data = await response.json()
+      setForm((prev) => ({
+        ...prev,
+        locationStreet: data.display_name || normalizedAddress,
+        locationLatitude: data.latitude,
+        locationLongitude: data.longitude,
+      }))
+      setAddressInputMode('selected')
+      setAddressSuggestions([])
+      setAddressSuggestionsOpen(false)
+      setFeedback('Endereço localizado com sucesso.')
+    } catch (err) {
+      console.error('[geocoding]', err)
+      setError(err instanceof Error ? err.message : 'Não foi possível geolocalizar o endereço.')
+    } finally {
+      setAddressResolvingLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const query = form.locationStreet.trim()
+
+    if (addressInputMode !== 'typing') {
+      setAddressAutocompleteLoading(false)
+      if (!query) {
+        setAddressSuggestions([])
+      }
+      return undefined
+    }
+
+    if (query.length < 3) {
+      setAddressSuggestions([])
+      setAddressSuggestionsOpen(false)
+      setAddressAutocompleteLoading(false)
+      return undefined
+    }
+
+    let active = true
+    const timeoutId = window.setTimeout(async () => {
+      setAddressAutocompleteLoading(true)
+
+      try {
+        const response = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(query)}`)
+        const data = (await response.json().catch(() => ({}))) as {
+          suggestions?: PlacesAutocompleteSuggestion[]
+          error?: string
+          message?: string
+        }
+
+        if (!active) return
+
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Não foi possível buscar sugestões de endereço.')
+        }
+
+        const suggestions = data.suggestions ?? []
+        setAddressSuggestions(suggestions)
+        setAddressSuggestionsOpen(suggestions.length > 0)
+      } catch (err) {
+        if (!active) return
+        console.error('[places/autocomplete]', err)
+        setAddressSuggestions([])
+        setAddressSuggestionsOpen(false)
+      } finally {
+        if (active) {
+          setAddressAutocompleteLoading(false)
+        }
+      }
+    }, 350)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [addressInputMode, form.locationStreet])
+
+  const handleAddressInputChange = useCallback((value: string) => {
+    setAddressInputMode('typing')
+    setForm((prev) => ({
+      ...prev,
+      locationStreet: value,
+      locationLatitude: null,
+      locationLongitude: null,
+    }))
+    setAddressSuggestionsOpen(true)
+  }, [])
+
+  const handleSelectAddressSuggestion = useCallback((suggestion: PlacesAutocompleteSuggestion) => {
+    setAddressInputMode('selected')
+    setForm((prev) => ({
+      ...prev,
+      locationStreet: suggestion.description,
+    }))
+    setAddressSuggestionsOpen(false)
+    void resolveAddressCoordinates(suggestion.description)
+  }, [resolveAddressCoordinates])
+
   const router = useRouter()
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase().replace(/@/g, '-').replace(/\./g, '-'), [email])
@@ -729,7 +920,7 @@ export default function PerfilPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('festa-com-ia-professionals')
-        .select('id,business_name,phone,email,photo_path,products_produced,conversation_samples,service_rules,onboarding_completed')
+        .select('id,business_name,phone,email,photo_path,products_produced,conversation_samples,service_rules,onboarding_completed,location_street,location_latitude,location_longitude')
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
@@ -770,6 +961,9 @@ export default function PerfilPage() {
         productsProduced: selectedProducts,
         conversationSamples: profile?.conversation_samples ?? '',
         serviceRules: profile?.service_rules ?? '',
+        locationStreet: profile?.location_street ?? '',
+        locationLatitude: profile?.location_latitude ?? null,
+        locationLongitude: profile?.location_longitude ?? null,
       })
 
       if (sessionError || !sessionAccessToken) {
@@ -900,6 +1094,12 @@ export default function PerfilPage() {
       products_produced: JSON.stringify(form.productsProduced),
       conversation_samples: sanitizedConversationSamples || null,
       service_rules: sanitizedServiceRules || null,
+      location_state: null,
+      location_city: null,
+      location_street: form.locationStreet.trim() || null,
+      location_latitude: form.locationLatitude,
+      location_longitude: form.locationLongitude,
+      location_updated_at: (form.locationStreet.trim() || form.locationLatitude !== null || form.locationLongitude !== null) ? now : null,
       onboarding_completed: true,
       status: 'active',
       updated_at: now,
@@ -1432,6 +1632,88 @@ export default function PerfilPage() {
                 <p className="text-xs text-gray-500">
                   {serviceRulesLength}/{PROFILE_FIELD_LIMITS.serviceRules} caracteres
                 </p>
+              </div>
+
+              <div className="space-y-4 rounded-2xl border border-white/10 bg-black/20 p-6">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-base font-semibold text-white">Localização do estabelecimento (Opcional)</h3>
+                  <p className="text-xs text-gray-400">
+                    Comece a digitar o endereço completo e escolha uma sugestão do Google Places. Você também pode preencher pelo GPS do navegador.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleUseCurrentLocation}
+                    disabled={reverseGeocodingLoading}
+                    className="h-10 rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/10 px-4 text-xs font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20"
+                  >
+                    {reverseGeocodingLoading ? 'Capturando GPS...' : 'Usar minha localização atual (GPS)'}
+                  </Button>
+                </div>
+
+                <div className="relative space-y-2">
+                  <label htmlFor="locationStreet" className="text-sm font-medium text-gray-200">
+                    Endereço completo
+                  </label>
+                  <input
+                    id="locationStreet"
+                    value={form.locationStreet}
+                    onChange={(event) => handleAddressInputChange(event.target.value)}
+                    onFocus={() => {
+                      if (addressSuggestions.length > 0) {
+                        setAddressSuggestionsOpen(true)
+                      }
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-fuchsia-400/60 focus:ring-2 focus:ring-fuchsia-500/30"
+                    placeholder="Ex: Av. Paulista, 1000 - Bela Vista, São Paulo - SP"
+                    autoComplete="off"
+                  />
+
+                  {(addressSuggestionsOpen && (addressAutocompleteLoading || addressSuggestions.length > 0)) ? (
+                    <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur">
+                      {addressAutocompleteLoading ? (
+                        <div className="px-4 py-3 text-sm text-gray-300">Buscando sugestões...</div>
+                      ) : (
+                        addressSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion.placeId}
+                            type="button"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              handleSelectAddressSuggestion(suggestion)
+                            }}
+                            className="block w-full border-b border-white/5 px-4 py-3 text-left transition last:border-b-0 hover:bg-white/5"
+                          >
+                            <div className="text-sm font-medium text-white">{suggestion.mainText}</div>
+                            <div className="mt-0.5 text-xs text-gray-400">{suggestion.secondaryText || suggestion.description}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+
+                  <p className="text-xs text-gray-400">
+                    Ao escolher uma sugestão, o endereço completo e as coordenadas são preenchidos automaticamente.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-gray-400">Latitude</span>
+                    <div className="w-full rounded-xl border border-white/5 bg-white/5 px-4 py-2 text-xs font-mono text-gray-300">
+                      {form.locationLatitude !== null ? form.locationLatitude.toFixed(6) : 'Não definida'}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-gray-400">Longitude</span>
+                    <div className="w-full rounded-xl border border-white/5 bg-white/5 px-4 py-2 text-xs font-mono text-gray-300">
+                      {form.locationLongitude !== null ? form.locationLongitude.toFixed(6) : 'Não definida'}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">

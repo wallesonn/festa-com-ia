@@ -25,6 +25,12 @@ export type SupabaseDatabase = {
           onboarding_completed: boolean
           slug: string | null
           service_rules: string | null
+          location_state: string | null
+          location_city: string | null
+          location_street: string | null
+          location_latitude: number | null
+          location_longitude: number | null
+          location_updated_at: string | null
           status: string
           created_at: string
           updated_at: string
@@ -44,6 +50,12 @@ export type SupabaseDatabase = {
           onboarding_completed?: boolean
           slug?: string | null
           service_rules?: string | null
+          location_state?: string | null
+          location_city?: string | null
+          location_street?: string | null
+          location_latitude?: number | null
+          location_longitude?: number | null
+          location_updated_at?: string | null
           status?: string
           created_at?: string
           updated_at?: string
@@ -63,6 +75,12 @@ export type SupabaseDatabase = {
           onboarding_completed?: boolean
           slug?: string | null
           service_rules?: string | null
+          location_state?: string | null
+          location_city?: string | null
+          location_street?: string | null
+          location_latitude?: number | null
+          location_longitude?: number | null
+          location_updated_at?: string | null
           status?: string
           created_at?: string
           updated_at?: string

@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-06-30
+
+### Adicionado
+- **Integração com Google Places Autocomplete**: adicionado input inteligente de endereço completo na página de perfil, buscando sugestões dinâmicas de logradouro via rota interna `/api/places/autocomplete`.
+- **Preenchimento automático e Geocodificação**: ao selecionar uma sugestão de endereço do Google Places, as coordenadas de Latitude e Longitude são calculadas e preenchidas de forma automática via Google Geocoding API (`/api/geocode`).
+- **Suporte a GPS**: o botão de captura de GPS foi integrado para fazer geocodificação reversa (`/api/reverse-geocode`), convertendo as coordenadas do navegador em endereço legível e preenchendo o input do usuário.
+- **Portainer / Docker Compose**: adicionada a variável `GOOGLE_MAPS_API_KEY` na definição do serviço `web` no `docker-compose.yml`, permitindo a injeção nativa de variáveis de ambiente a partir da VPS ou do painel Portainer sem a necessidade de arquivos `.env` locais em produção.
+
+### Alterado
+- **Simplificação do formulário de perfil**: removidos os campos separados de estado e cidade, simplificando o fluxo para um único input unificado de endereço e otimizando a experiência do usuário.
+- **Payload do profissional**: atualizado o salvamento do perfil para persistir os campos estruturados de endereço (`location_street`, `location_latitude`, `location_longitude`, `location_updated_at`) e limpar dados de migração legados (`location_state`, `location_city`).
+
 ## [Unreleased] — 2026-06-06
 
 ### Adicionado

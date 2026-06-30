@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     console.info(`[api/places/autocomplete] buscando sugestões via Google Places: "${q}"`)
 
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${encodeURIComponent(apiKey)}&language=pt-BR&components=country:br&types=address`,
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${encodeURIComponent(apiKey)}&language=pt-BR&components=country:br`,
       {
         cache: 'no-store',
       },

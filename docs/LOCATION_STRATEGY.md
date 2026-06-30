@@ -1,6 +1,6 @@
 # Estratégia de Localização — Profissionais
 
-Este documento registra a estratégia inicial para armazenar localização de profissionais e preparar o projeto para recursos futuros de distância, busca por proximidade, rotas, áreas de entrega e automações baseadas em localização.
+Este documento registra a estratégia consolidada para armazenar localização de profissionais e preparar o projeto para recursos futuros de distância, busca por proximidade, rotas, áreas de entrega e automações baseadas em localização.
 
 ## Objetivo
 
@@ -13,65 +13,44 @@ Permitir que o profissional informe opcionalmente a localização do estabelecim
 - geração de rotas
 - automações de entrega ou retirada
 
-## Estratégia inicial
+## Estratégia de Dados
 
-Começar simples, sem PostGIS e sem busca espacial avançada.
+Começamos simples, sem PostGIS e sem busca espacial avançada.
 
-A primeira implementação deve armazenar dois tipos de informação:
+A modelagem de dados armazena o endereço unificado e as coordenadas em `festa-com-ia-professionals`:
 
-- endereço legível para humanos
-- coordenadas numéricas para cálculo
-
-Campos sugeridos em `festa-com-ia-professionals`:
-
-| Campo | Tipo sugerido | Obrigatório | Uso |
-|-------|---------------|-------------|-----|
-| `location_state` | `text` | não | estado/UF do estabelecimento |
-| `location_city` | `text` | não | cidade do estabelecimento |
-| `location_street` | `text` | não | rua, número, bairro e complemento |
+| Campo | Tipo | Obrigatório | Uso |
+|-------|------|-------------|-----|
+| `location_street` | `text` | não | Endereço unificado do estabelecimento (preenchido via Places ou GPS) |
 | `location_latitude` | `double precision` | não | latitude para cálculo de distância |
 | `location_longitude` | `double precision` | não | longitude para cálculo de distância |
 | `location_updated_at` | `timestamptz` | não | data da última atualização da localização |
 
-## Por que salvar endereço e coordenadas
+*Nota: Os campos legados `location_state` e `location_city` foram descontinuados na interface para simplificar a digitação do usuário e unificados no `location_street` completo fornecido pelas APIs do Google.*
 
-O endereço textual é útil para exibição, edição pelo usuário e confirmação visual.
+## UX baseada em Google Places Autocomplete
 
-As coordenadas são necessárias para cálculos confiáveis de distância e busca por proximidade. O sistema não deve depender apenas de estado, cidade ou rua para funcionalidades como encontrar profissionais próximos.
+Na tela `/perfil`, a localização é opcional e utiliza os seguintes fluxos:
 
-## UX recomendada
+- **Google Places Autocomplete**: Um único campo de input onde o usuário começa a digitar e o sistema sugere endereços estruturados fornecidos pelo Google Places.
+- **Captura por GPS**: Botão "Usar minha localização atual (GPS)" que obtém as coordenadas do navegador e preenche o endereço correspondente por extenso usando geolocalização reversa.
+- **Geocodificação Automática**: Ao selecionar um endereço sugerido, as coordenadas (latitude e longitude) são calculadas no backend e salvas instantaneamente de forma transparente para o usuário.
 
-Na tela `/perfil`, a localização deve ser opcional e apresentada como uma seção separada.
+## Arquitetura das APIs (Google Maps Platform)
 
-Fluxos recomendados:
+Para garantir segurança da chave de API e otimização de banda, todas as chamadas externas do Google Maps Platform são intermediadas por rotas internas do Next.js (Server-side):
 
-- botão para usar localização atual do navegador
-- campos manuais para estado, cidade e endereço completo
-- opção de converter endereço em coordenadas
-- indicação clara de que a localização é opcional
-- mensagem explicando que esses dados poderão ajudar em entrega, retirada e busca por profissionais próximos
+1. **`GET /api/places/autocomplete`**: Recebe o texto de busca, consulta a API do Google Places com restrição regional para o Brasil (`components=country:br`), e retorna sugestões estruturadas.
+2. **`GET /api/geocode`**: Converte a string de endereço selecionada em latitude/longitude geográficas.
+3. **`GET /api/reverse-geocode`**: Recebe coordenadas GPS (`lat`, `lon`) e realiza a engenharia reversa para encontrar o endereço legível correspondente.
 
-## Integração com geocoding
+## Proteção e Variáveis de Ambiente no Docker
 
-Para começar com baixo custo, usar um serviço gratuito como Nominatim/OpenStreetMap, respeitando limites de uso.
+A chave do Google Maps (`GOOGLE_MAPS_API_KEY`) é protegida de duas formas cruciais:
 
-A integração não deve ser chamada diretamente do frontend. O ideal é criar rotas internas no Next.js, por exemplo:
-
-- `GET /api/geocode` para converter endereço em latitude/longitude
-- `GET /api/reverse-geocode` para converter latitude/longitude em endereço
-
-Essas rotas internas devem permitir aplicar cache, rate limit, tratamento de erro e troca futura de fornecedor sem alterar o frontend.
-
-## Cuidados com API gratuita
-
-Serviços gratuitos de geocoding podem ter limites rígidos de uso. Para evitar bloqueios:
-
-- evitar chamadas a cada tecla digitada
-- executar geocoding apenas por ação explícita do usuário
-- usar debounce quando necessário
-- armazenar coordenadas no banco após validação
-- evitar geocodificar repetidamente o mesmo endereço
-- considerar cache por endereço normalizado
+1. **Sem vazamento no client-side**: A chave só existe no servidor (lida através de `process.env.GOOGLE_MAPS_API_KEY`). O frontend faz chamadas apenas para as nossas rotas `/api/*`.
+2. **Orquestração de Container**: O arquivo `docker-compose.yml` mapeia a variável global para que o Portainer / VPS injete o segredo diretamente no container do Node.js.
+3. **Segurança de IP (Google Cloud Console)**: Recomenda-se configurar a chave com restrições de IP (apenas permitindo o IP público da VPS) e de API (restringindo apenas para *Geocoding API* e *Places API*).
 
 ## Busca por distância no futuro
 
@@ -104,13 +83,3 @@ Com PostGIS, será possível usar funções como:
 - `ST_DWithin` para filtrar profissionais dentro de um raio
 - `ST_Distance` para ordenar por distância real
 - índices espaciais para melhorar performance
-
-## Decisão atual
-
-A decisão atual é começar simples:
-
-- salvar localização como dados opcionais no perfil profissional
-- manter endereço dividido em estado, cidade e endereço completo
-- salvar latitude e longitude como números
-- preparar a documentação e o modelo para futura busca por proximidade
-- adiar PostGIS até que a busca espacial seja realmente necessária

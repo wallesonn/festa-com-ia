@@ -13,16 +13,25 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const q = searchParams.get('q')?.trim()
+    const lat = searchParams.get('lat')?.trim()
+    const lon = searchParams.get('lon')?.trim()
 
     if (!q) {
       return NextResponse.json({ error: 'Parâmetro de busca "q" é obrigatório.' }, { status: 400 })
     }
 
     const apiKey = getGoogleMapsApiKey()
-    console.info(`[api/places/autocomplete] buscando sugestões via Google Places: "${q}"`)
+    console.info(`[api/places/autocomplete] buscando sugestões via Google Places: "${q}" (bias: lat=${lat || 'none'}, lon=${lon || 'none'})`)
+
+    let googlePlacesUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${encodeURIComponent(apiKey)}&language=pt-BR&components=country:br`
+
+    if (lat && lon) {
+      // Prioriza resultados num raio de 50km das coordenadas fornecidas (location bias)
+      googlePlacesUrl += `&location=${encodeURIComponent(`${lat},${lon}`)}&radius=50000`
+    }
 
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${encodeURIComponent(apiKey)}&language=pt-BR&components=country:br`,
+      googlePlacesUrl,
       {
         cache: 'no-store',
       },

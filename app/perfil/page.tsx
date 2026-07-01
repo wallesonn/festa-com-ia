@@ -426,11 +426,28 @@ export default function PerfilPage() {
     locationLongitude: null,
   })
   const [reverseGeocodingLoading, setReverseGeocodingLoading] = useState(false)
+  const [backgroundCoordinates, setBackgroundCoordinates] = useState<{ lat: number; lon: number } | null>(null)
   const [addressSuggestions, setAddressSuggestions] = useState<PlacesAutocompleteSuggestion[]>([])
   const [addressAutocompleteLoading, setAddressAutocompleteLoading] = useState(false)
   const [addressSuggestionsOpen, setAddressSuggestionsOpen] = useState(false)
   const [addressResolvingLoading, setAddressResolvingLoading] = useState(false)
   const [addressInputMode, setAddressInputMode] = useState<'typing' | 'selected' | 'gps'>('selected')
+
+  // Obtém silenciosamente a localização em segundo plano para viés de pesquisa local, se permitido
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setBackgroundCoordinates({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        })
+      },
+      undefined,
+      { enableHighAccuracy: false, timeout: 5000 }
+    )
+  }, [])
 
   const handleUseCurrentLocation = useCallback(() => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
@@ -477,9 +494,11 @@ export default function PerfilPage() {
       (err) => {
         console.error('[geolocation-error]', err)
         let msg = 'Erro ao capturar localização via GPS.'
-        if (err.code === 1) msg = 'Permissão de localização negada pelo usuário.'
-        else if (err.code === 2) msg = 'Localização indisponível.'
-        else if (err.code === 3) msg = 'Tempo esgotado para obter a localização.'
+        if (err.code === 1) {
+          msg = 'A permissão de localização está bloqueada no seu navegador. Para ativar, clique no ícone de "Configurações" ou "Cadeado" ao lado da URL do site na barra de endereços acima, mude a permissão de Localização para "Permitir" e recarregue a página.'
+        }
+        else if (err.code === 2) msg = 'Localização física indisponível no momento.'
+        else if (err.code === 3) msg = 'Tempo esgotado para obter a localização do GPS.'
         setError(msg)
         setReverseGeocodingLoading(false)
       },
@@ -548,7 +567,15 @@ export default function PerfilPage() {
       setAddressAutocompleteLoading(true)
 
       try {
-        const response = await fetch(`/api/places/autocomplete?q=${encodeURIComponent(query)}`)
+        const biasLat = form.locationLatitude ?? backgroundCoordinates?.lat
+        const biasLon = form.locationLongitude ?? backgroundCoordinates?.lon
+        
+        let url = `/api/places/autocomplete?q=${encodeURIComponent(query)}`
+        if (biasLat !== null && biasLat !== undefined && biasLon !== null && biasLon !== undefined) {
+          url += `&lat=${biasLat}&lon=${biasLon}`
+        }
+
+        const response = await fetch(url)
         const data = (await response.json().catch(() => ({}))) as {
           suggestions?: PlacesAutocompleteSuggestion[]
           error?: string
@@ -580,7 +607,7 @@ export default function PerfilPage() {
       active = false
       window.clearTimeout(timeoutId)
     }
-  }, [addressInputMode, form.locationStreet])
+  }, [addressInputMode, form.locationStreet, form.locationLatitude, form.locationLongitude, backgroundCoordinates])
 
   const handleAddressInputChange = useCallback((value: string) => {
     setAddressInputMode('typing')
